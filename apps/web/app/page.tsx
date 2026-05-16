@@ -4,6 +4,7 @@ import { Header } from "@/components/header";
 import { Hero } from "@/components/hero";
 import { LiveStats } from "@/components/live-stats";
 import { FeatureGrid } from "@/components/feature-grid";
+import { LatestBounties } from "@/components/latest-bounties";
 import { Footer } from "@/components/footer";
 
 export default function HomePage() {
@@ -20,6 +21,7 @@ export default function HomePage() {
       </Suspense>
 
       <FeatureGrid />
+      <LatestBounties />
       <Footer />
     </main>
   );
