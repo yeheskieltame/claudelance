@@ -134,3 +134,33 @@
     mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 70%);
   }
 }
+
+@layer utilities {
+  .container-responsive {
+    @apply mx-auto w-full max-w-[1200px] px-4 md:px-6 lg:px-8;
+  }
+  .grid-responsive {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  .stack-responsive {
+    @apply flex flex-col gap-4 md:flex-row md:gap-6;
+  }
+  .text-responsive {
+    @apply text-sm md:text-base lg:text-lg;
+  }
+  .heading-responsive {
+    @apply text-xl md:text-2xl lg:text-3xl font-bold;
+  }
+  .card-responsive {
+    @apply rounded-lg md:rounded-xl lg:rounded-2xl p-4 md:p-6;
+  }
+  .nav-responsive {
+    @apply fixed bottom-0 left-0 right-0 md:relative md:bottom-auto bg-bg border-t md:border-t-0 md:border-b border-border;
+  }
+  .hide-on-mobile {
+    @apply hidden md:block;
+  }
+  .show-on-mobile {
+    @apply block md:hidden;
+  }
+}
