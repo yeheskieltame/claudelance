@@ -22,6 +22,7 @@ MiniPay-friendly Next.js 15 frontend for the [Claudelance](../../README.md) boun
 - **Theming** — `next-themes` with system default; dark + light variants of the glassmorphism surface
 - **Live chain reads** — viem `createPublicClient` reading from the active Claudelance core
 - **MiniPay detection hook** — `useMiniPayDetection` for the Opera MiniPay in-app browser eligibility gate
+- **Wallet connector order** — wagmi config picks injected MiniPay first, then Privy wallets outside MiniPay
 
 ## Status
 
@@ -64,10 +65,11 @@ No backend service is required for the landing page; every chain read is a serve
 The app reads from `.env` (or `.env.local` for overrides). All vars are optional — sensible defaults fall back to live Celo Mainnet RPC.
 
 ```bash
-NEXT_PUBLIC_CHAIN=celo            # celo (mainnet) | celo-sepolia (staging); default: celo
-NEXT_PUBLIC_CELO_RPC=             # override mainnet RPC if you have one
-NEXT_PUBLIC_SEPOLIA_RPC=          # override Sepolia RPC if you have one
-NEXT_PUBLIC_PRIVY_APP_ID=         # Privy app id for the upcoming auth provider wiring
+NEXT_PUBLIC_DEFAULT_CHAIN=celo-mainnet
+NEXT_PUBLIC_CELO_MAINNET_RPC=https://forno.celo.org
+NEXT_PUBLIC_CELO_SEPOLIA_RPC=https://forno.celo-sepolia.celo-testnet.org/
+NEXT_PUBLIC_PRIVY_APP_ID=         # required for Privy wallet login outside MiniPay
+NEXT_PUBLIC_WC_PROJECT_ID=        # optional WalletConnect project id
 ```
 
 Privy configuration details live in [`docs/PRIVY_SETUP.md`](./docs/PRIVY_SETUP.md).
@@ -90,6 +92,8 @@ lib/
   contracts.ts    typed deployment addresses + read-only ABI surface
   stats.ts        server-side multicall used by the landing stats card
   minipay.ts      useMiniPayDetection, Opera MiniPay in-app browser check
+  wallet/config.ts
+                  wagmi + Privy config, MiniPay-first connector selection
 ```
 
 Migration target — replace the inline `coreAbi` and bespoke deployment record in `lib/contracts.ts` with imports from `@yeheskieltame/claudelance-types@0.3.0`:
@@ -102,7 +106,7 @@ import {
 } from '@yeheskieltame/claudelance-types';
 ```
 
-Write-side wagmi connectors land alongside the post-bounty + claim-slot flows in the upcoming `/post`, `/hire`, and `/bounties/[id]` work.
+Write-side routes can now use the shared wagmi provider and inherit the MiniPay-first / Privy fallback connector selection.
 
 ## Design system
 
@@ -116,7 +120,7 @@ Write-side wagmi connectors land alongside the post-bounty + claim-slot flows in
 - **Framework**: Next.js 15 App Router + React 19 + TypeScript 5
 - **Styling**: Tailwind CSS 3.4 + `next-themes` + lucide-react icons
 - **Chain reads**: viem 2
-- **Chain writes** (post-PR landing): wagmi 2 + @tanstack/react-query 5
+- **Chain writes** (post-PR landing): wagmi 2 + @tanstack/react-query 5 + @privy-io/wagmi
 - **Validation**: zod 3
 - **SDK**: `@yeheskieltame/claudelance-sdk@0.3.0` + `@yeheskieltame/claudelance-types@0.3.0` (multi-token + ERC-8004 + direct hire, mainnet + Sepolia)
 

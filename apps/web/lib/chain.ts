@@ -25,7 +25,7 @@ export const celoSepolia = defineChain({
   testnet: true,
 });
 
-export const supportedChains = [celoSepolia, celoMainnet] as const;
+export const supportedChains = [celoMainnet, celoSepolia] as const;
 
 export type SupportedChainId = (typeof supportedChains)[number]["id"];
 
