@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 
+import { BottomNav } from "@/components/bottom-nav";
+
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -33,8 +35,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className="min-h-svh font-sans">
-        <Providers>{children}</Providers>
+      <body className="min-h-svh pb-[calc(5rem+env(safe-area-inset-bottom))] font-sans md:pb-0">
+        <Providers>
+          {children}
+          <BottomNav />
+        </Providers>
       </body>
     </html>
   );

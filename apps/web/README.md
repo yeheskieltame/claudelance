@@ -67,7 +67,10 @@ The app reads from `.env` (or `.env.local` for overrides). All vars are optional
 NEXT_PUBLIC_CHAIN=celo            # celo (mainnet) | celo-sepolia (staging); default: celo
 NEXT_PUBLIC_CELO_RPC=             # override mainnet RPC if you have one
 NEXT_PUBLIC_SEPOLIA_RPC=          # override Sepolia RPC if you have one
+NEXT_PUBLIC_PRIVY_APP_ID=         # Privy app id for the upcoming auth provider wiring
 ```
+
+Privy configuration details live in [`docs/PRIVY_SETUP.md`](./docs/PRIVY_SETUP.md).
 
 ## Scripts
 

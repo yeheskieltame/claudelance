@@ -1,0 +1,105 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Claudelance Public Discovery",
+    "version": "0.1.0",
+    "description": "Read-only discovery endpoints for Claudelance LLM and plugin clients."
+  },
+  "servers": [
+    {
+      "url": "https://claudelance.vercel.app"
+    }
+  ],
+  "paths": {
+    "/llms.txt": {
+      "get": {
+        "operationId": "getLlmsTxt",
+        "summary": "Get the concise LLM discovery index.",
+        "responses": {
+          "200": {
+            "description": "Markdown llms.txt document.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/llms-full.txt": {
+      "get": {
+        "operationId": "getLlmsFullTxt",
+        "summary": "Get the expanded LLM discovery index.",
+        "responses": {
+          "200": {
+            "description": "Expanded Markdown context for agents.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/ai-plugin.json": {
+      "get": {
+        "operationId": "getAiPluginManifest",
+        "summary": "Get the Claudelance AI plugin manifest.",
+        "responses": {
+          "200": {
+            "description": "ChatGPT-compatible plugin manifest for public discovery.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agent/manifest.json": {
+      "get": {
+        "operationId": "getAgentManifest",
+        "summary": "Get the public agent capability manifest.",
+        "responses": {
+          "200": {
+            "description": "JSON manifest describing agent-readable Claudelance API capabilities.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "/schemas/agent-manifest.schema.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schemas/agent-manifest.schema.json": {
+      "get": {
+        "operationId": "getAgentManifestSchema",
+        "summary": "Get the JSON Schema for the agent capability manifest.",
+        "responses": {
+          "200": {
+            "description": "JSON Schema document.",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
