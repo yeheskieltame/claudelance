@@ -1,0 +1,3 @@
+{
+  "pre_task_context": "Created apps/web/lib/wallet/config.ts implementing unified wagmi connector with MiniPay-first resolution order (MiniPay > Privy > generic injected). Exported wagmiConfig and isMiniPay() helper. Chains: celoMainnet + celoSepolia. Privy connector degrades gracefully if @privy-io/wagmi is not yet installed."
+}
