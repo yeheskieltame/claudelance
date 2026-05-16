@@ -90,6 +90,27 @@ const config: Config = {
         mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
         display: ["var(--font-display)", "var(--font-geist-sans)", "sans-serif"],
       },
+      
+      spacing: {
+        "fintech-xs": "2px",
+        "fintech-sm": "4px", 
+        "fintech-md": "8px",
+        "fintech-lg": "16px",
+        "fintech-xl": "24px",
+        "fintech-2xl": "32px",
+        "fintech-3xl": "48px",
+      },
+      backgroundImage: {
+        "gradient-fintech": "linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #EC4899 100%)",
+        "gradient-success": "linear-gradient(135deg, #087F5B 0%, #4ADE80 100%)",
+        "gradient-warn": "linear-gradient(135deg, #9A5B00 0%, #FACC15 100%)",
+        "gradient-glass": "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
+        "gradient-glass-dark": "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)",
+      },
+      opacity: {
+        "glass": "0.08",
+        "glass-strong": "0.12",
+      },
       fontSize: {
         "scale-1": ["12px", { lineHeight: "16px" }],
         "scale-2": ["14px", { lineHeight: "20px" }],
