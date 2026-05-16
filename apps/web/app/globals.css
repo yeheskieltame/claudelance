@@ -38,99 +38,65 @@
   }
 
   .dark {
-    --background: 235 32% 7%;
-    --foreground: 220 20% 96%;
+    --background: 235 32% 8%;
+    --foreground: 220 20% 92%;
 
-    --card: 235 28% 12%;
-    --card-foreground: 220 20% 96%;
+    --card: 235 30% 12%;
+    --card-foreground: 220 20% 92%;
 
-    --primary: 258 90% 70%;
+    --primary: 252 75% 68%;
     --primary-foreground: 235 32% 8%;
 
-    --secondary: 235 24% 18%;
-    --secondary-foreground: 220 20% 96%;
+    --secondary: 235 20% 18%;
+    --secondary-foreground: 220 20% 88%;
 
-    --muted: 235 24% 16%;
-    --muted-foreground: 220 12% 68%;
+    --muted: 235 15% 18%;
+    --muted-foreground: 220 12% 60%;
 
-    --accent: 268 50% 28%;
-    --accent-foreground: 270 90% 92%;
+    --accent: 252 30% 24%;
+    --accent-foreground: 252 75% 80%;
 
-    --destructive: 0 65% 50%;
-    --destructive-foreground: 220 20% 96%;
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 235 24% 22%;
-    --input: 235 24% 22%;
-    --ring: 258 90% 70%;
+    --border: 235 18% 20%;
+    --input: 235 18% 20%;
+    --ring: 252 75% 68%;
 
-    --glass-bg: 235 32% 10% / 0.55;
-    --glass-border: 220 18% 100% / 0.12;
-  }
-
-  * {
-    @apply border-border;
-  }
-
-  html {
-    scroll-behavior: smooth;
-  }
-
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
-    min-height: 100dvh;
-    background-image:
-      radial-gradient(ellipse at 12% -10%, hsl(var(--primary) / 0.18), transparent 55%),
-      radial-gradient(ellipse at 110% 10%, hsl(var(--accent) / 0.35), transparent 60%),
-      radial-gradient(ellipse at 50% 110%, hsl(var(--primary) / 0.14), transparent 60%);
-    background-attachment: fixed;
-  }
-
-  .dark body {
-    background-image:
-      radial-gradient(ellipse at 10% -10%, hsl(var(--primary) / 0.28), transparent 55%),
-      radial-gradient(ellipse at 110% 15%, hsl(258 80% 55% / 0.18), transparent 60%),
-      radial-gradient(ellipse at 50% 120%, hsl(var(--primary) / 0.18), transparent 60%);
+    --glass-bg: 235 30% 14% / 0.6;
+    --glass-border: 235 20% 24% / 0.5;
   }
 }
 
 @layer utilities {
-  .glass {
-    background-color: hsl(var(--glass-bg));
-    border: 1px solid hsl(var(--glass-border));
-    @apply backdrop-blur-xl shadow-glass;
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
-
-  .glass-strong {
-    background-color: hsl(var(--glass-bg));
-    border: 1px solid hsl(var(--glass-border));
-    @apply backdrop-blur-2xl shadow-glass-strong;
+  .safe-area-pl {
+    padding-left: env(safe-area-inset-left, 0px);
   }
-
-  .text-gradient {
-    background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--primary)) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  .safe-area-pr {
+    padding-right: env(safe-area-inset-right, 0px);
   }
-
-  .bg-anime {
-    background-image: var(--bg-image-light);
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+  .safe-area-pt {
+    padding-top: env(safe-area-inset-top, 0px);
   }
+}
 
-  .dark .bg-anime {
-    background-image: var(--bg-image-dark);
+@layer base {
+  * {
+    @apply border-border;
   }
-
-  .grid-pattern {
-    background-image:
-      linear-gradient(hsl(var(--border)) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px);
-    background-size: 48px 48px;
-    -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 70%);
-    mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 70%);
+  body {
+    @apply bg-background text-foreground;
+    min-height: 100dvh;
+  }
+  button,
+  a,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    @apply min-h-[44px] min-w-[44px];
   }
 }
