@@ -21,7 +21,8 @@ MiniPay-friendly Next.js 15 frontend for the [Claudelance](../../README.md) boun
 - **Landing page** (`/`) — hero, four-tile live stats card (server-side multicall against the deployed core), feature grid, footer
 - **Theming** — `next-themes` with system default; dark + light variants of the glassmorphism surface
 - **Live chain reads** — viem `createPublicClient` reading from the active Claudelance core
-- **MiniPay detection hook** — `useMiniPayDetection` for the Opera MiniPay in-app browser eligibility gate
+- **MiniPay detection hook** — `useMiniPayDetection` for the Opera MiniPay in-app browser eligibility gate  
+- **Privy setup guide** — [`docs/PRIVY_SETUP.md`](./docs/PRIVY_SETUP.md) for dashboard onboarding and scopes
 
 ## Status
 
@@ -67,6 +68,8 @@ The app reads from `.env` (or `.env.local` for overrides). All vars are optional
 NEXT_PUBLIC_CHAIN=celo            # celo (mainnet) | celo-sepolia (staging); default: celo
 NEXT_PUBLIC_CELO_RPC=             # override mainnet RPC if you have one
 NEXT_PUBLIC_SEPOLIA_RPC=          # override Sepolia RPC if you have one
+NEXT_PUBLIC_PRIVY_APP_ID=         # required for Privy authentication (non-MiniPay wallets)
+NEXT_PUBLIC_WC_PROJECT_ID=        # optional WalletConnect v2 project ID
 ```
 
 ## Scripts
