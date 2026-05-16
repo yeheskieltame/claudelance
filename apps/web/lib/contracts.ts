@@ -1,18 +1,35 @@
-import deployment from "../../../contracts/deployments/celo-sepolia.json";
-import { celoSepolia } from "./chain";
+import mainnetDeployment from "../../../contracts/deployments/celo-mainnet.json";
+import sepoliaDeployment from "../../../contracts/deployments/celo-sepolia.json";
+import { celoMainnet, celoSepolia } from "./chain";
 
-/// Static deployment metadata pulled from the committed deployment record.
-/// Importing JSON keeps the frontend in lockstep with the contract repo — the
-/// next mainnet deploy adds celo-mainnet.json and we add a sibling import.
-export const deployments = {
-  [celoSepolia.id]: {
+type TokenSymbol = "cUSD" | "CELO" | "USDC";
+type DeploymentJson = {
+  chainId: number;
+  core: string;
+  tokens: Record<TokenSymbol, string>;
+  treasury: string;
+  ciRelayer: string;
+  owner: string;
+};
+
+function deploymentFromJson(deployment: DeploymentJson) {
+  return {
+    chainId: deployment.chainId,
     core: deployment.core as `0x${string}`,
-    cUSD: deployment.cUSD as `0x${string}`,
-    cUSDKind: deployment.cUSDKind,
+    tokens: deployment.tokens as Record<TokenSymbol, `0x${string}`>,
+    cUSD: deployment.tokens.cUSD as `0x${string}`,
     treasury: deployment.treasury as `0x${string}`,
     ciRelayer: deployment.ciRelayer as `0x${string}`,
     owner: deployment.owner as `0x${string}`,
-  },
+  };
+}
+
+/// Static deployment metadata pulled from the committed deployment record.
+/// Importing JSON keeps the frontend in lockstep with the contract repo across
+/// the live Celo Sepolia and Celo Mainnet deployments.
+export const deployments = {
+  [celoSepolia.id]: deploymentFromJson(sepoliaDeployment),
+  [celoMainnet.id]: deploymentFromJson(mainnetDeployment),
 } as const;
 
 export function getDeployment(chainId: number) {

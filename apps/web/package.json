@@ -6,14 +6,17 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "pnpm --filter @yeheskieltame/claudelance-types build",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "pretypecheck": "pnpm --filter @yeheskieltame/claudelance-types build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.0",
     "@tanstack/react-query": "^5.59.0",
+    "@yeheskieltame/claudelance-types": "workspace:^",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "geist": "^1.7.0",
