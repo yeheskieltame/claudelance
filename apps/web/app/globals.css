@@ -73,12 +73,14 @@
 
   html {
     scroll-behavior: smooth;
+    min-height: 100svh;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
-    min-height: 100dvh;
+    min-height: 100svh;
+    overflow-x: hidden;
     background-image:
       radial-gradient(ellipse at 12% -10%, hsl(var(--primary) / 0.18), transparent 55%),
       radial-gradient(ellipse at 110% 10%, hsl(var(--accent) / 0.35), transparent 60%),
@@ -92,9 +94,39 @@
       radial-gradient(ellipse at 110% 15%, hsl(258 80% 55% / 0.18), transparent 60%),
       radial-gradient(ellipse at 50% 120%, hsl(var(--primary) / 0.18), transparent 60%);
   }
+
+  @supports (height: 100dvh) {
+    body {
+      min-height: 100dvh;
+    }
+  }
 }
 
 @layer utilities {
+  .mobile-shell {
+    width: min(100%, 480px);
+    max-width: 480px;
+    margin-inline: auto;
+    padding-inline: max(1rem, env(safe-area-inset-left));
+  }
+
+  @media (min-width: 768px) {
+    .mobile-shell {
+      width: min(100%, 72rem);
+      max-width: 72rem;
+      padding-inline: 1rem;
+    }
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
   .glass {
     background-color: hsl(var(--glass-bg));
     border: 1px solid hsl(var(--glass-border));
