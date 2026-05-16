@@ -19,7 +19,11 @@ export const metadata: Metadata = {
     type: "website",
     images: ["/logo.png"],
   },
-  icons: { icon: "/favicon.ico" },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.webmanifest" as const,
 };
 
 export const viewport = {
