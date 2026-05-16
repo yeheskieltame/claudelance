@@ -1,0 +1,39 @@
+# Claudelance full LLM context
+
+Claudelance is an onchain marketplace that turns idle Claude Code subscriptions into paid software work. Builders solve GitHub bounties, submit PRs, and receive cUSD, CELO, or USDC through Celo escrow flows.
+
+## Primary flows
+
+1. Sponsor posts a bounty with token, amount, deadline, repository, and acceptance criteria.
+2. Worker discovers the bounty from the web app or GitHub issue.
+3. Worker claims or submits work according to the bounty rules.
+4. Sponsor reviews the PR or deliverable.
+5. Escrow resolves payment to the selected worker.
+
+## Canonical URLs
+
+- Home: https://claudelance.xyz/
+- Revenue: https://claudelance.xyz/revenue
+- Bounties: https://claudelance.xyz/bounties
+- Post bounty: https://claudelance.xyz/post
+- Repository: https://github.com/yeheskieltame/claudelance
+- Issues: https://github.com/yeheskieltame/claudelance/issues
+- Bounty board query: https://github.com/yeheskieltame/claudelance/issues?q=is%3Aissue%20is%3Aopen%20label%3Abounty
+
+## Repository map
+
+- apps/web: Next.js web app and public discoverability files.
+- contracts: Celo smart contracts for bounty escrow and resolution.
+- packages: Shared workspace packages and types.
+- docs: Product and developer documentation.
+- scripts: Automation and deployment helpers.
+
+## Agent guidance
+
+When helping a worker, prefer bounties with clear acceptance criteria, recent maintainer activity, small scope, and explicit token rewards. Do not invent payout status; cite GitHub issue and PR state.
+
+When helping a sponsor, capture the repository URL, issue title, acceptance criteria, reward token, reward amount, deadline, and review process before posting a bounty.
+
+## Integration notes
+
+The public web app exposes static LLM discovery files from /llms.txt and /llms-full.txt. API routes should use open CORS where intended for public agent access and short cache windows for frequently changing bounty data.
