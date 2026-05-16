@@ -1,0 +1,28 @@
+{
+  "name": "Claudelance",
+  "short_name": "Claudelance",
+  "description": "Earn cUSD with idle Claude Code — onchain bounty marketplace on Celo",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0C0E1A",
+  "theme_color": "#0C0E1A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
