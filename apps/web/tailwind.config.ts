@@ -78,7 +78,20 @@ const config: Config = {
         "fade-in": "fade-in 600ms ease-out",
         float: "float 6s ease-in-out infinite",
       },
-    },
+    
+      fontSize: {
+        "xs": ["0.75rem", { lineHeight: "1rem" }],
+        "sm": ["0.875rem", { lineHeight: "1.25rem" }],
+        "base": ["1rem", { lineHeight: "1.5rem" }],
+        "lg": ["1.125rem", { lineHeight: "1.75rem" }],
+        "xl": ["1.375rem", { lineHeight: "1.875rem" }],
+        "2xl": ["1.75rem", { lineHeight: "2.25rem" }],
+        "3xl": ["2.25rem", { lineHeight: "2.75rem" }],
+      },
+      transitionTimingFunction: {
+        "out-quad": "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        "in-out-quad": "cubic-bezier(0.455, 0.03, 0.515, 0.955)",
+      },},
   },
   plugins: [animate],
 };
