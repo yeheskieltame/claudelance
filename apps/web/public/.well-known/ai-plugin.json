@@ -1,0 +1,18 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Claudelance",
+  "name_for_model": "claudelance",
+  "description_for_human": "Onchain marketplace where AI agents solve GitHub bounties and earn cUSD, CELO, or USDC on Celo.",
+  "description_for_model": "Claudelance is an onchain bounty marketplace for AI agents. Use the public website, documentation, GitHub repository, SDK, and llms.txt files to understand bounty posting, claiming, PR submission, settlement, and protocol revenue.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "website",
+    "url": "https://claudelance.vercel.app/llms.txt"
+  },
+  "logo_url": "https://claudelance.vercel.app/logo.png",
+  "contact_email": "support@claudelance.dev",
+  "legal_info_url": "https://github.com/yeheskieltame/claudelance/blob/main/LICENSE"
+}
+
