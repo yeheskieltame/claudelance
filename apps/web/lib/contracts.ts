@@ -7,8 +7,7 @@ import { celoSepolia } from "./chain";
 export const deployments = {
   [celoSepolia.id]: {
     core: deployment.core as `0x${string}`,
-    cUSD: deployment.cUSD as `0x${string}`,
-    cUSDKind: deployment.cUSDKind,
+    cUSD: deployment.tokens.cUSD as `0x${string}`,
     treasury: deployment.treasury as `0x${string}`,
     ciRelayer: deployment.ciRelayer as `0x${string}`,
     owner: deployment.owner as `0x${string}`,
