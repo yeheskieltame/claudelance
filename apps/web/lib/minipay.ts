@@ -2,14 +2,7 @@
 
 import * as React from "react";
 
-declare global {
-  interface Window {
-    ethereum?: {
-      isMiniPay?: boolean;
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-    };
-  }
-}
+import { isMiniPay as isMiniPayProvider } from "@/lib/wallet/config";
 
 /// Detects the Opera MiniPay in-app browser. When present, MiniPay auto-injects
 /// `window.ethereum.isMiniPay = true` and expects the dapp to call
@@ -19,7 +12,7 @@ export function useMiniPayDetection() {
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.ethereum?.isMiniPay) {
+    if (isMiniPayProvider(window.ethereum)) {
       setIsMiniPay(true);
       window.ethereum.request({ method: "eth_requestAccounts" }).catch(() => {
         // User dismissed connection — leave isMiniPay true so the UI can still
