@@ -2,30 +2,28 @@
 
 import * as React from "react";
 
+export type EthereumProvider = {
+  isMiniPay?: boolean;
+  providers?: EthereumProvider[];
+  request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>;
+  on?: (event: "accountsChanged" | "chainChanged", handler: (...args: unknown[]) => void) => void;
+  removeListener?: (event: "accountsChanged" | "chainChanged", handler: (...args: unknown[]) => void) => void;
+};
+
 declare global {
   interface Window {
-    ethereum?: {
-      isMiniPay?: boolean;
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-    };
+    ethereum?: EthereumProvider;
   }
 }
 
-/// Detects the Opera MiniPay in-app browser. When present, MiniPay auto-injects
-/// `window.ethereum.isMiniPay = true` and expects the dapp to call
-/// `eth_requestAccounts` eagerly so the user lands inside an authorised session.
+// Detects the Opera MiniPay in-app browser. Wallet connection stays with the
+// caller so account prompts are not duplicated.
 export function useMiniPayDetection() {
   const [isMiniPay, setIsMiniPay] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.ethereum?.isMiniPay) {
-      setIsMiniPay(true);
-      window.ethereum.request({ method: "eth_requestAccounts" }).catch(() => {
-        // User dismissed connection — leave isMiniPay true so the UI can still
-        // adapt (hide WalletConnect, surface a "tap your address" hint).
-      });
-    }
+    if (window.ethereum?.isMiniPay) setIsMiniPay(true);
   }, []);
 
   return isMiniPay;

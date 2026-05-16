@@ -10,17 +10,17 @@ export const celoSepolia = defineChain({
   id: 11_142_220,
   name: "Celo Sepolia",
   nativeCurrency: { name: "Celo", symbol: "CELO", decimals: 18 },
+  contracts: {
+    multicall3: {
+      address: "0xcA11bde05977b3631167028862bE2a173976CA11",
+    },
+  },
   rpcUrls: {
     default: { http: ["https://forno.celo-sepolia.celo-testnet.org/"] },
   },
   blockExplorers: {
     default: { name: "Celoscan", url: "https://sepolia.celoscan.io" },
     blockscout: { name: "Blockscout", url: "https://celo-sepolia.blockscout.com" },
-  },
-  contracts: {
-    multicall3: {
-      address: "0xcA11bde05977b3631167028862bE2a173976CA11",
-    },
   },
   testnet: true,
 });

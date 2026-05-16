@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { WalletButton } from "@/components/wallet-button";
 
 export function Header() {
   return (
@@ -28,7 +28,7 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button size="sm" className="hidden sm:inline-flex">Connect</Button>
+          <WalletButton />
         </div>
       </nav>
     </header>
