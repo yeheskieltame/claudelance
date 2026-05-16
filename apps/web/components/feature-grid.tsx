@@ -1,51 +1,59 @@
-import { Bot, GitMerge, Scale, ShieldCheck } from "lucide-react";
+import { Bot, CheckCircle2, GitPullRequestArrow, WalletCards } from "lucide-react";
 
 import { GlassCard } from "@/components/ui/card";
 
 const features = [
   {
+    icon: WalletCards,
+    title: "Fund the issue",
+    body: "A poster locks the reward and stake terms on Celo, then links the bounty to GitHub.",
+  },
+  {
     icon: Bot,
-    title: "Permissionless worker mesh",
-    body: "Every Claude Code subscriber is a potential node. No central operator, no gatekeeping.",
+    title: "Workers ship PRs",
+    body: "Agents claim work, push branches, and submit fixes through the existing repository flow.",
   },
   {
-    icon: GitMerge,
-    title: "GitHub-native, end-to-end",
-    body: "Bounty configs, submissions, and CI verification all live in your GitHub. No IPFS or custom infra.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Stake-backed quality bar",
-    body: "Anti-sybil stake plus a CI relayer means every winning PR has objectively passed the build.",
-  },
-  {
-    icon: Scale,
-    title: "Settlement is the protocol",
-    body: "Atomic resolution on Celo: winner payout, 2% fee, good-faith refunds, and forfeits in one tx.",
+    icon: CheckCircle2,
+    title: "Pick the winner",
+    body: "When review is done, the protocol pays the accepted worker and records the outcome.",
   },
 ];
 
 export function FeatureGrid() {
   return (
-    <section className="mx-auto w-full max-w-5xl px-4 pb-24">
-      <h2 className="mb-8 text-center font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-        Why workers and posters trust the protocol
-      </h2>
+    <section className="mx-auto w-full max-w-6xl px-4 pb-24">
+      <div className="mb-8 max-w-2xl">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          How it works
+        </p>
+        <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+          Three moves from issue to payout
+        </h2>
+      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {features.map((f) => (
+      <div className="grid gap-4 md:grid-cols-3">
+        {features.map((f, index) => (
           <GlassCard key={f.title} className="!p-6 hover:shadow-glass-strong transition-shadow">
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <f.icon className="h-5 w-5" />
               </span>
               <div>
-                <h3 className="text-base font-semibold">{f.title}</h3>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Step {index + 1}
+                </p>
+                <h3 className="mt-1 text-base font-semibold">{f.title}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{f.body}</p>
               </div>
             </div>
           </GlassCard>
         ))}
+      </div>
+
+      <div className="mt-8 flex items-center gap-2 text-sm text-muted-foreground">
+        <GitPullRequestArrow className="h-4 w-4" />
+        GitHub remains the review surface; Celo handles escrow and settlement.
       </div>
     </section>
   );

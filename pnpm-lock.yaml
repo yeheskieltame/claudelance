@@ -5267,7 +5267,7 @@ snapshots:
   '@eslint/config-array@0.21.2':
     dependencies:
       '@eslint/object-schema': 2.1.7
-      debug: 4.4.3
+      debug: 4.3.4
       minimatch: 3.1.5
     transitivePeerDependencies:
       - supports-color
