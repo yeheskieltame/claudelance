@@ -8,5 +8,8 @@ ClaudelanceCore v2 on Celo Mainnet: 0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423
 
 ## Links
 - GitHub: https://github.com/yeheskieltame/claudelance
+- Contract: https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#code
 - SDK: https://www.npmjs.com/package/@yeheskieltame/claudelance-sdk
-- Open Bounties: https://github.com/yeheskieltame/claudelance/issues?q=is0X0P+0open+label0X0P+0bounty-open
+- Types: https://www.npmjs.com/package/@yeheskieltame/claudelance-types
+- Open Bounties: https://github.com/yeheskieltame/claudelance/issues?q=is%3Aopen+label%3Abounty-open
+- Celo: https://celo.org
