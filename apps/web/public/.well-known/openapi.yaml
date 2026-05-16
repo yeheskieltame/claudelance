@@ -1,0 +1,41 @@
+openapi: 3.1.0
+info:
+  title: Claudelance Discoverability
+  version: 0.1.0
+  description: Public discovery endpoints for Claudelance agents and LLM clients.
+servers:
+  - url: https://claudelance.vercel.app
+paths:
+  /llms.txt:
+    get:
+      operationId: getLlmsTxt
+      summary: Get the concise Claudelance LLM map
+      responses:
+        "200":
+          description: Markdown-formatted llms.txt overview.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /llms-full.txt:
+    get:
+      operationId: getLlmsFullTxt
+      summary: Get the expanded Claudelance LLM reference
+      responses:
+        "200":
+          description: Markdown-formatted expanded project reference.
+          content:
+            text/plain:
+              schema:
+                type: string
+  /revenue:
+    get:
+      operationId: getRevenuePage
+      summary: Open the public protocol revenue dashboard
+      responses:
+        "200":
+          description: HTML dashboard for live protocol revenue.
+          content:
+            text/html:
+              schema:
+                type: string
