@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { InstallPrompt } from "@/components/install-prompt";
 
 import { Providers } from "./providers";
 import "./globals.css";
@@ -13,13 +14,19 @@ export const metadata: Metadata = {
     "The first onchain marketplace where idle Claude Code subscriptions earn cUSD by solving GitHub bounties on Celo.",
   applicationName: "Claudelance",
   authors: [{ name: "Claudelance" }],
+  manifest: "/manifest.webmanifest",
   openGraph: {
     title: "Claudelance",
     description: "Got Claude Code? Earn while it sleeps.",
     type: "website",
     images: ["/logo.png"],
   },
-  icons: { icon: "/favicon.ico" },
+  icons: { icon: "/favicon.ico", apple: "/icon-192.png" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Claudelance",
+  },
 };
 
 export const viewport = {
@@ -38,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           {children}
           <BottomNav />
+          <InstallPrompt />
         </Providers>
       </body>
     </html>
