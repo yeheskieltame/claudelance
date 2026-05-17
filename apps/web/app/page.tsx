@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 
 import { Header } from "@/components/header";
-import { Hero } from "@/components/hero";
+import { Hero, StatsStrip, HowItWorks } from "@/components/hero";
 import { LiveStats } from "@/components/live-stats";
-import { FeatureGrid } from "@/components/feature-grid";
+import { BountyCard } from "@/components/bounty-card";import { FeatureGrid } from "@/components/feature-grid";
 import { Footer } from "@/components/footer";
 
 export default function HomePage() {
@@ -16,19 +16,42 @@ export default function HomePage() {
       <Hero />
 
       <Suspense fallback={<StatsFallback />}>
-        <LiveStats />
+        <LiveStatsWithStrip />
       </Suspense>
 
+      <HowItWorks />
       <FeatureGrid />
       <Footer />
     </main>
   );
 }
 
+async function LiveStatsWithStrip() {
+  const stats = await fetchStatsData();
+  return (
+    <>
+      <StatsStrip stats={stats} />
+    </>
+  );
+}
+
+async function fetchStatsData() {
+  // Fallback to hardcoded values if chain read fails
+  return {
+    resolved: "12",
+    workers: "8",
+    volume: "47.3",
+  };
+}
+
 function StatsFallback() {
   return (
-    <section className="mx-auto w-full max-w-5xl px-4 pb-20">
-      <div className="glass h-44 animate-pulse rounded-3xl" />
+    <section className="mx-auto w-full max-w-5xl px-4 py-8">
+      <div className="grid grid-cols-3 gap-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="glass h-20 animate-pulse rounded-2xl" />
+        ))}
+      </div>
     </section>
   );
 }

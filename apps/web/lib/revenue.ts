@@ -15,28 +15,32 @@ export type TreasuryRevenue = {
 /**
  * Server-side multicall reading `totalProtocolRevenue(token)` for each of the
  * three whitelisted tokens on the Celo Mainnet Core contract. One round-trip
- * to Forno, three results.
+ * to Forno, three results. Gracefully falls back to 0 if the RPC times out.
  */
 export async function fetchTreasuryRevenue(): Promise<TreasuryRevenue> {
-  const client = createPublicClient({
-    chain: celoMainnet,
-    transport: http(rpcOverride),
-  });
+  try {
+    const client = createPublicClient({
+      chain: celoMainnet,
+      transport: http(rpcOverride),
+    });
 
-  const [cusd, celo, usdc] = await client.multicall({
-    contracts: [
-      makeRevenueRead(MAINNET.tokens.cUSD),
-      makeRevenueRead(MAINNET.tokens.CELO),
-      makeRevenueRead(MAINNET.tokens.USDC),
-    ],
-    allowFailure: false,
-  });
+    const [cusd, celo, usdc] = await client.multicall({
+      contracts: [
+        makeRevenueRead(MAINNET.tokens.cUSD),
+        makeRevenueRead(MAINNET.tokens.CELO),
+        makeRevenueRead(MAINNET.tokens.USDC),
+      ],
+      allowFailure: true,
+    });
 
-  return {
-    cUSD: cusd as bigint,
-    CELO: celo as bigint,
-    USDC: usdc as bigint,
-  };
+    return {
+      cUSD: (cusd.status === "success" ? cusd.result : 0n) as bigint,
+      CELO: (celo.status === "success" ? celo.result : 0n) as bigint,
+      USDC: (usdc.status === "success" ? usdc.result : 0n) as bigint,
+    };
+  } catch {
+    return { cUSD: 0n, CELO: 0n, USDC: 0n };
+  }
 }
 
 function makeRevenueRead(token: Address) {
