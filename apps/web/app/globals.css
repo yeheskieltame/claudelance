@@ -33,8 +33,8 @@
 
     --glass-bg: 0 0% 100% / 0.55;
     --glass-border: 0 0% 100% / 0.6;
-    --bg-image-light: url("/bg-anime-light.jpg");
-    --bg-image-dark: url("/bg-anime-dark.jpg");
+    --bg-image-light: url("/logo.webp");
+    --bg-image-dark: url("/logo.webp");
   }
 
   .dark {
@@ -116,9 +116,10 @@
 
   .bg-anime {
     background-image: var(--bg-image-light);
-    background-size: cover;
-    background-position: center;
+    background-size: min(58vw, 620px);
+    background-position: right 10% top 16%;
     background-repeat: no-repeat;
+    mix-blend-mode: screen;
   }
 
   .dark .bg-anime {

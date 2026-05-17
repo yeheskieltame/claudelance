@@ -26,30 +26,23 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
   const client = createPublicClient({ chain, transport: http(rpc) });
   const deploy = getDeployment(chainId);
 
-  const reads = await client.multicall({
-    contracts: [
-      { address: deploy.core, abi: coreAbi, functionName: "bountyCount" },
-      { address: deploy.core, abi: coreAbi, functionName: "totalBountyVolume" },
-      { address: deploy.core, abi: coreAbi, functionName: "totalProtocolRevenue" },
-      { address: deploy.core, abi: coreAbi, functionName: "totalBountiesResolved" },
-      { address: deploy.core, abi: coreAbi, functionName: "uniquePosterCount" },
-      { address: deploy.core, abi: coreAbi, functionName: "uniqueWorkerCount" },
-      { address: deploy.core, abi: coreAbi, functionName: "PROTOCOL_FEE_BPS" },
-      { address: deploy.core, abi: coreAbi, functionName: "RESOLUTION_GRACE_PERIOD" },
-    ],
-    allowFailure: false,
-  });
+  const read = (functionName: "bountyCount" | "PROTOCOL_FEE_BPS" | "RESOLUTION_GRACE_PERIOD") =>
+    client.readContract({ address: deploy.core, abi: coreAbi, functionName });
 
-  const [
-    bountyCount,
-    totalBountyVolume,
-    totalProtocolRevenue,
-    totalBountiesResolved,
-    uniquePosterCount,
-    uniqueWorkerCount,
-    feeBps,
-    graceSeconds,
-  ] = reads;
+  const [bountyCount, stats, feeBps, graceSeconds] = await Promise.all([
+    read("bountyCount"),
+    client.readContract({
+      address: deploy.core,
+      abi: coreAbi,
+      functionName: "getStats",
+      args: [deploy.tokens.CELO],
+    }),
+    read("PROTOCOL_FEE_BPS"),
+    read("RESOLUTION_GRACE_PERIOD"),
+  ]);
+
+  const [totalBountyVolume, totalProtocolRevenue, totalBountiesResolved, uniquePosterCount, uniqueWorkerCount] =
+    stats as readonly [bigint, bigint, bigint, bigint, bigint];
 
   return {
     bountyCount,

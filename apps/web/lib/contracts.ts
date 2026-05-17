@@ -1,16 +1,32 @@
-import deployment from "../../../contracts/deployments/celo-sepolia.json";
-import { celoSepolia } from "./chain";
+import mainnetDeployment from "../../../contracts/deployments/celo-mainnet.json";
+import sepoliaDeployment from "../../../contracts/deployments/celo-sepolia.json";
+import { celoMainnet, celoSepolia } from "./chain";
 
 /// Static deployment metadata pulled from the committed deployment record.
-/// Importing JSON keeps the frontend in lockstep with the contract repo — the
+/// Importing JSON keeps the frontend in lockstep with the contract repo - the
 /// next mainnet deploy adds celo-mainnet.json and we add a sibling import.
 export const deployments = {
   [celoSepolia.id]: {
-    core: deployment.core as `0x${string}`,
-    cUSD: deployment.tokens.cUSD as `0x${string}`,
-    treasury: deployment.treasury as `0x${string}`,
-    ciRelayer: deployment.ciRelayer as `0x${string}`,
-    owner: deployment.owner as `0x${string}`,
+    core: sepoliaDeployment.core as `0x${string}`,
+    tokens: {
+      cUSD: sepoliaDeployment.tokens.cUSD as `0x${string}`,
+      CELO: sepoliaDeployment.tokens.CELO as `0x${string}`,
+      USDC: sepoliaDeployment.tokens.USDC as `0x${string}`,
+    },
+    treasury: sepoliaDeployment.treasury as `0x${string}`,
+    ciRelayer: sepoliaDeployment.ciRelayer as `0x${string}`,
+    owner: sepoliaDeployment.owner as `0x${string}`,
+  },
+  [celoMainnet.id]: {
+    core: mainnetDeployment.core as `0x${string}`,
+    tokens: {
+      cUSD: mainnetDeployment.tokens.cUSD as `0x${string}`,
+      CELO: mainnetDeployment.tokens.CELO as `0x${string}`,
+      USDC: mainnetDeployment.tokens.USDC as `0x${string}`,
+    },
+    treasury: mainnetDeployment.treasury as `0x${string}`,
+    ciRelayer: mainnetDeployment.ciRelayer as `0x${string}`,
+    owner: mainnetDeployment.owner as `0x${string}`,
   },
 } as const;
 
@@ -20,7 +36,7 @@ export function getDeployment(chainId: number) {
   return entry;
 }
 
-/// Minimal ClaudelanceCore ABI surface — read-only views the frontend needs for
+/// Minimal ClaudelanceCore ABI surface - read-only views the frontend needs for
 /// dashboards. Write-side ABI lives next to the post-bounty / claim flows so
 /// each route ships only the calls it actually invokes.
 export const coreAbi = [
@@ -33,38 +49,16 @@ export const coreAbi = [
   },
   {
     type: "function",
-    name: "totalBountyVolume",
+    name: "getStats",
     stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "totalProtocolRevenue",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "totalBountiesResolved",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "uniquePosterCount",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "uniqueWorkerCount",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint256" }],
+    inputs: [{ type: "address" }],
+    outputs: [
+      { type: "uint256" },
+      { type: "uint256" },
+      { type: "uint256" },
+      { type: "uint256" },
+      { type: "uint256" },
+    ],
   },
   {
     type: "function",
