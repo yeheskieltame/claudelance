@@ -1,34 +1,23 @@
-import { Suspense } from "react";
 
-import { Header } from "@/components/header";
-import { Hero } from "@/components/hero";
-import { LiveStats } from "@/components/live-stats";
-import { FeatureGrid } from "@/components/feature-grid";
-import { Footer } from "@/components/footer";
+import { Hero, Stats, HowItWorks } from '@/components/LandingPage';
 
-export default function HomePage() {
+export default function LandingPage() {
   return (
-    <main className="relative isolate min-h-dvh overflow-hidden">
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-anime opacity-40 dark:opacity-30" />
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 grid-pattern opacity-30 dark:opacity-20" />
-
-      <Header />
+    <main className="min-h-screen bg-white">
       <Hero />
-
-      <Suspense fallback={<StatsFallback />}>
-        <LiveStats />
-      </Suspense>
-
-      <FeatureGrid />
-      <Footer />
+      <Stats />
+      {/* 轮播组件待接入，此处占位 */}
+      <div className="py-8 px-4 text-center text-gray-400 text-sm italic">
+        [Latest Bounties Carousel Placeholder]
+      </div>
+      <HowItWorks />
+      
+      {/* Sticky Bottom CTA for mobile */}
+      <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t border-gray-100 md:hidden">
+        <button className="w-full bg-blue-600 text-white py-4 rounded-xl font-semibold shadow-lg">
+          Post a Bounty
+        </button>
+      </div>
     </main>
-  );
-}
-
-function StatsFallback() {
-  return (
-    <section className="mx-auto w-full max-w-5xl px-4 pb-20">
-      <div className="glass h-44 animate-pulse rounded-3xl" />
-    </section>
   );
 }
