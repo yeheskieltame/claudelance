@@ -93,6 +93,7 @@ All confirmed:
 | **Mainnet Wallet Topology** | 4 distinct keys (deployer / owner / treasury / relayer); `Deploy.s.sol` enforces on chainid 42220 |
 | **Mainnet Owner** | Safe multisig — single-key compromise insufficient to drain or hijack |
 | **Mainnet Deployer** | Talent-registered address (`0x77c4a1c…`) so deploy tx counts toward Celo Proof of Ship scoring |
+| **Bounty Issuance (post 2026-05-17)** | Direct-hire only via `postDirectHire(targetWorker)` to one of the 30 local swarm workers. Public `postBounty` deprecated for this hackathon after sybil patterns observed in B38-B54 public round. |
 
 ---
 

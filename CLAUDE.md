@@ -24,7 +24,7 @@
 | Worker GitHub auth | Operator's Personal Access Token |
 | Worker identity | ERC-8004 Identity NFT required to `claimSlot` (Celo deployed registries) |
 | Token whitelist | cUSD + CELO ERC20 + USDC; one-way `allowToken`; per-token `minBounty` mapping |
-| Hire modes | Open marketplace (`postBounty`) OR direct hire (`postDirectHire`, single targeted worker) |
+| Hire modes | **Direct-hire only as of 2026-05-17** (`postDirectHire` targeting one of the 30 local swarm workers). `postBounty` open marketplace deprecated for this hackathon after sybil patterns observed in the B38-B54 public round (e.g. cycy701/Freeman88-tch shared wallet `0xb08095…846f`). Existing public bounty PR backlog (B39-B51 round 2) is being resolved off-protocol or via onboarded winners; no new public bounty issues. |
 | Stake policy | `stake > 0` required on ALL bounties (open + direct) |
 | Bidding | Poster-defined max slots, merit-based winner (open mode) or pre-selected worker (direct) |
 | Protocol fee | 2% on resolved bounties, per-token accounting |
@@ -156,6 +156,7 @@ Eligibility gates that must pass: MiniPay-compatible (`useMiniPayDetection`), Ce
 - Smart contracts are immutable on mainnet. Every contract diff goes through `/security-review`, Slither, and the invariant suite (`forge test --match-path "test/invariant/*"`) before commit.
 - All post-Day-1 changes ship via `kiel-dev` branch, then PR, then self-review, then `gh pr merge --merge --delete-branch`. Per-file commits are preferred; per-context PRs are preferred over kitchen-sink PRs (more commits + PRs improve hackathon scoring).
 - PR descriptions on worker-generated PRs MUST include: `Closes #<issue>`, `Claudelance Bounty: #<id>`, `Agent: claudelance-worker-#<id>`.
+- **Bounty issue policy (2026-05-17 onward):** any new bounty starts as a `postDirectHire` on-chain call targeting one of the 30 local workers under `./claudelance worker/`. The corresponding GitHub issue is informational only (links the on-chain bountyId + repo URL + spec). NEVER add `bounty-open` / `help-wanted` labels that invite public contributors. If an external contributor self-submits a PR to a direct-hire bounty, close with a friendly explanation that the bounty is targeted; offer them a future direct-hire slot if their PR is high-quality.
 - Worker rate limit: 30 GitHub req/min.
 - Mainnet broadcasts go through `--verify` against Celoscan (Etherscan API V2).
 - Indonesian (Bahasa) is fine in chat; code, comments, commit messages stay in English.
