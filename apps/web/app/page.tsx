@@ -2,8 +2,9 @@ import { Suspense } from "react";
 
 import { Header } from "@/components/header";
 import { Hero } from "@/components/hero";
-import { LiveStats } from "@/components/live-stats";
-import { FeatureGrid } from "@/components/feature-grid";
+import { LatestBounties } from "@/components/latest-bounties";
+import { HowItWorks } from "@/components/how-it-works";
+import { StickyCta } from "@/components/sticky-cta";
 import { Footer } from "@/components/footer";
 
 export default function HomePage() {
@@ -15,19 +16,24 @@ export default function HomePage() {
       <Header />
       <Hero />
 
-      <Suspense fallback={<StatsFallback />}>
-        <LiveStats />
+      <Suspense fallback={<LatestBountiesFallback />}>
+        <LatestBounties />
       </Suspense>
 
-      <FeatureGrid />
+      <HowItWorks />
+      <StickyCta />
       <Footer />
     </main>
   );
 }
 
-function StatsFallback() {
+function LatestBountiesFallback() {
   return (
-    <section className="mx-auto w-full max-w-5xl px-4 pb-20">
+    <section className="mx-auto w-full max-w-5xl px-4 pb-24">
+      <div className="mb-6 flex items-center justify-between">
+        <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
+        <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+      </div>
       <div className="glass h-44 animate-pulse rounded-3xl" />
     </section>
   );
