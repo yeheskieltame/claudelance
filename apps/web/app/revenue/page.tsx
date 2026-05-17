@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { Header } from "@/components/header";
+import { AppShell } from "@/components/app-shell";
 import { Footer } from "@/components/footer";
 
 export const metadata = {
@@ -11,12 +11,7 @@ export const metadata = {
 
 export default function RevenuePage() {
   return (
-    <main className="relative isolate min-h-dvh overflow-hidden">
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-anime opacity-40 dark:opacity-30" />
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 grid-pattern opacity-30 dark:opacity-20" />
-
-      <Header />
-
+    <AppShell>
       <section className="mx-auto w-full max-w-5xl px-4 py-16">
         <h1 className="font-display text-4xl font-semibold tracking-tight text-gradient sm:text-5xl">
           Treasury &amp; Revenue
@@ -38,6 +33,6 @@ export default function RevenuePage() {
       </section>
 
       <Footer />
-    </main>
+    </AppShell>
   );
 }

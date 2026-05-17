@@ -19,8 +19,12 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/92 px-3 pt-2 shadow-[0_-16px_40px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl md:hidden"
-      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/92 pt-2 shadow-[0_-16px_40px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl md:hidden"
+      style={{
+        paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+        paddingLeft: "max(0.75rem, env(safe-area-inset-left))",
+        paddingRight: "max(0.75rem, env(safe-area-inset-right))",
+      }}
     >
       <ul className="mx-auto grid max-w-md grid-cols-4 gap-1">
         {navItems.map(({ label, href, icon: Icon, match }) => {

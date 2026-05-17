@@ -25,6 +25,7 @@ export const metadata: Metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#F1F4FA" },
     { media: "(prefers-color-scheme: dark)", color: "#0C0E1A" },
@@ -34,7 +35,7 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className="min-h-dvh pb-[calc(5rem+env(safe-area-inset-bottom))] font-sans md:pb-0">
+      <body className="min-h-svh overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] font-sans md:min-h-dvh md:pb-0">
         <Providers>
           {children}
           <BottomNav />

@@ -73,6 +73,7 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   body {
@@ -84,6 +85,8 @@
       radial-gradient(ellipse at 110% 10%, hsl(var(--accent) / 0.35), transparent 60%),
       radial-gradient(ellipse at 50% 110%, hsl(var(--primary) / 0.14), transparent 60%);
     background-attachment: fixed;
+    overflow-x: hidden;
+    width: 100%;
   }
 
   .dark body {
@@ -132,5 +135,14 @@
     background-size: 48px 48px;
     -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 70%);
     mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 70%);
+  }
+
+  .safe-x {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .safe-bottom-nav {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
   }
 }
