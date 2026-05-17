@@ -133,4 +133,37 @@
     -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 70%);
     mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 70%);
   }
+
+  /* Safe-area inset utilities (iOS notch / Dynamic Island support) */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-left {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .safe-right {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  /* Top-level app shell: max 480px on mobile, fluid above */
+  .mobile-shell {
+    width: 100%;
+    max-width: 480px;
+    margin-inline: auto;
+  }
+
+  @media (min-width: 481px) {
+    .mobile-shell {
+      max-width: 100%;
+    }
+  }
+
+  /* Minimum 44px touch-target helper */
+  .touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
 }
