@@ -7,26 +7,26 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] min-touch-target",
   {
     variants: {
       variant: {
         primary:
-          "bg-primary text-primary-foreground shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.6)] hover:shadow-glow hover:-translate-y-px",
+          "bg-primary text-primary-foreground shadow-glow hover:brightness-105",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         glass:
-          "glass text-foreground hover:bg-white/20 dark:hover:bg-white/5",
+          "glass text-foreground hover:bg-white/70 dark:hover:bg-white/10",
         ghost:
           "hover:bg-accent hover:text-accent-foreground",
         outline:
-          "border border-border bg-transparent hover:bg-accent hover:text-accent-foreground",
+          "border border-border bg-card/40 hover:bg-accent hover:text-accent-foreground",
       },
       size: {
-        sm: "h-9 px-4",
-        md: "h-11 px-6",
-        lg: "h-13 px-7 text-base",
-        icon: "h-10 w-10",
+        sm: "h-9 px-3.5 text-xs",
+        md: "h-10 px-5",
+        lg: "h-11 px-6",
+        icon: "h-9 w-9",
       },
     },
     defaultVariants: { variant: "primary", size: "md" },
