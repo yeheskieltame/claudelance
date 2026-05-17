@@ -127,9 +127,9 @@ export default function StyleGuidePage() {
           </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {radii.map(([name, value, className]) => (
-              <div key={name} className={`${className} border border-accent-light bg-white p-4 dark:bg-bg-dark`}>
-                <div className="font-mono text-scale-2">{name}</div>
-                <div className="mt-8 text-scale-3 font-semibold">{value}</div>
+              <div key={name} className={`${className} border border-accent-light/30 bg-bg-light/60 p-4 dark:bg-card dark:border-white/10`}>
+                <div className="font-mono text-scale-2 text-muted-light dark:text-muted-dark">{name}</div>
+                <div className="mt-8 text-scale-3 font-semibold text-fg-light dark:text-fg-dark">{value}</div>
               </div>
             ))}
           </div>
@@ -141,9 +141,9 @@ export default function StyleGuidePage() {
           </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {motions.map(([name, value, className]) => (
-              <div key={name} className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-bg-dark">
-                <div className="font-mono text-scale-2">{name}</div>
-                <div className="mt-3 text-scale-4 font-semibold">{value}</div>
+              <div key={name} className="rounded-lg border border-black/10 bg-bg-light/60 p-4 dark:border-white/10 dark:bg-card">
+                <div className="font-mono text-scale-2 text-muted-light dark:text-muted-dark">{name}</div>
+                <div className="mt-3 text-scale-4 font-semibold text-fg-light dark:text-fg-dark">{value}</div>
                 <div className={`mt-4 h-2 w-24 rounded-full bg-accent-light transition-all ${className} hover:w-full`} />
               </div>
             ))}
