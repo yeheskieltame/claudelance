@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Rss, Settings, SquarePen, UserCircle } from "lucide-react";
+import { Rss, DollarSign, SquarePen, UserCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -10,7 +10,7 @@ const navItems = [
   { label: "Feed", href: "/", icon: Rss, match: (path: string) => path === "/" },
   { label: "Post", href: "/post", icon: SquarePen, match: startsWith("/post") },
   { label: "Profile", href: "/worker/me", icon: UserCircle, match: startsWith("/worker") },
-  { label: "Settings", href: "/settings", icon: Settings, match: startsWith("/settings") },
+  { label: "Revenue", href: "/revenue", icon: DollarSign, match: startsWith("/revenue") },
 ] as const;
 
 export function BottomNav() {
@@ -18,8 +18,9 @@ export function BottomNav() {
 
   return (
     <nav
+      suppressHydrationWarning
       aria-label="Primary mobile navigation"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/92 px-3 pt-2 shadow-[0_-16px_40px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/[0.92] px-3 pt-2 shadow-[0_-16px_40px_-24px_rgba(15,23,42,0.55)] backdrop-blur-xl md:hidden"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
       <ul className="mx-auto grid max-w-md grid-cols-4 gap-1">
