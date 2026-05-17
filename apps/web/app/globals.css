@@ -134,3 +134,9 @@
     mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 70%);
   }
 }
+
+@layer utilities {
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-top { padding-top: env(safe-area-inset-top); }
+  .touch-target { min-height: 44px; min-width: 44px; }
+}

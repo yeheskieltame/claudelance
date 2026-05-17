@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "iterations": 1,
+  "avg_response_tokens": 0,
+  "total_bounties_touched": 0,
+  "files_modified": 0,
+  "parallel_tool_calls": 1
+}
