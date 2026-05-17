@@ -16,3 +16,11 @@ export function formatCUSD(wei: bigint, fractionDigits = 2): string {
   const fractionStr = fraction.toString().padStart(18, "0").slice(0, fractionDigits);
   return fractionDigits > 0 ? `${whole.toString()}.${fractionStr}` : whole.toString();
 }
+
+export function formatTokenDisplay(wei: bigint, decimals: number, symbol: string): string {
+  if (wei === 0n) return `0`;
+  const whole = wei / 10n ** BigInt(decimals);
+  const fraction = wei % 10n ** BigInt(decimals);
+  const fractionStr = fraction.toString().padStart(decimals, "0").slice(0, 2).replace(/0+$/, "");
+  return fractionStr ? `${whole.toString()}.${fractionStr}` : whole.toString();
+}

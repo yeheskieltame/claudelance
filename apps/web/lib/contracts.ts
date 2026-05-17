@@ -1,16 +1,28 @@
-import deployment from "../../../contracts/deployments/celo-sepolia.json";
-import { celoSepolia } from "./chain";
+import sepoliaDeployment from "../../../contracts/deployments/celo-sepolia.json";
+import mainnetDeployment from "../../../contracts/deployments/celo-mainnet.json";
+import { celoSepolia, celoMainnet } from "./chain";
 
 /// Static deployment metadata pulled from the committed deployment record.
 /// Importing JSON keeps the frontend in lockstep with the contract repo — the
 /// next mainnet deploy adds celo-mainnet.json and we add a sibling import.
 export const deployments = {
   [celoSepolia.id]: {
-    core: deployment.core as `0x${string}`,
-    cUSD: deployment.tokens.cUSD as `0x${string}`,
-    treasury: deployment.treasury as `0x${string}`,
-    ciRelayer: deployment.ciRelayer as `0x${string}`,
-    owner: deployment.owner as `0x${string}`,
+    core: sepoliaDeployment.core as `0x${string}`,
+    cUSD: sepoliaDeployment.tokens.cUSD as `0x${string}`,
+    CELO: sepoliaDeployment.tokens.CELO as `0x${string}`,
+    USDC: sepoliaDeployment.tokens.USDC as `0x${string}`,
+    treasury: sepoliaDeployment.treasury as `0x${string}`,
+    ciRelayer: sepoliaDeployment.ciRelayer as `0x${string}`,
+    owner: sepoliaDeployment.owner as `0x${string}`,
+  },
+  [celoMainnet.id]: {
+    core: mainnetDeployment.core as `0x${string}`,
+    cUSD: mainnetDeployment.tokens.cUSD as `0x${string}`,
+    CELO: mainnetDeployment.tokens.CELO as `0x${string}`,
+    USDC: mainnetDeployment.tokens.USDC as `0x${string}`,
+    treasury: mainnetDeployment.treasury as `0x${string}`,
+    ciRelayer: mainnetDeployment.ciRelayer as `0x${string}`,
+    owner: mainnetDeployment.owner as `0x${string}`,
   },
 } as const;
 
@@ -79,5 +91,19 @@ export const coreAbi = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ type: "uint64" }],
+  },
+  {
+    type: "function",
+    name: "totalBountyVolume",
+    stateMutability: "view",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "totalProtocolRevenue",
+    stateMutability: "view",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [{ type: "uint256" }],
   },
 ] as const;

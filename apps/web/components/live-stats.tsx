@@ -2,9 +2,10 @@ import { ArrowUpRight, Coins, Hammer, ScanLine, Users } from "lucide-react";
 
 import { GlassCard } from "@/components/ui/card";
 import { fetchLiveStats } from "@/lib/stats";
-import { formatCUSD } from "@/lib/utils";
+import { formatTokenDisplay } from "@/lib/utils";
 import { getDeployment } from "@/lib/contracts";
 import { DEFAULT_CHAIN_ID, chainById } from "@/lib/chain";
+import { MAINNET } from "@yeheskieltame/claudelance-types";
 
 export const revalidate = 60;
 
@@ -54,8 +55,14 @@ export async function LiveStats() {
             />
             <Stat
               icon={<Coins className="h-4 w-4" />}
+              label="CELO revenue"
+              value={formatTokenDisplay(snapshot.totalProtocolRevenueCELO, 18, "CELO")}
+              sub={`$ ${formatTokenDisplay(snapshot.totalBountyVolumeCELO, 18, "CELO")} volume`}
+            />
+            <Stat
+              icon={<Coins className="h-4 w-4" />}
               label="cUSD volume"
-              value={`$${formatCUSD(snapshot.totalBountyVolume)}`}
+              value={`$${formatTokenDisplay(snapshot.totalBountyVolumeCUSD, 18, "cUSD")}`}
             />
             <Stat
               icon={<ScanLine className="h-4 w-4" />}

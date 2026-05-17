@@ -29,8 +29,7 @@ export const supportedChains = [celoSepolia, celoMainnet] as const;
 
 export type SupportedChainId = (typeof supportedChains)[number]["id"];
 
-export const DEFAULT_CHAIN_ID: SupportedChainId =
-  process.env.NEXT_PUBLIC_DEFAULT_CHAIN === "celo-mainnet" ? celoMainnet.id : celoSepolia.id;
+export const DEFAULT_CHAIN_ID: SupportedChainId = celoMainnet.id;
 
 export function chainById(id: number) {
   return supportedChains.find((c) => c.id === id);
