@@ -629,9 +629,15 @@ export function PostBountyForm() {
             </div>
           </FormSection>
 
-          <Button size="lg" className="w-full gap-2 btn-shine" onClick={handleNext}>
-            Next: Scope & repository <ArrowRight className="h-4 w-4" />
-          </Button>
+          <div className="flex justify-end pt-2">
+            <Button
+              size="lg"
+              className="btn-shine h-11 px-6 text-sm font-semibold rounded-xl"
+              onClick={handleNext}
+            >
+              Next: Scope & repository <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
 
@@ -684,11 +690,20 @@ export function PostBountyForm() {
             </div>
           </FormSection>
 
-          <div className="flex gap-3">
-            <Button variant="outline" size="lg" className="flex-1 gap-2" onClick={handleBack}>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-11 px-6 text-sm font-semibold rounded-xl hover:bg-card/60 transition-all duration-180"
+              onClick={handleBack}
+            >
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
-            <Button size="lg" className="flex-1 gap-2 btn-shine" onClick={handleNext}>
+            <Button
+              size="lg"
+              className="btn-shine h-11 px-6 text-sm font-semibold rounded-xl"
+              onClick={handleNext}
+            >
               Next: Configuration <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -850,11 +865,20 @@ export function PostBountyForm() {
             )}
           </FormSection>
 
-          <div className="flex gap-3">
-            <Button variant="outline" size="lg" className="flex-1 gap-2" onClick={handleBack}>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-11 px-6 text-sm font-semibold rounded-xl hover:bg-card/60 transition-all duration-180"
+              onClick={handleBack}
+            >
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
-            <Button size="lg" className="flex-1 gap-2 btn-shine" onClick={handleNext}>
+            <Button
+              size="lg"
+              className="btn-shine h-11 px-6 text-sm font-semibold rounded-xl"
+              onClick={handleNext}
+            >
               Next: Review & Post <ArrowRight className="h-4 w-4" />
             </Button>
           </div>

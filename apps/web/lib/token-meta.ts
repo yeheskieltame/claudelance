@@ -20,8 +20,7 @@ const TW_BASE = "https://raw.githubusercontent.com/trustwallet/assets/master/blo
 export const TOKEN_META: Record<TokenSymbol, TokenMeta> = {
   cUSD: {
     symbol: "cUSD",
-    // Mento cUSD on Celo
-    logoUrl: `${TW_BASE}/0x765DE816845861e75A25fCA122bb6898B8B1282a/logo.png`,
+    logoUrl: "https://s2.coinmarketcap.com/static/img/coins/200x200/7236.png",
     color: "text-slate-600 dark:text-slate-300",
     bgColor: "bg-slate-500/10",
     textColor: "text-slate-700 dark:text-slate-200",
