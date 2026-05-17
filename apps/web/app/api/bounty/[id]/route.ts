@@ -3,8 +3,9 @@ import { createPublicClient, http, type Address } from "viem";
 import { MAINNET, SEPOLIA, type Deployment } from "@yeheskieltame/claudelance-types";
 
 import { celoMainnet, celoSepolia } from "@/lib/chain";
+import { tokenToUsd } from "@/lib/usd-conversion";
 
-export const revalidate = 30;
+export const revalidate = 15;
 
 const detailAbi = [
   {
@@ -180,7 +181,7 @@ export async function GET(_request: Request, { params }: { params: Params }) {
 
   return NextResponse.json(
     {
-      ...toJsonBounty(bountyId, bounty),
+      ...toJsonBounty(bountyId, bounty, deployment),
       claimers,
       submissions,
       total: Number(totalCount),
@@ -207,15 +208,24 @@ function getRpcOverride(chainId: number) {
   return process.env.NEXT_PUBLIC_CELO_SEPOLIA_RPC;
 }
 
-function toJsonBounty(id: bigint, bounty: ChainBounty) {
+function toJsonBounty(id: bigint, bounty: ChainBounty, deployment?: Deployment) {
+  const tokenSymbol = deployment ? resolveTokenSymbol(bounty.token, deployment) : "cUSD";
+  const amountUsd = deployment ? tokenToUsd(tokenSymbol, bounty.amount) : 0;
+  const isExpired = bounty.deadline > 0n && BigInt(Math.floor(Date.now() / 1000)) > bounty.deadline;
+  const slotsRemaining = Math.max(0, bounty.maxSlots - bounty.claimedSlots);
+
   return {
     id: id.toString(),
     poster: bounty.poster,
     amount: bounty.amount.toString(),
+    amountUsd: Number(amountUsd.toFixed(4)),
+    tokenSymbol,
     winner: bounty.winner,
     stakeRequired: bounty.stakeRequired.toString(),
     token: bounty.token,
     deadline: bounty.deadline.toString(),
+    isExpired,
+    slotsRemaining,
     maxSlots: Number(bounty.maxSlots),
     claimedSlots: Number(bounty.claimedSlots),
     bountyType: Number(bounty.bountyType),
@@ -226,6 +236,13 @@ function toJsonBounty(id: bigint, bounty: ChainBounty) {
     instructionUrl: bounty.instructionUrl,
     requirementsHash: bounty.requirementsHash,
   };
+}
+
+function resolveTokenSymbol(tokenAddress: string, deployment: Deployment): "cUSD" | "CELO" | "USDC" {
+  const addr = tokenAddress.toLowerCase();
+  if (addr === deployment.tokens.cUSD.toLowerCase()) return "cUSD";
+  if (addr === deployment.tokens.CELO.toLowerCase()) return "CELO";
+  return "USDC";
 }
 
 function toJsonSubmission(worker: Address, submission: ChainSubmission) {

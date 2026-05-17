@@ -1,7 +1,10 @@
 import { Suspense } from "react";
 
+import { AuroraBackground } from "@/components/aurora-bg";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { RevenueCard } from "@/components/revenue-card";
+import { TreasuryFeed } from "@/components/treasury-feed";
 
 export const metadata = {
   title: "Treasury & Revenue — Claudelance",
@@ -12,28 +15,31 @@ export const metadata = {
 export default function RevenuePage() {
   return (
     <main className="relative isolate min-h-dvh overflow-hidden">
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-anime opacity-40 dark:opacity-30" />
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 grid-pattern opacity-30 dark:opacity-20" />
-
+      <AuroraBackground />
       <Header />
 
-      <section className="mx-auto w-full max-w-5xl px-4 py-16">
-        <h1 className="font-display text-4xl font-semibold tracking-tight text-gradient sm:text-5xl">
+      <section className="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6">
+        <p className="text-sm font-semibold uppercase tracking-widest text-primary/80">Protocol revenue</p>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
           Treasury &amp; Revenue
         </h1>
-        <p className="mt-4 max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg">
+        <p className="mt-4 max-w-2xl text-pretty text-base text-muted-foreground">
           Every resolved Claudelance bounty contributes a 2% protocol fee to the
           treasury, plus any forfeited stake from non-submitting claimers. All
-          revenue is on-chain at <code className="text-xs">0x1362d8…E423</code>{" "}
+          revenue is on-chain at <code className="text-xs rounded bg-muted px-1.5 py-0.5">0x1362d8…E423</code>{" "}
           on Celo Mainnet — verifiable any time via Celoscan or the SDK.
         </p>
 
         <Suspense
-          fallback={
-            <div className="glass mt-10 h-44 animate-pulse rounded-3xl" />
-          }
+          fallback={<div className="mt-10 h-44 animate-pulse rounded-2xl bg-card/50" />}
         >
-          {/* Revenue card + treasury feed land in bounties B32 + B33. */}
+          <RevenueCard />
+        </Suspense>
+
+        <Suspense
+          fallback={<div className="mt-10 h-44 animate-pulse rounded-2xl bg-card/50" />}
+        >
+          <TreasuryFeed />
         </Suspense>
       </section>
 

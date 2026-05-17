@@ -6,7 +6,10 @@ export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("rounded-2xl border bg-card text-card-foreground shadow-sm", className)}
+      className={cn(
+        "rounded-3xl border border-border bg-card/95 text-card-foreground shadow-sm ring-1 ring-border/70 backdrop-blur-sm",
+        className,
+      )}
       {...props}
     />
   ),
@@ -17,7 +20,10 @@ export const GlassCard = React.forwardRef<HTMLDivElement, React.HTMLAttributes<H
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("glass rounded-3xl p-6 sm:p-8 animate-fade-in", className)}
+      className={cn(
+        "rounded-3xl border border-border/70 bg-card/80 text-card-foreground shadow-md backdrop-blur-md p-6 sm:p-8",
+        className,
+      )}
       {...props}
     />
   ),
@@ -25,7 +31,7 @@ export const GlassCard = React.forwardRef<HTMLDivElement, React.HTMLAttributes<H
 GlassCard.displayName = "GlassCard";
 
 export const CardHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col gap-1.5 pb-4", className)} {...props} />
+  <div className={cn("flex flex-col gap-2 pb-5", className)} {...props} />
 );
 
 export const CardTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
@@ -33,7 +39,7 @@ export const CardTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHead
 );
 
 export const CardDescription = ({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
-  <p className={cn("text-sm text-muted-foreground", className)} {...props} />
+  <p className={cn("text-sm leading-6 text-muted-foreground", className)} {...props} />
 );
 
 export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (

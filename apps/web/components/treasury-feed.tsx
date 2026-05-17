@@ -48,7 +48,7 @@ export async function TreasuryFeed() {
 
   if (rows.length === 0) {
     return (
-      <div className="glass mt-10 rounded-3xl p-8">
+      <div className="premium-panel mt-10 rounded-2xl p-8">
         <h2 className="font-display text-2xl">Recent accruals</h2>
         <p className="mt-2 text-muted-foreground">
           No revenue events in the last 50k blocks. Post a bounty to start the
@@ -59,9 +59,9 @@ export async function TreasuryFeed() {
   }
 
   return (
-    <div className="glass mt-10 rounded-3xl p-8">
+    <div className="premium-panel mt-10 rounded-2xl p-8">
       <h2 className="font-display text-2xl">Recent accruals</h2>
-      <ul className="mt-4 divide-y divide-white/10">
+      <ul className="mt-4 divide-y divide-border/70">
         {rows.map((r) => (
           <li key={r.txHash} className="flex items-center justify-between py-3 text-sm">
             <span className="font-mono">{symbolFor(r.token)}</span>
