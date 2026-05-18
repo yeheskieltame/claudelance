@@ -1,32 +1,17 @@
 "use client";
 
-import { usePrivy, useWallets } from "@privy-io/react-auth";
-
 import { WalletButtonCore } from "@/components/wallet-button-core";
-import { getGithubUsername } from "@/lib/github-link";
-
-const hasPrivyAppId = Boolean(process.env.NEXT_PUBLIC_PRIVY_APP_ID);
+import { useWalletAuth } from "@/lib/wallet/auth";
 
 export function WalletButton() {
-  if (hasPrivyAppId) {
-    return <PrivyWalletButton />;
-  }
-
-  return <WalletButtonCore />;
-}
-
-function PrivyWalletButton() {
-  const { authenticated, login, logout, ready, user } = usePrivy();
-  const { wallets } = useWallets();
-  const walletAddress = wallets[0]?.address;
-  const githubUsername = getGithubUsername(user);
+  const { authenticated, enabled, githubUsername, login, logout, ready, wallet } = useWalletAuth();
 
   return (
     <WalletButtonCore
-      onPrivyConnect={() => login()}
-      onPrivyDisconnect={logout}
+      onPrivyConnect={enabled ? () => login() : undefined}
+      onPrivyDisconnect={enabled ? logout : undefined}
       privyAuthenticated={authenticated}
-      privyAddress={walletAddress}
+      privyAddress={wallet?.address}
       privyReady={ready}
       privyGithub={githubUsername}
     />

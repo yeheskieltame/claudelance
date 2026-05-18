@@ -7,6 +7,10 @@ import type { Address } from "viem";
 
 import { isMiniPay as isMiniPayProvider } from "@/lib/wallet/config";
 
+type MiniPayEthereum = {
+  request?: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+};
+
 /// Detects the Opera MiniPay in-app browser. When present, MiniPay auto-injects
 /// `window.ethereum.isMiniPay = true` and expects the dapp to call
 /// `eth_requestAccounts` eagerly so the user lands inside an authorised session.
@@ -17,7 +21,8 @@ export function useMiniPayDetection() {
     if (typeof window === "undefined") return;
     if (isMiniPayProvider(window.ethereum)) {
       setIsMiniPay(true);
-      window.ethereum.request({ method: "eth_requestAccounts" }).catch(() => {
+      const provider = window.ethereum as MiniPayEthereum;
+      provider.request?.({ method: "eth_requestAccounts" }).catch(() => {
         // User dismissed connection — leave isMiniPay true so the UI can still
         // adapt (hide WalletConnect, surface a "tap your address" hint).
       });

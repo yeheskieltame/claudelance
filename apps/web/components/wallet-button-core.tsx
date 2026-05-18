@@ -9,9 +9,13 @@ import { DEFAULT_CHAIN_ID, chainById } from "@/lib/chain";
 import { isMiniPay } from "@/lib/wallet/config";
 import { cn, shortAddress } from "@/lib/utils";
 
+type MiniPayEthereum = {
+  request?: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+};
+
 type WalletButtonCoreProps = {
-  onPrivyConnect?: () => void;
-  onPrivyDisconnect?: () => Promise<void>;
+  onPrivyConnect?: () => Promise<void> | void;
+  onPrivyDisconnect?: () => Promise<void> | void;
   privyReady?: boolean;
   privyAuthenticated?: boolean;
   privyAddress?: string;
@@ -30,6 +34,7 @@ export function WalletButtonCore({
   const { connectAsync, connectors, isPending } = useConnect();
   const { disconnectAsync } = useDisconnect();
   const [miniPayActive, setMiniPayActive] = React.useState(false);
+  const miniPayConnectStarted = React.useRef(false);
   const longPressRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
@@ -39,10 +44,30 @@ export function WalletButtonCore({
 
   const chainName = chain?.name ?? chainById(DEFAULT_CHAIN_ID)?.name ?? "Celo";
   const connectorName = miniPayActive ? "MiniPay" : connector?.name ?? (privyAuthenticated ? "Privy" : "Wallet");
-  const connected = isConnected || privyAuthenticated;
+  const connected = isConnected || Boolean(privyAuthenticated && privyAddress);
   const displayAddress = address ?? privyAddress;
   const label = displayAddress ? shortAddress(displayAddress) : connected ? "Connected" : "Connect";
   const disabled = isPending || !privyReady;
+
+  React.useEffect(() => {
+    if (!miniPayActive || connected || miniPayConnectStarted.current) return;
+
+    const miniPayConnector = connectors.find((item) => item.id === "minipay");
+    if (!miniPayConnector) return;
+
+    miniPayConnectStarted.current = true;
+    connectAsync({ connector: miniPayConnector, chainId: DEFAULT_CHAIN_ID }).catch(() => {
+      miniPayConnectStarted.current = false;
+    });
+  }, [connectAsync, connected, connectors, miniPayActive]);
+
+  const cancelLongPress = React.useCallback(() => {
+    if (!longPressRef.current) return;
+    clearTimeout(longPressRef.current);
+    longPressRef.current = null;
+  }, []);
+
+  React.useEffect(() => cancelLongPress, [cancelLongPress]);
 
   async function connectWallet() {
     if (connected || disabled) return;
@@ -53,12 +78,13 @@ export function WalletButtonCore({
         await connectAsync({ connector: miniPayConnector, chainId: DEFAULT_CHAIN_ID });
         return;
       }
-      await window.ethereum?.request({ method: "eth_requestAccounts" });
+      const provider = window.ethereum as MiniPayEthereum | undefined;
+      await provider?.request?.({ method: "eth_requestAccounts" });
       return;
     }
 
     if (onPrivyConnect) {
-      onPrivyConnect();
+      await onPrivyConnect();
       return;
     }
 
@@ -70,34 +96,27 @@ export function WalletButtonCore({
 
   async function disconnectWallet() {
     if (!connected) return;
-    if (longPressRef.current) {
-      clearTimeout(longPressRef.current);
-      longPressRef.current = null;
-    }
+    cancelLongPress();
     await disconnectAsync().catch(() => undefined);
     if (onPrivyDisconnect) {
-      await onPrivyDisconnect().catch(() => undefined);
+      await Promise.resolve(onPrivyDisconnect()).catch(() => undefined);
     }
   }
 
   function startLongPress(event: React.PointerEvent<HTMLButtonElement>) {
     if (!connected || event.pointerType === "mouse") return;
+    cancelLongPress();
     longPressRef.current = setTimeout(() => {
+      longPressRef.current = null;
       void disconnectWallet();
     }, 650);
-  }
-
-  function cancelLongPress() {
-    if (!longPressRef.current) return;
-    clearTimeout(longPressRef.current);
-    longPressRef.current = null;
   }
 
   return (
     <Button
       type="button"
       size="sm"
-      variant={connected ? "glass" : "primary"}
+      variant={connected ? "outline" : "primary"}
       disabled={disabled}
       onClick={() => void connectWallet()}
       onContextMenu={(event) => {
@@ -110,7 +129,10 @@ export function WalletButtonCore({
       onPointerLeave={cancelLongPress}
       onPointerCancel={cancelLongPress}
       title={connected ? "Right-click or long-press to disconnect" : "Connect wallet or sign in with GitHub"}
-      className={cn("h-9 min-w-0 px-3 sm:min-w-36 sm:px-4", connected && "pr-2")}
+      className={cn(
+        "h-9 min-w-0 px-3 sm:min-w-36 sm:px-4",
+        connected && "border-border/70 bg-background/75 pr-2 backdrop-blur hover:bg-accent/70",
+      )}
     >
       {isPending ? (
         <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
