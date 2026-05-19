@@ -2,6 +2,7 @@ import { createPublicClient, http } from "viem";
 
 import { celoSepolia, DEFAULT_CHAIN_ID, chainById } from "./chain";
 import { coreAbi, getDeployment } from "./contracts";
+import { getCeloUsdPrice, tokenToCeloWei } from "./price";
 
 export type LiveStats = {
   bountyCount: bigint;
@@ -12,6 +13,16 @@ export type LiveStats = {
   uniqueWorkerCount: bigint;
   feeBps: bigint;
   graceSeconds: bigint;
+  /// Per-token raw volumes (wei, native decimals).
+  volumeByToken: {
+    cUSD: bigint;
+    CELO: bigint;
+    USDC: bigint;
+  };
+  /// Cross-token volume expressed in CELO wei, computed via the CELO/USD oracle.
+  /// cUSD and USDC are treated as $1 stablecoins, then converted at the live rate.
+  totalVolumeInCelo: bigint;
+  celoUsdPrice: number;
 };
 
 const rpcOverrides: Partial<Record<number, string>> = {
@@ -26,11 +37,9 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
   const client = createPublicClient({ chain, transport: http(rpc) });
   const deploy = getDeployment(chainId);
 
-  const reads = await client.multicall({
+  const globals = (await client.multicall({
     contracts: [
       { address: deploy.core, abi: coreAbi, functionName: "bountyCount" },
-      { address: deploy.core, abi: coreAbi, functionName: "totalBountyVolume" },
-      { address: deploy.core, abi: coreAbi, functionName: "totalProtocolRevenue" },
       { address: deploy.core, abi: coreAbi, functionName: "totalBountiesResolved" },
       { address: deploy.core, abi: coreAbi, functionName: "uniquePosterCount" },
       { address: deploy.core, abi: coreAbi, functionName: "uniqueWorkerCount" },
@@ -38,27 +47,47 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
       { address: deploy.core, abi: coreAbi, functionName: "RESOLUTION_GRACE_PERIOD" },
     ],
     allowFailure: false,
-  });
+  })) as bigint[];
 
-  const [
+  const perToken = (await client.multicall({
+    contracts: [
+      { address: deploy.core, abi: coreAbi, functionName: "totalBountyVolume", args: [deploy.cUSD] },
+      { address: deploy.core, abi: coreAbi, functionName: "totalBountyVolume", args: [deploy.CELO] },
+      { address: deploy.core, abi: coreAbi, functionName: "totalBountyVolume", args: [deploy.USDC] },
+      { address: deploy.core, abi: coreAbi, functionName: "totalProtocolRevenue", args: [deploy.cUSD] },
+      { address: deploy.core, abi: coreAbi, functionName: "totalProtocolRevenue", args: [deploy.CELO] },
+      { address: deploy.core, abi: coreAbi, functionName: "totalProtocolRevenue", args: [deploy.USDC] },
+    ],
+    allowFailure: false,
+  })) as bigint[];
+
+  const [bountyCount, totalBountiesResolved, uniquePosterCount, uniqueWorkerCount, feeBps, graceSeconds] =
+    globals as [bigint, bigint, bigint, bigint, bigint, bigint];
+  const [volCusd, volCelo, volUsdc, revCusd, revCelo, revUsdc] = perToken as [
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+  ];
+
+  const celoUsdPrice = await getCeloUsdPrice();
+  const cusdInCelo = tokenToCeloWei(volCusd, 18, 1, celoUsdPrice);
+  const usdcInCelo = tokenToCeloWei(volUsdc, 6, 1, celoUsdPrice);
+  const totalVolumeInCelo = volCelo + cusdInCelo + usdcInCelo;
+
+  return {
     bountyCount,
-    totalBountyVolume,
-    totalProtocolRevenue,
+    totalBountyVolume: volCusd + volCelo + volUsdc,
+    totalProtocolRevenue: revCusd + revCelo + revUsdc,
     totalBountiesResolved,
     uniquePosterCount,
     uniqueWorkerCount,
     feeBps,
     graceSeconds,
-  ] = reads;
-
-  return {
-    bountyCount,
-    totalBountyVolume,
-    totalProtocolRevenue,
-    totalBountiesResolved,
-    uniquePosterCount,
-    uniqueWorkerCount,
-    feeBps,
-    graceSeconds: graceSeconds as bigint,
+    volumeByToken: { cUSD: volCusd, CELO: volCelo, USDC: volUsdc },
+    totalVolumeInCelo,
+    celoUsdPrice,
   };
 }

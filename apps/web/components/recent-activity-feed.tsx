@@ -1,18 +1,10 @@
 import { ArrowUpRight, Sparkles } from "lucide-react";
 
 import { GlassCard } from "@/components/ui/card";
+import { txUrl } from "@/lib/celoscan";
 import { fetchRecentResolved } from "@/lib/recent-bounties";
-
-function shortAddress(addr: string) {
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
-}
-
-function formatCELO(wei: bigint) {
-  const whole = wei / 10n ** 18n;
-  const frac = wei % 10n ** 18n;
-  const fracStr = frac.toString().padStart(18, "0").slice(0, 3).replace(/0+$/, "");
-  return fracStr.length > 0 ? `${whole}.${fracStr}` : whole.toString();
-}
+import { formatCELO } from "@/lib/format-token";
+import { shortAddress } from "@/lib/utils";
 
 export async function RecentActivityFeed() {
   let rows: Awaited<ReturnType<typeof fetchRecentResolved>> = [];
@@ -43,7 +35,7 @@ export async function RecentActivityFeed() {
                 </p>
               </div>
               <a
-                href={`https://celoscan.io/tx/${row.txHash}`}
+                href={txUrl(row.txHash)}
                 target="_blank"
                 rel="noreferrer"
                 className="touch-target inline-flex items-center gap-1 rounded-full text-xs text-muted-foreground hover:text-foreground"

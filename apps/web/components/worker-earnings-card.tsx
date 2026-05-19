@@ -1,6 +1,9 @@
 import { Coins } from "lucide-react";
 
 import { GlassCard } from "@/components/ui/card";
+import { formatTokenAmount } from "@/lib/format-token";
+import { TOKEN_BADGE } from "@/lib/token-theme";
+import { cn } from "@/lib/utils";
 import type { TokenEarnings } from "@/lib/worker-stats";
 
 const DECIMALS: Record<TokenEarnings["symbol"], number> = {
@@ -26,13 +29,20 @@ export function WorkerEarningsCard({ earnings }: { earnings: TokenEarnings[] }) 
         <ul className="mt-4 space-y-2 text-sm">
           {earnings.map((row) => {
             if (row.amount === 0n) return null;
-            const formatted = formatTokenAmount(row.amount, DECIMALS[row.symbol]);
+            const formatted = formatTokenAmount(row.amount, DECIMALS[row.symbol], 6);
             return (
               <li
                 key={row.symbol}
                 className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
               >
-                <span className="font-medium">{row.symbol}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1",
+                    TOKEN_BADGE[row.symbol],
+                  )}
+                >
+                  {row.symbol}
+                </span>
                 <span className="font-mono">{formatted}</span>
               </li>
             );
@@ -49,14 +59,3 @@ export function WorkerEarningsCard({ earnings }: { earnings: TokenEarnings[] }) 
   );
 }
 
-function formatTokenAmount(raw: bigint, decimals: number): string {
-  if (raw === 0n) return "0";
-  const negative = raw < 0n;
-  const abs = negative ? -raw : raw;
-  const base = 10n ** BigInt(decimals);
-  const whole = abs / base;
-  const frac = abs % base;
-  const fracStr = frac.toString().padStart(decimals, "0").slice(0, 6).replace(/0+$/, "");
-  const out = fracStr.length > 0 ? `${whole}.${fracStr}` : whole.toString();
-  return negative ? `-${out}` : out;
-}

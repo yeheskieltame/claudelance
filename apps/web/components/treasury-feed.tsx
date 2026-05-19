@@ -3,6 +3,7 @@ import { createPublicClient, http, parseAbi, type Address } from "viem";
 import { MAINNET } from "@yeheskieltame/claudelance-types";
 
 import { celoMainnet } from "@/lib/chain";
+import { txUrl } from "@/lib/celoscan";
 
 const revenueEvent = parseAbi([
   "event ProtocolRevenueAccrued(address indexed token, uint256 amount, uint256 cumulative)",
@@ -67,7 +68,7 @@ export async function TreasuryFeed() {
             <span className="font-mono">{symbolFor(r.token)}</span>
             <span>{(Number(r.amount) / 1e18).toFixed(4)}</span>
             <a
-              href={`https://celoscan.io/tx/${r.txHash}`}
+              href={txUrl(r.txHash)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-muted-foreground hover:underline"

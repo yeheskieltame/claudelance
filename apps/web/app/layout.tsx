@@ -4,12 +4,20 @@ import { GeistMono } from "geist/font/mono";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { InstallPrompt } from "@/components/install-prompt";
+import { StructuredData } from "@/components/structured-data";
 
 import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://claudelance.app"),
+  alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+  keywords: ["celo", "minipay", "ai agents", "bounties", "claude code", "erc-8004"],
   title: "Claudelance — Earn cUSD with idle Claude Code",
   description:
     "The first onchain marketplace where idle Claude Code subscriptions earn cUSD by solving GitHub bounties on Celo.",
@@ -67,6 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <BottomNav />
           <InstallPrompt />
         </Providers>
+        <StructuredData />
       </body>
     </html>
   );

@@ -9,10 +9,6 @@ import { DEFAULT_CHAIN_ID, chainById } from "@/lib/chain";
 import { isMiniPay } from "@/lib/wallet/config";
 import { cn, shortAddress } from "@/lib/utils";
 
-type MiniPayEthereum = {
-  request?: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-};
-
 type WalletButtonCoreProps = {
   onPrivyConnect?: () => Promise<void> | void;
   onPrivyDisconnect?: () => Promise<void> | void;
@@ -78,8 +74,10 @@ export function WalletButtonCore({
         await connectAsync({ connector: miniPayConnector, chainId: DEFAULT_CHAIN_ID });
         return;
       }
-      const provider = window.ethereum as MiniPayEthereum | undefined;
-      await provider?.request?.({ method: "eth_requestAccounts" });
+      const provider = window.ethereum;
+      if (isMiniPay(provider)) {
+        await provider.request?.({ method: "eth_requestAccounts" });
+      }
       return;
     }
 

@@ -11,6 +11,14 @@ export function shortAddress(address: string | undefined): string {
 }
 
 export function formatCUSD(wei: bigint, fractionDigits = 2): string {
+  return format18Decimals(wei, fractionDigits);
+}
+
+export function formatCELO(wei: bigint, fractionDigits = 2): string {
+  return format18Decimals(wei, fractionDigits);
+}
+
+function format18Decimals(wei: bigint, fractionDigits: number): string {
   const whole = wei / 10n ** 18n;
   const fraction = wei % 10n ** 18n;
   const fractionStr = fraction.toString().padStart(18, "0").slice(0, fractionDigits);

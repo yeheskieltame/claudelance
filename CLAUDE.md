@@ -40,7 +40,7 @@
 | Admin key rotation | 2-day timelock + 14-day validity window on `treasury` / `ciRelayer` rotation |
 | Mainnet wallet topology | 4 distinct keys — `Deploy.s.sol` aborts on chainid 42220 if any collide. Owner is a Safe multisig (threshold 2). |
 | Mainnet deployer | Must be the user's Talent-registered address (`0x77c4a1c…`) for Celo Proof of Ship attribution |
-| Mainnet v2 status | **LIVE** at `0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`, Celoscan-verified, allowToken applied for cUSD/CELO/USDC |
+| Mainnet v2 status | **LIVE** at `0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`, Celoscan-verified, allowToken applied for cUSD/CELO/USDC. **As of 2026-05-18: 61+ resolved bounties, ~1.2 CELO protocol revenue, 25+ unique active workers daily** |
 
 ## Repo structure
 

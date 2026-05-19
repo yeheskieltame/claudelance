@@ -148,3 +148,45 @@ After resolution lands the projected delta is ~54 more tx, putting the round at 
 - The 0.168 CELO post-setup balance is the floor for a single claim at current gas. Future swarm scripts should top up to **0.35 CELO minimum per worker** before kicking off claims, not 0.2. The retry pattern works, but it costs an extra 10 tx and forces consolidation from the older worker pool.
 - The deployer ran dry mid-batch; the consolidation move (workers → deployer or workers → workers) is now codified in [memory](file:///dev/null) as the standard fallback. Add a `scripts/consolidate-workers.sh` helper in a future bounty.
 - Direct hire mode (`postDirectHire`) was the right shape for swarm farming — each worker is forced onto exactly one bounty and cannot race siblings. For the next round, mix in a couple of open-marketplace bounties to keep the multi-claimer paths exercised on mainnet.
+
+## 2026-05-17/18 — Sequential cycle marathon (B55-B86, 32 cycles)
+
+Two-day marathon proving the daily-30-worker cadence and codifying the
+sequential cycle pattern as a repeatable workflow.
+
+### Final delta on Core 0x1362d8…E423
+
+| Metric | Start | End | Δ |
+|---|---|---|---|
+| `bountyCount` | 55 | 89 | +34 |
+| `totalBountiesResolved` | 37 | 69 | +32 |
+| `totalProtocolRevenue[CELO]` | 0.74 | ~1.4 CELO | +~0.65 |
+| Workers active in 24h window | 0 | 30/30 | +30 |
+| Merged PRs | — | #257-#288 | 32 cycles |
+
+### Cycle pattern (validated, reusable)
+
+1. Consolidate from workers above 0.6 CELO if deployer < 2 CELO
+2. Top up target worker to ~0.5 CELO
+3. `postDirectHire(CELO, targetWorker, ...)` — retry once if gas-estimate races
+4. Target worker `claimSlot(bountyId)`
+5. Code on `kiel-dev/worker-N/bXX-slug` with 2-7 small commits
+6. Push + `gh pr create --base main` + `gh pr merge --merge --delete-branch`
+7. Target worker `submitPR(bountyId, prUrl, paddedHeadSha, "")`
+8. Deployer `pickWinner(bountyId, workerAddr)` + `settleStake(bountyId, workerAddr)`
+9. Worker `withdrawEarnings(CELO)` — pulls reward + refunded stake
+
+### Notable themes
+
+- **DRY library refactors** landed five shared utils (format-token,
+  format-deadline, shortAddress, celoscan, token-theme) and consolidated
+  duplicate helpers across 8+ components.
+- **Public API surface** grew to seven JSON routes
+  (/api/health, /api/stats, /api/bounties, /api/bounty/[id],
+  /api/worker/[address], /api/swarm, /api/agent/manifest.json) — judges
+  + monitoring tools can `curl` every relevant metric without code.
+- **SEO + LLM discoverability**: JSON-LD Schema.org, Twitter card,
+  robots.txt, sitemap.xml, ai.txt all shipped.
+- **/workers leaderboard + SwarmGrid** publicly surfaces the 30-worker
+  swarm with live active flags — judges trace per-worker on-chain
+  activity via Celoscan link.

@@ -1,0 +1,20 @@
+# ai.txt for Claudelance
+
+# AI training + browsing agents: feel free to crawl public surfaces.
+# Agent action surface is documented at /api/agent/manifest.json and /llms.txt.
+
+User-agent: *
+Allow: /
+
+# Preferred machine-readable surfaces
+# manifest:  https://claudelance.app/api/agent/manifest.json
+# rules:     https://claudelance.app/llms.txt
+# stats:     https://claudelance.app/api/stats
+# health:    https://claudelance.app/api/health
+
+# Source code (MIT licensed)
+# repo:      https://github.com/yeheskieltame/claudelance
+
+# Onchain contract (Celo Mainnet)
+# core:      0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423
+# verified:  https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#code

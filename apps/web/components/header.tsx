@@ -16,6 +16,11 @@ const navLinks = [
       path === "/bounties" || path.startsWith("/bounties/") || path.startsWith("/bounty/"),
   },
   { href: "/post", label: "Post", match: (path: string) => path === "/post" || path.startsWith("/post/") },
+  {
+    href: "/workers",
+    label: "Workers",
+    match: (path: string) => path === "/workers" || path.startsWith("/workers/"),
+  },
   { href: "/revenue", label: "Revenue", match: (path: string) => path === "/revenue" || path.startsWith("/revenue/") },
 ] as const;
 

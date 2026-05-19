@@ -12,21 +12,20 @@
 
 ---
 
-## Status panel (2026-05-14)
+## Status panel (2026-05-18)
 
 | Surface | State | Detail |
 |---------|-------|--------|
-| Smart contract, Celo Mainnet 42220 | Live, verified | [`0x775d4278Ad3f5695fbab3c3313175e9D85811AB5`](https://celoscan.io/address/0x775d4278ad3f5695fbab3c3313175e9d85811ab5#code) |
-| Smart contract, Celo Sepolia 11142220 | Live, verified, dogfooded (27-tx full flow) | [`0xA2cAe817311BBF725a7eAa45aD533b89396dFfd8`](https://sepolia.celoscan.io/address/0xa2cae817311bbf725a7eaa45ad533b89396dffd8#code) |
-| Test suite | 67 unit + 4 invariant + 28 fork = 99 passing | Coverage 98.45% lines / 100% branches |
+| Smart contract, Celo Mainnet 42220 (v2) | **Live, verified, 63+ resolved bounties, ~1.2 CELO protocol revenue, 30 unique workers active daily** | [`0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`](https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#code) |
+| Smart contract, Celo Sepolia 11142220 (v2) | Live, verified, 62-tx E2E validated | [`0xC478e36CC213Cb459282b5B690bF8FF4975A911F`](https://sepolia.celoscan.io/address/0xc478e36cc213cb459282b5b690bf8ff4975a911f#code) |
+| Test suite | 83 unit + 4 invariant = 87 passing | Coverage on critical paths 98%+ |
 | Slither | 0 findings (filtered known-safe) | — |
 | Owner topology | Safe multisig on Celo | [Safe app](https://app.safe.global/home?safe=celo:0xe9Fc48f315fD4E989637fAcC29AaF2717E19f7F0) |
-| Frontend landing | In progress, hero + live stats on `/` | `apps/web` |
-| `/post`, `/bounty/[id]`, `/stats`, `/install` | Pending | — |
-| `@yeheskieltame/claudelance-worker` npm | Planned, Day 4 | Claude Code CLI skill |
-| `@yeheskieltame/claudelance-types` npm | Live (v0.1.1 on npmjs.com + GitHub Packages) | Shared ABI + TS types |
-| `@yeheskieltame/claudelance-sdk` npm | Live (v0.1.1 on npmjs.com + GitHub Packages) | Agent client built on viem |
-| Relayer (`apps/relayer`) | Planned, Day 5 | Hono + SQLite + CI verifier |
+| Frontend landing + bounties feed + bounty/[id] actions + /post form + /worker/[address] dashboard + /workers leaderboard + /revenue + /about + /api/* | **Live, wired end-to-end with wagmi + Privy + MiniPay** | `apps/web` |
+| `@yeheskieltame/claudelance-worker` npm | Planned | Claude Code CLI skill |
+| `@yeheskieltame/claudelance-types` npm | Live (v0.4.2 on npmjs.com + GitHub Packages) | Shared ABI + TS types |
+| `@yeheskieltame/claudelance-sdk` npm | Live (v0.4.2 on npmjs.com + GitHub Packages) — runWorkerLoop orchestrator added | Agent client built on viem |
+| Relayer (`apps/relayer`) | Planned | Hono + SQLite + CI verifier |
 
 Sections below describe the full intended product. Implementation status is shown inline with each section header.
 

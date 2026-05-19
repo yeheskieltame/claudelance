@@ -2,9 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarClock, Coins, ExternalLink, GitPullRequest, Loader2 } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ArrowRight, CalendarClock, Coins, ExternalLink, GitPullRequest, Loader2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { formatDeadline } from "@/lib/format-deadline";
 import { cn } from "@/lib/utils";
 
 type BountyStatus = "open" | "resolved" | "cancelled" | "expired";
@@ -50,8 +52,24 @@ const TOKEN_STYLES: Record<string, string> = {
   usdc: "bg-sky-500/12 text-sky-700 ring-sky-500/25 dark:text-sky-300",
 };
 
+function labelFor(value: FilterValue): string {
+  const match = FILTERS.find((f) => f.value === value);
+  return match?.label ?? "All";
+}
+
+function parseFilter(raw: string | null): FilterValue {
+  if (raw === "cusd" || raw === "celo" || raw === "usdc") return raw;
+  if (raw === "open" || raw === "resolved") return raw;
+  return "all";
+}
+
 export function BountiesFeed() {
-  const [activeFilter, setActiveFilter] = React.useState<FilterValue>("all");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [activeFilter, setActiveFilter] = React.useState<FilterValue>(() =>
+    parseFilter(searchParams?.get("filter") ?? null),
+  );
   const [items, setItems] = React.useState<ApiBounty[]>([]);
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [total, setTotal] = React.useState<number | null>(null);
@@ -103,6 +121,13 @@ export function BountiesFeed() {
   }, [loadPage]);
 
   React.useEffect(() => {
+    const fromUrl = parseFilter(searchParams?.get("filter") ?? null);
+    if (fromUrl !== activeFilter) {
+      setActiveFilter(fromUrl);
+    }
+  }, [searchParams, activeFilter]);
+
+  React.useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
@@ -137,25 +162,62 @@ export function BountiesFeed() {
         </Button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Bounty filters">
-        {FILTERS.map((filter) => (
+      <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1" aria-label="Bounty filters">
+        {FILTERS.map((filter) => {
+          const active = activeFilter === filter.value;
+          return (
+            <button
+              key={filter.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                setActiveFilter(filter.value);
+                const params = new URLSearchParams(searchParams?.toString() ?? "");
+                if (filter.value === "all") params.delete("filter");
+                else params.set("filter", filter.value);
+                const next = params.toString();
+                router.replace(`${pathname}${next ? `?${next}` : ""}`, { scroll: false });
+              }}
+              className={cn(
+                "min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition",
+                active
+                  ? "border-primary bg-primary text-primary-foreground shadow-glow"
+                  : "border-border bg-card/70 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {filter.label}
+            </button>
+          );
+        })}
+        {activeFilter !== "all" && (
           <button
-            key={filter.value}
             type="button"
-            onClick={() => setActiveFilter(filter.value)}
-            className={cn(
-              "min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition",
-              activeFilter === filter.value
-                ? "border-primary bg-primary text-primary-foreground shadow-glow"
-                : "border-border bg-card/70 text-muted-foreground hover:text-foreground",
-            )}
+            onClick={() => {
+              setActiveFilter("all");
+              const params = new URLSearchParams(searchParams?.toString() ?? "");
+              params.delete("filter");
+              const next = params.toString();
+              router.replace(`${pathname}${next ? `?${next}` : ""}`, { scroll: false });
+            }}
+            className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs text-muted-foreground hover:text-foreground"
+            aria-label="Clear filter"
           >
-            {filter.label}
+            <X aria-hidden="true" className="h-3.5 w-3.5" />
+            Clear
           </button>
-        ))}
+        )}
       </div>
 
       {error ? <EmptyState message={error} /> : null}
+
+      {activeFilter !== "all" && !error && items.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Filtered by{" "}
+          <span className="font-medium text-foreground">{labelFor(activeFilter)}</span>
+          {" "}— {items.length}
+          {total != null && total !== items.length ? ` of ${total}` : ""} matching
+        </p>
+      )}
 
       {!error && items.length === 0 && !isLoading ? (
         <EmptyState message="No matching bounties yet." />
@@ -284,20 +346,6 @@ function formatAmount(amount: ApiBounty["amount"]) {
   return numeric.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-function formatDeadline(deadline: ApiBounty["deadline"]) {
-  if (!deadline) return "No deadline";
-  const numeric = Number(deadline);
-  const date = Number.isFinite(numeric)
-    ? new Date(numeric < 10_000_000_000 ? numeric * 1000 : numeric)
-    : new Date(deadline);
-  if (Number.isNaN(date.getTime())) return "No deadline";
-
-  const diffMs = date.getTime() - Date.now();
-  const diffDays = Math.ceil(diffMs / 86_400_000);
-  if (diffDays <= 0) return "Deadline reached";
-  if (diffDays === 1) return "1 day left";
-  return `${diffDays} days left`;
-}
 
 function deriveTitle(bounty: ApiBounty) {
   if (bounty.repo) return bounty.repo;

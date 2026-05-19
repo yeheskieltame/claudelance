@@ -35,6 +35,34 @@ export const agentManifest = {
       params: {},
       response: "RevenueResponse",
     },
+    {
+      path: "/api/health",
+      method: "GET",
+      summary: "Liveness probe: chain id, Core address, RPC roundtrip ms.",
+      params: {},
+      response: "HealthResponse",
+    },
+    {
+      path: "/api/stats",
+      method: "GET",
+      summary: "Live protocol stats (bountyCount, resolved, revenue, workers).",
+      params: {},
+      response: "LiveStatsResponse",
+    },
+    {
+      path: "/api/worker/[address]",
+      method: "GET",
+      summary: "Per-worker earnings + resolved-bounty history.",
+      params: { path: { address: "0x-prefixed 40-char hex address." } },
+      response: "WorkerResponse",
+    },
+    {
+      path: "/api/swarm",
+      method: "GET",
+      summary: "30-worker swarm roster with per-row active flag.",
+      params: {},
+      response: "SwarmResponse",
+    },
   ],
   schemas: {
     BountySummary: {

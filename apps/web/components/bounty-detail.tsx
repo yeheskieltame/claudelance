@@ -14,7 +14,7 @@ import { GlassCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTransactionToast } from "@/components/transaction-toast";
 import { DEFAULT_CHAIN_ID } from "@/lib/chain";
-import { cn } from "@/lib/utils";
+import { cn, shortAddress } from "@/lib/utils";
 
 type Submission = {
   worker: string;
@@ -73,7 +73,7 @@ export function BountyDetailClient({ bounty }: { bounty: BountyJson }) {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium">
-                    {sub.worker.slice(0, 6)}...{sub.worker.slice(-4)}
+                    {shortAddress(sub.worker)}
                   </p>
                   {sub.prUrl && (
                     <a
@@ -116,7 +116,7 @@ export function BountyDetailClient({ bounty }: { bounty: BountyJson }) {
                 key={claimer}
                 className="rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-mono text-muted-foreground"
               >
-                {claimer.slice(0, 6)}...{claimer.slice(-4)}
+                {shortAddress(claimer)}
               </span>
             ))}
           </div>
@@ -176,7 +176,7 @@ export function BountyDetailClient({ bounty }: { bounty: BountyJson }) {
           </p>
           {bounty.winner !== "0x0000000000000000000000000000000000000000" && (
             <p className="mt-1 text-xs text-muted-foreground">
-              Winner: {bounty.winner.slice(0, 6)}...{bounty.winner.slice(-4)}
+              Winner: {shortAddress(bounty.winner)}
             </p>
           )}
         </GlassCard>

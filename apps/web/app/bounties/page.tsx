@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Header } from "@/components/header";
 import { BountiesFeed } from "@/components/bounties-feed";
 
@@ -8,7 +9,9 @@ export default function BountiesPage() {
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 grid-pattern opacity-30 dark:opacity-20" />
 
       <Header />
-      <BountiesFeed />
+      <Suspense fallback={null}>
+        <BountiesFeed />
+      </Suspense>
     </main>
   );
 }
