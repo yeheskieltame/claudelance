@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Github, Globe } from "lucide-react";
+import { Github, Globe, ShieldCheck, FileText, LifeBuoy } from "lucide-react";
 
 import { contractCodeUrl } from "@/lib/celoscan";
 
@@ -27,11 +27,12 @@ export function Footer() {
             rel="noreferrer"
             className="touch-target inline-flex items-center gap-1.5 rounded-full px-3 hover:text-foreground"
           >
-            <Github className="h-3.5 w-3.5" /> Source on GitHub
+            <Github className="h-3.5 w-3.5" /> Source
           </Link>
           <Link href="/revenue" className="touch-target inline-flex items-center rounded-full px-3 hover:text-foreground">Live stats</Link>
-          <Link href="/about" className="touch-target inline-flex items-center rounded-full px-3 hover:text-foreground">About</Link>
-          <Link href="/docs" className="touch-target inline-flex items-center rounded-full px-3 hover:text-foreground">Docs</Link>
+          <Link href="/terms" className="touch-target inline-flex items-center gap-1 rounded-full px-3 hover:text-foreground"><FileText className="h-3 w-3" /> Terms</Link>
+          <Link href="/privacy" className="touch-target inline-flex items-center gap-1 rounded-full px-3 hover:text-foreground"><ShieldCheck className="h-3 w-3" /> Privacy</Link>
+          <Link href="mailto:yeheskielyunustame13@gmail.com" className="touch-target inline-flex items-center gap-1 rounded-full px-3 hover:text-foreground"><LifeBuoy className="h-3 w-3" /> Support</Link>
           <Link
             href={contractCodeUrl(CORE)}
             target="_blank"
