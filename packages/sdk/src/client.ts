@@ -556,14 +556,18 @@ export class ClaudelanceClient {
 
   async claimSlot(bountyId: bigint): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
-    return wallet.writeContract({
-      address: this.core,
-      abi: CLAUDELANCE_CORE_ABI,
-      functionName: 'claimSlot',
-      args: [bountyId],
-      account: wallet.account,
-      chain: wallet.chain,
-    });
+    try {
+      return await wallet.writeContract({
+        address: this.core,
+        abi: CLAUDELANCE_CORE_ABI,
+        functionName: 'claimSlot',
+        args: [bountyId],
+        account: wallet.account,
+        chain: wallet.chain,
+      });
+    } catch (err) {
+      throwTyped(err, { bountyId });
+    }
   }
 
   /**
@@ -589,14 +593,18 @@ export class ClaudelanceClient {
    */
   async submitDeliverable(bountyId: bigint, opts: SubmitDeliverableOptions): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
-    return wallet.writeContract({
-      address: this.core,
-      abi: CLAUDELANCE_CORE_V3_ABI,
-      functionName: 'submitDeliverable',
-      args: [bountyId, opts.deliverableUrl, opts.deliverableHash, opts.metadata ?? ''],
-      account: wallet.account,
-      chain: wallet.chain,
-    });
+    try {
+      return await wallet.writeContract({
+        address: this.core,
+        abi: CLAUDELANCE_CORE_V3_ABI,
+        functionName: 'submitDeliverable',
+        args: [bountyId, opts.deliverableUrl, opts.deliverableHash, opts.metadata ?? ''],
+        account: wallet.account,
+        chain: wallet.chain,
+      });
+    } catch (err) {
+      throwTyped(err, { bountyId });
+    }
   }
 
   /**
@@ -613,27 +621,35 @@ export class ClaudelanceClient {
 
   async settleStake(bountyId: bigint, worker?: Address): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
-    return wallet.writeContract({
-      address: this.core,
-      abi: CLAUDELANCE_CORE_ABI,
-      functionName: 'settleStake',
-      args: [bountyId, worker ?? wallet.account.address],
-      account: wallet.account,
-      chain: wallet.chain,
-    });
+    try {
+      return await wallet.writeContract({
+        address: this.core,
+        abi: CLAUDELANCE_CORE_ABI,
+        functionName: 'settleStake',
+        args: [bountyId, worker ?? wallet.account.address],
+        account: wallet.account,
+        chain: wallet.chain,
+      });
+    } catch (err) {
+      throwTyped(err, { bountyId });
+    }
   }
 
   /** Pull-pattern withdrawal for a single token. Always callable, even when paused. */
   async withdrawEarnings(token: Address): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
-    return wallet.writeContract({
-      address: this.core,
-      abi: CLAUDELANCE_CORE_ABI,
-      functionName: 'withdrawEarnings',
-      args: [token],
-      account: wallet.account,
-      chain: wallet.chain,
-    });
+    try {
+      return await wallet.writeContract({
+        address: this.core,
+        abi: CLAUDELANCE_CORE_ABI,
+        functionName: 'withdrawEarnings',
+        args: [token],
+        account: wallet.account,
+        chain: wallet.chain,
+      });
+    } catch (err) {
+      throwTyped(err);
+    }
   }
 
   /**
@@ -810,25 +826,29 @@ export class ClaudelanceClient {
 
   async postBounty(opts: PostBountyOptions): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
-    return wallet.writeContract({
-      address: this.core,
-      abi: CLAUDELANCE_CORE_ABI,
-      functionName: 'postBounty',
-      args: [
-        opts.token,
-        opts.bountyType ?? 0,
-        opts.targetRepoUrl,
-        opts.instructionUrl,
-        opts.requirementsHash ?? `0x${'0'.repeat(64)}`,
-        opts.amount,
-        opts.maxSlots,
-        opts.stake,
-        opts.deadlineSeconds,
-        opts.ciRequired,
-      ],
-      account: wallet.account,
-      chain: wallet.chain,
-    });
+    try {
+      return await wallet.writeContract({
+        address: this.core,
+        abi: CLAUDELANCE_CORE_ABI,
+        functionName: 'postBounty',
+        args: [
+          opts.token,
+          opts.bountyType ?? 0,
+          opts.targetRepoUrl,
+          opts.instructionUrl,
+          opts.requirementsHash ?? `0x${'0'.repeat(64)}`,
+          opts.amount,
+          opts.maxSlots,
+          opts.stake,
+          opts.deadlineSeconds,
+          opts.ciRequired,
+        ],
+        account: wallet.account,
+        chain: wallet.chain,
+      });
+    } catch (err) {
+      throwTyped(err);
+    }
   }
 
   async postBountyWithApproval(opts: PostBountyOptions): Promise<`0x${string}`> {
@@ -852,24 +872,28 @@ export class ClaudelanceClient {
 
   async postDirectHire(opts: PostDirectHireOptions): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
-    return wallet.writeContract({
-      address: this.core,
-      abi: CLAUDELANCE_CORE_ABI,
-      functionName: 'postDirectHire',
-      args: [
-        opts.token,
-        opts.targetWorker,
-        opts.bountyType ?? 0,
-        opts.targetRepoUrl,
-        opts.instructionUrl,
-        opts.requirementsHash ?? `0x${'0'.repeat(64)}`,
-        opts.amount,
-        opts.stake,
-        opts.deadlineSeconds,
-      ],
-      account: wallet.account,
-      chain: wallet.chain,
-    });
+    try {
+      return await wallet.writeContract({
+        address: this.core,
+        abi: CLAUDELANCE_CORE_ABI,
+        functionName: 'postDirectHire',
+        args: [
+          opts.token,
+          opts.targetWorker,
+          opts.bountyType ?? 0,
+          opts.targetRepoUrl,
+          opts.instructionUrl,
+          opts.requirementsHash ?? `0x${'0'.repeat(64)}`,
+          opts.amount,
+          opts.stake,
+          opts.deadlineSeconds,
+        ],
+        account: wallet.account,
+        chain: wallet.chain,
+      });
+    } catch (err) {
+      throwTyped(err);
+    }
   }
 
   async postDirectHireWithApproval(opts: PostDirectHireOptions): Promise<`0x${string}`> {
@@ -892,14 +916,18 @@ export class ClaudelanceClient {
 
   async pickWinner(bountyId: bigint, winner: Address): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
-    return wallet.writeContract({
-      address: this.core,
-      abi: CLAUDELANCE_CORE_ABI,
-      functionName: 'pickWinner',
-      args: [bountyId, winner],
-      account: wallet.account,
-      chain: wallet.chain,
-    });
+    try {
+      return await wallet.writeContract({
+        address: this.core,
+        abi: CLAUDELANCE_CORE_ABI,
+        functionName: 'pickWinner',
+        args: [bountyId, winner],
+        account: wallet.account,
+        chain: wallet.chain,
+      });
+    } catch (err) {
+      throwTyped(err, { bountyId });
+    }
   }
 
   /**
@@ -927,14 +955,18 @@ export class ClaudelanceClient {
 
   async cancelExpired(bountyId: bigint): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
-    return wallet.writeContract({
-      address: this.core,
-      abi: CLAUDELANCE_CORE_ABI,
-      functionName: 'cancelExpired',
-      args: [bountyId],
-      account: wallet.account,
-      chain: wallet.chain,
-    });
+    try {
+      return await wallet.writeContract({
+        address: this.core,
+        abi: CLAUDELANCE_CORE_ABI,
+        functionName: 'cancelExpired',
+        args: [bountyId],
+        account: wallet.account,
+        chain: wallet.chain,
+      });
+    } catch (err) {
+      throwTyped(err, { bountyId });
+    }
   }
 
   // ─── Relayer write API ───────────────────────────────────────────────
@@ -946,14 +978,18 @@ export class ClaudelanceClient {
    */
   async attestCI(bountyId: bigint, worker: Address, passed: boolean): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
-    return wallet.writeContract({
-      address: this.core,
-      abi: CLAUDELANCE_CORE_ABI,
-      functionName: 'attestCI',
-      args: [bountyId, worker, passed],
-      account: wallet.account,
-      chain: wallet.chain,
-    });
+    try {
+      return await wallet.writeContract({
+        address: this.core,
+        abi: CLAUDELANCE_CORE_ABI,
+        functionName: 'attestCI',
+        args: [bountyId, worker, passed],
+        account: wallet.account,
+        chain: wallet.chain,
+      });
+    } catch (err) {
+      throwTyped(err, { bountyId });
+    }
   }
 
   // ─── v3 read API ─────────────────────────────────────────────────────
