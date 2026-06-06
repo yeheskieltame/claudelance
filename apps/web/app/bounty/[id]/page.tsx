@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, User, Trophy, Clock, Coins, Shield, Layers, Github, Lock } from "lucide-react";
 import Link from "next/link";
-import { MAINNET_V3 } from "@yeheskieltame/claudelance-types";
+import { MAINNET_V3, TASK_TYPE_LABELS, TASK_TYPE_NAMES } from "@yeheskieltame/claudelance-types";
 
 import { Header } from "@/components/header";
 import { BountyDetailClient } from "@/components/bounty-detail";
@@ -113,11 +113,11 @@ function BountyHeader({ bounty }: { bounty: BountyJson }) {
         ? "bg-primary/10 text-primary border border-primary/20"
         : "bg-muted text-muted-foreground border border-border";
 
-  const repoTitle = bounty.targetRepoUrl
+  const repoTitle = bounty.bountyType === 0 && bounty.targetRepoUrl
     ? bounty.targetRepoUrl
         .replace(/^https?:\/\/github\.com\//, "")
         .replace(/\/issues\/\d+$/, "")
-    : `Bounty #${bounty.id}`;
+    : `${TASK_TYPE_NAMES[bounty.bountyType as keyof typeof TASK_TYPE_NAMES] ?? "Task"} ${bounty.requirementsHash ? bounty.requirementsHash.slice(0, 10) + '...' + bounty.requirementsHash.slice(-6) : `Bounty #${bounty.id}`}`;
 
   const deadlineDate = formatDeadlineFull(bounty.deadline);
 
@@ -130,6 +130,9 @@ function BountyHeader({ bounty }: { bounty: BountyJson }) {
         </span>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
           {statusLabel}
+        </span>
+        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
+          {TASK_TYPE_LABELS[bounty.bountyType as keyof typeof TASK_TYPE_LABELS] ?? "UNKNOWN"}
         </span>
         {isDirectHire && (
           <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-600 dark:text-violet-300">

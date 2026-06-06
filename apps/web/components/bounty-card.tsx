@@ -149,8 +149,8 @@ export function getBountyTitle(bounty: Pick<Bounty, "targetRepoUrl" | "requireme
 }
 
 export function getBountyDescription(bounty: Pick<Bounty, "instructionUrl" | "requirementsHash" | "ciRequired" | "bountyType">) {
-  const type = bounty.bountyType ?? 0;
   const source = formatHost(bounty.instructionUrl);
+  const type = bounty.bountyType ?? 0;
   const review = bounty.ciRequired ? "CI-gated" : "Manual review";
   if (type === 0 || type === 5) {
     return `${review} · spec ${shortHash(bounty.requirementsHash)}${source ? ` · ${source}` : ""}`;

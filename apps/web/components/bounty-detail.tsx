@@ -11,7 +11,10 @@ import {
 import Link from "next/link";
 import { CheckCircle2, ExternalLink, Loader2, Lock, ShieldCheck, Upload } from "lucide-react";
 import {
+  CLAUDELANCE_CORE_ABI,
   CLAUDELANCE_CORE_V3_ABI,
+  MAINNET,
+  MAINNET_V3,
   TASK_TYPE_NAMES,
   deploymentByChainId,
 } from "@yeheskieltame/claudelance-types";
@@ -183,9 +186,11 @@ export function BountyDetailClient({ bounty }: { bounty: BountyJson }) {
         <PickWinnerCard bountyId={bounty.id} submissions={bounty.submissions} />
       )}
 
-      {/* Claimer: submit deliverable */}
+
+      {/* Claimer: submit Deliverable */}
       {isClaimer && isOpen && !hasSubmission && (
-        <SubmitDeliverableCard bountyId={bounty.id} bountyType={bounty.bountyType ?? 0} />
+        <SubmitDeliverableCard bountyId={bounty.id} bountyType={bounty.bountyType} />
+
       )}
 
       {/* Worker: claim slot — open bounties, or direct hires only for the targeted worker */}
@@ -378,6 +383,23 @@ const DELIVERABLE_URL_HINT: Record<number, string> = {
 };
 
 function SubmitDeliverableCard({ bountyId, bountyType = 0 }: { bountyId: string; bountyType?: number }) {
+  const getHint = () => {
+    switch (bountyType) {
+      case 0: return "PR link";
+      case 1:
+      case 2: return "IPFS/Arweave";
+      default: return "URL";
+    }
+  };
+
+  const getUrlPlaceholder = () => {
+    switch (bountyType) {
+      case 0: return "https://github.com/owner/repo/pull/123";
+      case 1:
+      case 2: return "ipfs://... or ar://...";
+      default: return "https://...";
+    }
+  };
   const chainId = useChainId();
   const { writeContractAsync, isPending } = useWriteContract();
   const [txHash, setTxHash] = React.useState<Hash | null>(null);
@@ -409,12 +431,13 @@ function SubmitDeliverableCard({ bountyId, bountyType = 0 }: { bountyId: string;
 
   const submit = async () => {
     if (!canSubmit) return;
+    const formattedHash = normalizeHash(contentHash);
     try {
       const hash = (await writeContractAsync({
         address: core,
         abi: CLAUDELANCE_CORE_V3_ABI,
         functionName: "submitDeliverable",
-        args: [BigInt(bountyId), deliverableUrl, normalizeHash(contentHash), ""],
+        args: [BigInt(bountyId), deliverableUrl, formattedHash, ""],
         feeCurrency: miniPayFeeCurrency(),
       })) as Hash;
       setTxHash(hash);
@@ -430,27 +453,32 @@ function SubmitDeliverableCard({ bountyId, bountyType = 0 }: { bountyId: string;
           <Upload className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold">Submit your {typeName} deliverable</h3>
+          <h3 className="font-semibold">Submit your Deliverable</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            You&apos;ve claimed this bounty. Paste the deliverable URL and its
-            content hash (commit SHA or keccak256) to complete your entry.
+            You&apos;ve claimed this bounty. Submit your deliverable URL and
+            content hash to complete your entry.
           </p>
           <div className="mt-4 space-y-3">
-            <input
-              type="url"
-              placeholder={DELIVERABLE_URL_HINT[bountyType] ?? "https://..."}
-              value={deliverableUrl}
-              onChange={(e) => setDeliverableUrl(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <input
-              type="text"
-              placeholder="Commit SHA (40 hex) or keccak256 (64 hex)"
-              value={contentHash}
-              onChange={(e) => setContentHash(e.target.value.trim())}
-              maxLength={66}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Deliverable URL ({getHint()})</label>
+              <input
+                type="url"
+                placeholder={getUrlPlaceholder()}
+                value={deliverableUrl}
+                onChange={(e) => setDeliverableUrl(e.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Content Hash (bytes32)</label>
+              <input
+                type="text"
+                placeholder="Content Hash (hex)"
+                value={contentHash}
+                onChange={(e) => setContentHash(e.target.value.replace(/^0x/, "").trim())}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
             <Button size="sm" onClick={submit} disabled={!canSubmit || isPending}>
               {isPending ? (
                 <>
@@ -458,7 +486,7 @@ function SubmitDeliverableCard({ bountyId, bountyType = 0 }: { bountyId: string;
                   Submitting
                 </>
               ) : (
-                "Submit deliverable"
+                "Submit Deliverable"
               )}
             </Button>
           </div>
@@ -584,9 +612,7 @@ function WithdrawEarningsCard({ token }: { token: string }) {
   );
 }
 
-// Import MAINNET_V3 for tokenMeta lookup (v3 same token addresses as v2 mainnet)
-import { MAINNET_V3 } from "@yeheskieltame/claudelance-types";
-
+// Use MAINNET_V3 for tokenMeta lookup (v3 same token addresses as v2 mainnet)
 function tokenMeta(tokenAddress: string): { symbol: string; decimals: number } {
   const addr = tokenAddress.toLowerCase();
   if (addr === MAINNET_V3.tokens.USDC.toLowerCase()) return { symbol: "USDC", decimals: 6 };

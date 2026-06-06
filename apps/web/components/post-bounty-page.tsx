@@ -78,9 +78,7 @@ type FormState = {
   maxSlots: string;
   deadline: string;
   ciRequired: boolean;
-};
-
-const queryClient = new QueryClient();
+};const queryClient = new QueryClient();
 
 const wagmiConfig = createConfig({
   chains: supportedChains,
@@ -717,6 +715,10 @@ function LinksStep({
   onChange: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
   const isCode = values.bountyType === 0;
+  const isResearch = values.bountyType === 1 || values.bountyType === 2;
+  const specHint = isCode ? "e.g., https://github.com/owner/repo" : (isResearch ? "IPFS/Arweave URL for report or data" : "Link to the spec");
+  const issueHint = "Detailed issue URL or discussion thread";
+
   return (
     <div>
       <StepHeading
@@ -753,6 +755,7 @@ function LinksStep({
           placeholder={INSTRUCTION_URL_HINT[values.bountyType] ?? "https://..."}
           onChange={(value) => onChange("issueUrl", value)}
         />
+
       </div>
     </div>
   );
@@ -1273,7 +1276,7 @@ function parseForm(values: FormState, deployment: typeof MAINNET_V3) {
       ),
     );
 
-    return { amount, stake, deadlineSeconds, requirementsHash };
+    return { token, amount, stake, deadlineSeconds, requirementsHash };
   } catch {
     return null;
   }
