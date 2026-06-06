@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPublicClient, http, type Address } from "viem";
-import { BountyStatus, MAINNET, type Deployment } from "@yeheskieltame/claudelance-types";
+import { BountyStatus, MAINNET_V3, type Deployment } from "@yeheskieltame/claudelance-types";
 
 import { celoMainnet } from "@/lib/chain";
 
@@ -10,14 +10,12 @@ const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 const BATCH_SIZE = 25;
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+// v3 does not expose bountyCount() as a public getter (EIP-7201 storage).
+// We scan in batches and stop when a full batch returns only zero-address posters.
+const MAX_SCAN_ID = 100_000n;
+
 const bountiesApiAbi = [
-  {
-    type: "function",
-    name: "bountyCount",
-    inputs: [],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
   {
     type: "function",
     name: "getBounty",
@@ -92,17 +90,12 @@ export async function GET(request: NextRequest) {
     transport: http(getRpcOverride(deployment.chainId)),
   });
 
-  const totalCount = await client.readContract({
-    address: deployment.core,
-    abi: bountiesApiAbi,
-    functionName: "bountyCount",
-  });
-
   const items: ReturnType<typeof toJsonBounty>[] = [];
   let nextId = parsed.cursor;
 
-  while (nextId <= totalCount && items.length < parsed.limit) {
-    const batchSize = Number(minBigInt(BigInt(BATCH_SIZE), totalCount - nextId + 1n));
+  // v3: scan in batches; stop when a batch returns all zero-address posters (past max id).
+  while (nextId <= MAX_SCAN_ID && items.length < parsed.limit) {
+    const batchSize = BATCH_SIZE;
     const ids = Array.from({ length: batchSize }, (_, index) => nextId + BigInt(index));
 
     const results = await client.multicall({
@@ -116,13 +109,19 @@ export async function GET(request: NextRequest) {
     });
 
     let nextPageCursor: bigint | null = null;
-    for (const [index, result] of results.entries()) {
-      if (result.status !== "success") continue;
+    let nonEmptyInBatch = 0;
 
+    for (const [index, result] of results.entries()) {
       const id = ids[index];
       if (!id) continue;
 
+      if (result.status !== "success") continue;
       const bounty = normalizeBounty(result.result);
+
+      // Zero-address poster = bounty doesn't exist (v3 returns zero struct for missing ids).
+      if (bounty.poster === ZERO_ADDRESS) continue;
+      nonEmptyInBatch++;
+
       if (!matchesStatus(bounty, parsed.status)) continue;
       if (!matchesToken(bounty, parsed.token, deployment)) continue;
 
@@ -133,6 +132,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // If the entire batch was empty (all zero-address), we've passed the last bounty.
+    if (nonEmptyInBatch === 0) break;
+
     if (nextPageCursor) {
       nextId = nextPageCursor;
       break;
@@ -141,11 +143,12 @@ export async function GET(request: NextRequest) {
     nextId += BigInt(batchSize);
   }
 
+  const hasMore = nextId <= MAX_SCAN_ID && items.length === parsed.limit;
+
   return NextResponse.json(
     {
       items,
-      nextCursor: nextId <= totalCount ? nextId.toString() : null,
-      total: Number(totalCount),
+      nextCursor: hasMore ? nextId.toString() : null,
     },
     { headers: corsHeaders },
   );
@@ -195,7 +198,7 @@ function parseQuery(searchParams: URLSearchParams):
 }
 
 function getActiveDeployment(): Deployment {
-  return MAINNET;
+  return MAINNET_V3;
 }
 
 function getRpcOverride(_chainId: number) {
@@ -278,6 +281,3 @@ function normalizeBounty(result: unknown): ChainBounty {
   return result as ChainBounty;
 }
 
-function minBigInt(a: bigint, b: bigint) {
-  return a < b ? a : b;
-}
