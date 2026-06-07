@@ -7,20 +7,32 @@ import {
   CLAUDELANCE_CORE_V3_ABI,
   MAINNET_V3,
   TASK_TYPE_NAMES,
+  TASK_TYPE_DISCLAIMER_REQUIRED,
 } from "@yeheskieltame/claudelance-types";
 import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   CheckCircle2,
   ClipboardCheck,
+  Code2,
   Coins,
   FileCode2,
-  GitPullRequest,
+  FileSearch,
+  GraduationCap,
+  Landmark,
+  Languages,
   Loader2,
+  Microscope,
+  PenLine,
+  Scale,
+  Shapes,
   ShieldCheck,
+  Sparkles,
   Users,
   Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import type { Address, Hash } from "viem";
 import { getAddress, isAddress, keccak256, parseUnits, toBytes } from "viem";
@@ -55,11 +67,49 @@ type HireMode = "open" | "direct";
 // Mirrors on-chain minBounty(token) on v3 mainnet proxy.
 const TOKEN_MIN: Record<TokenSymbol, string> = { cUSD: "0.5", CELO: "1", USDC: "0.5" };
 
-// Task type options from the v3 contract (types 0–10).
+// Task type options from the v3 contract (types 0-10).
 const TASK_TYPE_OPTIONS = Object.entries(TASK_TYPE_NAMES).map(([id, name]) => ({
   id: Number(id),
   name: name as string,
 }));
+
+type TaskMeta = {
+  icon: LucideIcon;
+  /** One-line role shown in the picker card. */
+  blurb: string;
+  /** Poster-facing deliverable format the worker will return. */
+  deliverable: string;
+  /** Does the on-chain CI gate apply to this type? Only Code + Code Audit. */
+  ci: boolean;
+  /** Label for the first URL field (repo for code, reference for the rest). */
+  repoLabel: string;
+  /** Is the first URL field mandatory? Only true code types need a repo. */
+  repoRequired: boolean;
+};
+
+// Per-type UI metadata. `disclaimerRequired` comes from the types package so the
+// contract stays the source of truth; everything else is presentation only.
+const TASK_META: Record<number, TaskMeta> = {
+  0:  { icon: Code2,         blurb: "Ship code via a GitHub PR",        deliverable: "GitHub Pull Request",                       ci: true,  repoLabel: "Repository URL",          repoRequired: true },
+  1:  { icon: BarChart3,     blurb: "Notebooks, datasets, insights",    deliverable: "Notebook + dataset (Gist or IPFS)",         ci: false, repoLabel: "Data source URL (optional)", repoRequired: false },
+  2:  { icon: Microscope,    blurb: "Investigate and write it up",      deliverable: "Report, Markdown or PDF (Gist/IPFS/Arweave)", ci: false, repoLabel: "Reference URL (optional)", repoRequired: false },
+  3:  { icon: PenLine,       blurb: "Articles, copy, media, video",     deliverable: "Draft or media link (Gist/IPFS/hosting URL)", ci: false, repoLabel: "Reference URL (optional)", repoRequired: false },
+  4:  { icon: FileSearch,    blurb: "Review and improve a document",    deliverable: "Reviewed doc (GitHub PR or Gist)",          ci: false, repoLabel: "Document or repo URL (optional)", repoRequired: false },
+  5:  { icon: ShieldCheck,   blurb: "Security review of a codebase",    deliverable: "Audit report (Gist or IPFS)",               ci: true,  repoLabel: "Repository URL",          repoRequired: true },
+  6:  { icon: Languages,     blurb: "Translate content across languages", deliverable: "Translated content (Gist or IPFS)",       ci: false, repoLabel: "Source content URL (optional)", repoRequired: false },
+  7:  { icon: GraduationCap, blurb: "Tutorials and course material",    deliverable: "Tutorial or course (Gist/IPFS/Arweave)",    ci: false, repoLabel: "Reference URL (optional)", repoRequired: false },
+  8:  { icon: Scale,         blurb: "Legal analysis (disclaimer)",      deliverable: "Legal analysis (Gist or IPFS)",             ci: false, repoLabel: "Case source URL (optional)", repoRequired: false },
+  9:  { icon: Landmark,      blurb: "Financial analysis (disclaimer)",  deliverable: "Financial analysis (Gist or IPFS)",         ci: false, repoLabel: "Data source URL (optional)", repoRequired: false },
+  10: { icon: Sparkles,      blurb: "Anything else, you define it",     deliverable: "Any verifiable URL per your spec",          ci: false, repoLabel: "Reference URL (optional)", repoRequired: false },
+};
+
+function taskMeta(type: number): TaskMeta {
+  return TASK_META[type] ?? TASK_META[10];
+}
+
+function disclaimerRequired(type: number): boolean {
+  return Boolean(TASK_TYPE_DISCLAIMER_REQUIRED[type as keyof typeof TASK_TYPE_DISCLAIMER_REQUIRED]);
+}
 
 type FormState = {
   hireMode: HireMode;
@@ -123,7 +173,7 @@ const erc20Abi = [
 
 const steps = [
   { id: 0, label: "Token", icon: Coins },
-  { id: 1, label: "Links", icon: GitPullRequest },
+  { id: 1, label: "Task", icon: Shapes },
   { id: 2, label: "Rules", icon: ShieldCheck },
   { id: 3, label: "Review", icon: ClipboardCheck },
 ] as const;
