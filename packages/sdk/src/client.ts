@@ -1146,6 +1146,21 @@ export class ClaudelanceClient {
     return lo;
   }
 
+  // ─── Proxy / circuit-breaker reads (v3) ──────────────────────────────
+
+  /**
+   * True if the contract is paused (OZ Pausable). While paused, every
+   * state-changing call except `withdrawEarnings` reverts `EnforcedPause`.
+   * Check this before a worker/poster write to fail fast with a clear reason.
+   */
+  async isPaused(): Promise<boolean> {
+    return (await this.publicClient.readContract({
+      address: this.core,
+      abi: CLAUDELANCE_CORE_V3_ABI,
+      functionName: 'paused',
+    })) as boolean;
+  }
+
   // ─── Internal helpers ────────────────────────────────────────────────
 
   /**
