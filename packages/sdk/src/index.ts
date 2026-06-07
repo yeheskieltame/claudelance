@@ -110,12 +110,18 @@ export {
   watchBountyResolved,
   watchSlotClaimed,
   watchEarningsWithdrawn,
+  watchCIAttested,
+  watchStakeSettled,
+  watchBountyCancelled,
   watchAll,
   type BountyPostedEvent,
   type DeliverableSubmittedEvent,
   type BountyResolvedEvent,
   type SlotClaimedEvent,
   type EarningsWithdrawnEvent,
+  type CIAttestedEvent,
+  type StakeSettledEvent,
+  type BountyCancelledEvent,
   type CoreEventHandlers,
   type WatchOptions,
   type UnwatchFn,
@@ -124,6 +130,9 @@ export {
   type BountyResolvedFilter,
   type SlotClaimedFilter,
   type EarningsWithdrawnFilter,
+  type CIAttestedFilter,
+  type StakeSettledFilter,
+  type BountyCancelledFilter,
 } from './watchers.js';
 
 // Treasury revenue helpers.
