@@ -251,19 +251,8 @@ export class ClaudelanceClient {
   }
 
   /**
-   * Build a fully-wired client from a BIP-39 mnemonic + network key.
-   * Friendly onboarding path: an operator can paste their seed phrase
-   * (12 or 24 words) without ever extracting the raw private key.
-   *
-   * Default derivation `m/44'/60'/0'/0/0` (Ethereum standard, first
-   * account / first address). Override `derivationPath` to use a
-   * different index - e.g. `m/44'/60'/0'/0/1` for the second address.
-   *
-   * Supported networks: `'sepolia'` (Celo Sepolia) and `'celo'` (Celo Mainnet).
-   */
-  /**
    * Build a read-only client from an RPC URL + network key.
-   * No private key required - only read methods are available.
+   * No private key required, only read methods are available.
    * Write methods throw `[ClaudelanceClient] Write methods require a wallet client`.
    */
   static fromRpcUrl(opts: { rpcUrl?: string; network: NetworkKey }): ClaudelanceClient {
@@ -281,6 +270,17 @@ export class ClaudelanceClient {
     });
   }
 
+  /**
+   * Build a fully-wired client from a BIP-39 mnemonic + network key.
+   * Friendly onboarding path: an operator can paste their seed phrase
+   * (12 or 24 words) without ever extracting the raw private key.
+   *
+   * Default derivation `m/44'/60'/0'/0/0` (Ethereum standard, first
+   * account / first address). Override `derivationPath` to use a
+   * different index, e.g. `m/44'/60'/0'/0/1` for the second address.
+   *
+   * Supported networks: `'sepolia'` (Celo Sepolia) and `'celo'` (Celo Mainnet).
+   */
   static fromMnemonic(opts: FromMnemonicOptions): ClaudelanceClient {
     const deployment: Deployment = (opts.network === 'celo' || opts.network === 'mainnet') ? MAINNET : SEPOLIA;
     const chain = chainForNetwork(opts.network);
