@@ -228,7 +228,7 @@ function BountyHeader({ bounty }: { bounty: BountyJson }) {
 
           <MetaRow icon={<ExternalLink className="h-3.5 w-3.5" />} label="On-chain">
             <a
-              href={`https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#readContract`}
+              href={`https://celoscan.io/address/0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8#readContract`}
               target="_blank"
               rel="noreferrer"
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
