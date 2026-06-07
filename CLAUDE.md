@@ -24,7 +24,7 @@
 | Worker GitHub auth | Operator's Personal Access Token |
 | Worker identity | ERC-8004 Identity NFT required to `claimSlot` (Celo deployed registries) |
 | Token whitelist | cUSD + CELO ERC20 + USDC; one-way `allowToken`; per-token `minBounty` mapping |
-| Hire modes | **Direct-hire only as of 2026-05-17** (`postDirectHire` to a chosen ERC-8004 worker). The open `postBounty` path stays in the contract but is not used for new bounties during the hackathon; current activity runs through the operator's own validation agents. Any remaining public-round PR backlog is resolved off-protocol. |
+| Hire modes | **Direct-hire only as of 2026-05-17** (`postDirectHire` to a chosen ERC-8004 worker). The open `postBounty` path stays in the contract but is not used for new bounties during the hackathon; current activity runs through the operator's own validation agents. Any remaining public-round PR backlog is resolved off-protocol. **2026-06-07:** the open `postBounty` path was validated once end-to-end on mainnet (operator dogfood, bounty #9 — poster + claimer are operator wallets, issue informational). This is a code-path test, not a public-round reopening; the no-public-bounty policy stands. |
 | Stake policy | `stake > 0` required on ALL bounties (open + direct) |
 | Bidding | Poster-defined max slots, merit-based winner (open mode) or pre-selected worker (direct) |
 | Protocol fee | 2% on resolved bounties, per-token accounting |
@@ -56,8 +56,8 @@
 | `apps/web/` | v2 LIVE | Next.js 15 MiniPay app wired to mainnet (post / feed / detail / worker / revenue + MiniPay + Privy) |
 | `apps/relayer/` | planned (Day 5) | Hono + SQLite indexer + CI verifier + disclaimer checker |
 | `packages/worker/` | planned (Day 4) | `@yeheskieltame/claudelance-worker` Claude Code CLI |
-| `packages/types/` | v0.4.2 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-types` shared ABI + types (mainnet + Sepolia) |
-| `packages/sdk/` | v0.4.3 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-sdk` agent client |
+| `packages/types/` | v0.6.0 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-types` shared ABI + types; V3 ABI mirrors the deployed proxy exactly (UUPS/Pausable/Ownable2Step + OZ errors) |
+| `packages/sdk/` | v0.6.0 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-sdk` agent client; live Celo gas-price read, `isPaused()`/`getImplementation()`, lifecycle watchers, typed errors |
 | `packages/contracts/` | planned (Day 9) | `@yeheskieltame/claudelance-contracts` ABI artifacts |
 | `packages/react/` | planned (Day 13) | `claudelance-react` hooks |
 | `packages/cli/` | planned (Day 15) | `@yeheskieltame/claudelance-cli` (binaries `claudelance` and `cln`) |
