@@ -104,7 +104,7 @@ const TASK_META: Record<number, TaskMeta> = {
 };
 
 function taskMeta(type: number): TaskMeta {
-  return TASK_META[type] ?? TASK_META[10];
+  return TASK_META[type] ?? TASK_META[10]!;
 }
 
 function disclaimerRequired(type: number): boolean {
@@ -188,14 +188,29 @@ const tokenStepSchema = tokenStepObject.refine(
   (v) => ({ message: `Minimum bounty is ${TOKEN_MIN[v.token]} ${v.token}.`, path: ["amount"] }),
 );
 
-const linksStepSchema = z.object({
+const linksStepObject = z.object({
   bountyType: z.number().int().min(0).max(10),
-  // repoUrl = "Spec URL": for code bounties this should be a GitHub repo; for other
-  // types it can be any verifiable URL (Gist, IPFS, Arweave, GitHub repo, etc.).
-  repoUrl: z.string().url("Enter a valid URL for the target repo or spec location."),
-  // issueUrl = "Instruction URL": full spec / brief for the task.
-  issueUrl: z.string().url("Enter a valid instruction URL (GitHub issue, Gist, or any spec URL)."),
+  // repoUrl is the first URL field: a GitHub repo for code types, an optional
+  // reference link (data source, brief location) for everything else.
+  repoUrl: z.string(),
+  // issueUrl is the brief / full spec. Required for every task type.
+  issueUrl: z.string().url("Enter a valid brief or instruction URL (GitHub issue, Gist, or any spec URL)."),
 });
+
+// repoUrl is mandatory only for true code types (Code, Code Audit). For the rest
+// it is an optional reference link: blank, or a valid URL if provided.
+function refineRepoUrl(v: { bountyType: number; repoUrl: string }, ctx: z.RefinementCtx) {
+  const trimmed = v.repoUrl.trim();
+  if (taskMeta(v.bountyType).repoRequired) {
+    if (!isUrl(trimmed)) {
+      ctx.addIssue({ path: ["repoUrl"], code: z.ZodIssueCode.custom, message: "Enter a valid repository URL." });
+    }
+  } else if (trimmed.length > 0 && !isUrl(trimmed)) {
+    ctx.addIssue({ path: ["repoUrl"], code: z.ZodIssueCode.custom, message: "Reference URL must be a valid URL or left blank." });
+  }
+}
+
+const linksStepSchema = linksStepObject.superRefine(refineRepoUrl);
 
 const rulesStepSchema = z.object({
   stake: z.string().refine((value) => isPositiveDecimal(value), "Enter a stake greater than zero."),
@@ -212,12 +227,14 @@ const rulesStepSchema = z.object({
 });
 
 const formSchema = tokenStepObject
-  .merge(linksStepSchema)
+  .merge(linksStepObject)
   .merge(rulesStepSchema)
-  .refine(
-    (v) => meetsMinAmount(v.token, v.amount),
-    (v) => ({ message: `Minimum bounty is ${TOKEN_MIN[v.token]} ${v.token}.`, path: ["amount"] }),
-  );
+  .superRefine((v, ctx) => {
+    if (!meetsMinAmount(v.token, v.amount)) {
+      ctx.addIssue({ path: ["amount"], code: z.ZodIssueCode.custom, message: `Minimum bounty is ${TOKEN_MIN[v.token]} ${v.token}.` });
+    }
+    refineRepoUrl(v, ctx);
+  });
 
 const initialState: FormState = {
   hireMode: "open",
@@ -1418,6 +1435,15 @@ function meetsMinAmount(token: TokenSymbol, amount: string) {
 
 function normalizedUrl(value: string) {
   return value.trim().replace(/\/$/, "");
+}
+
+function isUrl(value: string) {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function defaultDeadline() {
