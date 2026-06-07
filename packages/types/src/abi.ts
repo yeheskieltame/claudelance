@@ -2272,7 +2272,25 @@ export const CLAUDELANCE_CORE_V3_ABI = [
   { "type": "error", "name": "NoStakeRequired", "inputs": [] },
   { "type": "error", "name": "NoPendingChange", "inputs": [] },
   { "type": "error", "name": "TimelockNotElapsed", "inputs": [] },
-  { "type": "error", "name": "ProposalExpired", "inputs": [] }
+  { "type": "error", "name": "ProposalExpired", "inputs": [] },
+  {
+    "type": "event",
+    "name": "Paused",
+    "inputs": [
+      { "name": "account", "type": "address", "indexed": false, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Unpaused",
+    "inputs": [
+      { "name": "account", "type": "address", "indexed": false, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  { "type": "error", "name": "EnforcedPause", "inputs": [] },
+  { "type": "error", "name": "ExpectedPause", "inputs": [] }
 ] as const;
 
 export type ClaudelanceCoreV3Abi = typeof CLAUDELANCE_CORE_V3_ABI;
