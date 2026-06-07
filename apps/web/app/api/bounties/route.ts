@@ -216,10 +216,8 @@ function matchesStatus(bounty: ChainBounty, status?: StatusFilter): boolean {
     case "cancelled":
       return bounty.status === BountyStatus.Cancelled;
     case "expired":
-      return (
-        bounty.status === BountyStatus.Expired ||
-        (bounty.status === BountyStatus.Open && bounty.deadline <= nowSeconds)
-      );
+      // No on-chain Expired state: an unresolved past-deadline bounty stays Open.
+      return bounty.status === BountyStatus.Open && bounty.deadline <= nowSeconds;
   }
 }
 
