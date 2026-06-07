@@ -177,6 +177,16 @@ export class NoSubmissionError extends ClaudelanceError {
   }
 }
 
+/** pickWinner/cancelExpired reverted: caller is not the bounty poster. */
+export class NotPosterError extends ClaudelanceError {
+  constructor(ctx?: ClaudelanceErrorContext) {
+    super(
+      `Caller is not the poster of bounty${ctx?.bountyId !== undefined ? ` #${ctx.bountyId}` : ''}`,
+      ctx,
+    );
+  }
+}
+
 // ─── Revert string → typed error mapping ─────────────────────────────────────
 
 const REVERT_MAP: Array<[RegExp, (ctx: ClaudelanceErrorContext) => ClaudelanceError]> = [
@@ -192,6 +202,7 @@ const REVERT_MAP: Array<[RegExp, (ctx: ClaudelanceErrorContext) => ClaudelanceEr
   [/AlreadySubmitted/i,     (c) => new AlreadySubmittedError(c)],
   [/NoSubmission/i,         (c) => new NoSubmissionError(c)],
   [/NotClaimer/i,           (c) => new NotClaimerError(c)],
+  [/NotPoster/i,            (c) => new NotPosterError(c)],
   [/WinnerInvalid/i,        (c) => new WinnerInvalidError(c)],
 ];
 
