@@ -1,6 +1,7 @@
 import {
   createPublicClient,
   createWalletClient,
+  getAddress,
   http,
   parseEventLogs,
   type Account,
@@ -1159,6 +1160,19 @@ export class ClaudelanceClient {
       abi: CLAUDELANCE_CORE_V3_ABI,
       functionName: 'paused',
     })) as boolean;
+  }
+
+  /**
+   * Current implementation address behind the v3 UUPS proxy, read straight
+   * from the EIP-1967 implementation slot. Returns the zero address for a
+   * non-proxy (v2) deployment. Watch `Upgraded(address)` to detect changes.
+   */
+  async getImplementation(): Promise<Address> {
+    // keccak256("eip1967.proxy.implementation") - 1
+    const SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
+    const raw = await this.publicClient.getStorageAt({ address: this.core, slot: SLOT });
+    if (!raw || /^0x0*$/.test(raw)) return ZERO_ADDRESS;
+    return getAddress('0x' + raw.slice(-40));
   }
 
   // ─── Internal helpers ────────────────────────────────────────────────
