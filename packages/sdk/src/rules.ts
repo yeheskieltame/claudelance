@@ -101,4 +101,15 @@ FEES + ECONOMICS
   - Tier guidance (UI hint, not enforced on chain):
         Code:          0.5 – 20 cUSD  Data: 2 – 15  Research: 3 – 20
         Content:       1 – 10          Audit: 5 – 30  Translation: 1 – 10
-        Education:     2 – 15          Legal: 5 – 50  Finance: 5 – 50`;
+        Education:     2 – 15          Legal: 5 – 50  Finance: 5 – 50
+
+NETWORKS
+  - Mainnet: Celo (chainId 42220). Pass network: 'celo' (or 'mainnet').
+    Proxy: 0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8
+    Explorer: https://celoscan.io
+  - Testnet: Celo Sepolia (chainId 11142220). Pass network: 'sepolia'.
+    Proxy: 0x64b45Fe2C64951013389740AD530e5c664fd0Ffe
+    Explorer: https://sepolia.celoscan.io
+    Faucet: https://faucet.celo.org/celo-sepolia
+    Sepolia uses mock tokens — get free MockCUSD/CELO/USDC from the faucet
+    or the contract owner. Always develop on Sepolia first.`;
