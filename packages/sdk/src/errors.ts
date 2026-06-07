@@ -147,10 +147,63 @@ export class WinnerInvalidError extends ClaudelanceError {
   }
 }
 
+/** claimSlot reverted: every slot on this bounty is already taken. */
+export class SlotsFullError extends ClaudelanceError {
+  constructor(ctx?: ClaudelanceErrorContext) {
+    super(
+      `All slots are full on bounty${ctx?.bountyId !== undefined ? ` #${ctx.bountyId}` : ''}`,
+      ctx,
+    );
+  }
+}
+
+/** submit/settleStake reverted: caller never claimed a slot on this bounty. */
+export class NotClaimerError extends ClaudelanceError {
+  constructor(ctx?: ClaudelanceErrorContext) {
+    super(
+      `Caller has not claimed a slot on bounty${ctx?.bountyId !== undefined ? ` #${ctx.bountyId}` : ''}`,
+      ctx,
+    );
+  }
+}
+
+/** pickWinner reverted: the chosen worker has no submission. */
+export class NoSubmissionError extends ClaudelanceError {
+  constructor(ctx?: ClaudelanceErrorContext) {
+    super(
+      `No submission from the chosen worker on bounty${ctx?.bountyId !== undefined ? ` #${ctx.bountyId}` : ''}`,
+      ctx,
+    );
+  }
+}
+
+/** pickWinner/cancelExpired reverted: caller is not the bounty poster. */
+export class NotPosterError extends ClaudelanceError {
+  constructor(ctx?: ClaudelanceErrorContext) {
+    super(
+      `Caller is not the poster of bounty${ctx?.bountyId !== undefined ? ` #${ctx.bountyId}` : ''}`,
+      ctx,
+    );
+  }
+}
+
+/**
+ * A state-changing call reverted because the contract is paused (OZ Pausable,
+ * `EnforcedPause`). Only `withdrawEarnings` stays callable while paused.
+ * Check {@link ClaudelanceClient.isPaused} before broadcasting.
+ */
+export class ContractPausedError extends ClaudelanceError {
+  constructor(ctx?: ClaudelanceErrorContext) {
+    super('Contract is paused — only withdrawEarnings is callable', ctx);
+  }
+}
+
 // ─── Revert string → typed error mapping ─────────────────────────────────────
 
 const REVERT_MAP: Array<[RegExp, (ctx: ClaudelanceErrorContext) => ClaudelanceError]> = [
+  [/EnforcedPause/i,        (c) => new ContractPausedError(c)],
   [/AlreadyClaimed/i,       (c) => new AlreadyClaimedError(c)],
+  [/SlotsFull/i,            (c) => new SlotsFullError(c)],
   [/NotTargetedWorker/i,    (c) => new NotTargetWorkerError(c)],
   [/NoAgentIdentity/i,      (c) => new NoAgentIdentityError(c)],
   [/NothingToWithdraw/i,    (c) => new NothingToWithdrawError(c)],
@@ -159,6 +212,9 @@ const REVERT_MAP: Array<[RegExp, (ctx: ClaudelanceErrorContext) => ClaudelanceEr
   [/TaskTypeNotEnabled/i,   (c) => new TaskTypeNotEnabledError(-1, c)],
   [/TokenNotAllowed/i,      (c) => new TokenNotAllowedError('unknown', c)],
   [/AlreadySubmitted/i,     (c) => new AlreadySubmittedError(c)],
+  [/NoSubmission/i,         (c) => new NoSubmissionError(c)],
+  [/NotClaimer/i,           (c) => new NotClaimerError(c)],
+  [/NotPoster/i,            (c) => new NotPosterError(c)],
   [/WinnerInvalid/i,        (c) => new WinnerInvalidError(c)],
 ];
 
