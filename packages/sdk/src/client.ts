@@ -201,16 +201,22 @@ export class ClaudelanceClient {
    *
    * On Celo, CELO is simultaneously the native gas token and the ERC20 used
    * for bounty escrow. EIP-1559 reserves `gasLimit × maxFeePerGas` from the
-   * native balance before the tx body runs. When that reserve is large and
-   * the wallet balance is tight, `transferFrom` fails even if the nominal
-   * balance exceeds the transfer amount ("transfer value exceeded balance of
-   * sender"). Using a legacy type-0 tx with a low explicit gasPrice and a
-   * conservative gasLimit eliminates this trap.
+   * native balance before the tx body runs, so a CELO escrow `transferFrom`
+   * can fail even when the balance covers the transfer. A legacy type-0 tx
+   * with an explicit gasPrice avoids that trap.
+   *
+   * The price is read live (not hardcoded): Celo's base fee floats and has
+   * risen well past old fixed values, which made writes revert with
+   * "gas fee cap is below the minimum base fee". 2x the current price is the
+   * legacy cap — on an EIP-1559 chain the sender is still only charged the
+   * actual base fee + tip, so the headroom is free insurance against the base
+   * fee moving between read and broadcast.
    */
-  private celoGas() {
+  private async celoGas() {
+    const gasPrice = await this.publicClient.getGasPrice();
     return {
-      gasPrice: 5_000_000_000n, // 5 gwei — well above Celo minimum (~0.5 gwei)
-      gas: 500_000n,            // covers all Claudelance write ops with headroom
+      gasPrice: gasPrice * 2n,
+      gas: 500_000n, // covers all Claudelance write ops with headroom
     } as const;
   }
 
@@ -653,7 +659,7 @@ export class ClaudelanceClient {
       args: [bountyId],
       account: wallet.account,
       chain: wallet.chain,
-      ...this.celoGas(),
+      ...(await this.celoGas()),
     });
   }
 
@@ -724,7 +730,7 @@ export class ClaudelanceClient {
       args: [token],
       account: wallet.account,
       chain: wallet.chain,
-      ...this.celoGas(),
+      ...(await this.celoGas()),
     });
   }
 
@@ -918,7 +924,7 @@ export class ClaudelanceClient {
       ],
       account: wallet.account,
       chain: wallet.chain,
-      ...this.celoGas(),
+      ...(await this.celoGas()),
     });
   }
 
@@ -960,7 +966,7 @@ export class ClaudelanceClient {
       ],
       account: wallet.account,
       chain: wallet.chain,
-      ...this.celoGas(),
+      ...(await this.celoGas()),
     });
   }
 
@@ -1201,7 +1207,7 @@ export class ClaudelanceClient {
       args: [this.core, needed * 10n],
       account: wallet.account,
       chain: wallet.chain,
-      ...this.celoGas(),
+      ...(await this.celoGas()),
     });
     await this.publicClient.waitForTransactionReceipt({ hash });
   }
