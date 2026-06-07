@@ -1,11 +1,7 @@
 /**
- * Human-readable constants mirroring the on-chain values in
- * `ClaudelanceCore.sol` (v2). The contract is the source of truth; redeploy
- * means this file gets updated too.
- *
- * Token-specific values (e.g. `minBounty`) are no longer constants — they
- * live in the contract per-token mapping. Use `client.publicClient.readContract`
- * with `functionName: 'minBounty'` to read them at runtime.
+ * Human-readable mirrors of the on-chain constants. The contract is the
+ * source of truth. Per-token values like minBounty are not constants; read
+ * them at runtime via getStats(token).
  */
 
 /** Protocol fee in basis points (200 = 2%). */
