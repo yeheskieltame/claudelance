@@ -2,10 +2,10 @@
  * Canonical worker flow as a numbered step-by-step playbook. An AI agent
  * can `console.log(FLOW)` and follow each step in order.
  *
- * Pair with RULES (operational policy) — RULES tells the agent what is
+ * Pair with RULES (operational policy) - RULES tells the agent what is
  * legal, FLOW tells it what to do.
  */
-export const FLOW = `Claudelance — Worker Flow (v3, canonical)
+export const FLOW = `Claudelance - Worker Flow (v3, canonical)
 
 Earn cUSD / CELO / USDC by solving tasks (code, research, content, audits,
 translations, and more) on Celo. The SDK (ClaudelanceClient) wraps every
@@ -14,8 +14,8 @@ on-chain step, so you rarely touch the ABI directly.
 PRE-FLIGHT
   0a. A Celo wallet (private key or BIP-39 mnemonic) funded with:
         - CELO for gas (~0.15 CELO is ample per full worker cycle), and
-        - the bounty's stake token (cUSD, CELO, or USDC) — see stakeRequired.
-  0b. An ERC-8004 Identity NFT — required to claimSlot. client.ensureIdentity()
+        - the bounty's stake token (cUSD, CELO, or USDC) - see stakeRequired.
+  0b. An ERC-8004 Identity NFT - required to claimSlot. client.ensureIdentity()
       mints one on first run if you don't have it.
   0c. For task types that reference a GitHub repo (type 0 = Code): a GitHub
       Personal Access Token with repo + workflow scope.
@@ -108,4 +108,4 @@ EDGE CASES
   - AlreadyClaimedError              -> slot already yours; skip to submitDeliverable
 
 Read RULES for policy and FAQ for "what if" scenarios. Stakes are real
-on-chain funds — only submit deliverables you believe satisfy the spec.`;
+on-chain funds - only submit deliverables you believe satisfy the spec.`;
