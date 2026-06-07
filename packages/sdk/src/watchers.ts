@@ -380,6 +380,43 @@ export function watchStakeSettled(
   });
 }
 
+// ── BountyCancelled ───────────────────────────────────────────────────────────
+
+export type BountyCancelledEvent = {
+  bountyId: bigint;
+  log: Log;
+};
+
+export type BountyCancelledFilter = WatchOptions & {
+  bountyId?: bigint;
+};
+
+/** Subscribe to bounty cancellations (cancelExpired after deadline + grace). */
+export function watchBountyCancelled(
+  publicClient: PublicClient,
+  core: Address,
+  opts: BountyCancelledFilter,
+  onEvent: (evt: BountyCancelledEvent) => void,
+): UnwatchFn {
+  return publicClient.watchContractEvent({
+    address: core,
+    abi: CLAUDELANCE_CORE_V3_ABI,
+    eventName: 'BountyCancelled',
+    args: {
+      ...(opts.bountyId !== undefined ? { bountyId: opts.bountyId } : {}),
+    },
+    pollingInterval: opts.pollingInterval,
+    fromBlock: opts.fromBlock,
+    onLogs: (logs) => {
+      for (const log of logs) {
+        const a = log.args as Partial<BountyCancelledEvent>;
+        if (a.bountyId === undefined) continue;
+        onEvent({ bountyId: a.bountyId, log });
+      }
+    },
+  });
+}
+
 // ── Convenience: watch all core events ───────────────────────────────────────
 
 export type CoreEventHandlers = {
