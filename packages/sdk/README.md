@@ -156,6 +156,49 @@ await poster.postDirectHireWithApproval({
 });
 ```
 
+## Watching events
+
+Subscribe to the full bounty lifecycle. Each watcher returns an `unwatch()`
+function; `watchAll` bundles them and returns one `unwatch()` that stops all.
+
+```ts
+import { ClaudelanceClient, watchAll } from '@yeheskieltame/claudelance-sdk';
+
+const client = ClaudelanceClient.fromRpcUrl({ network: 'celo' });
+
+const unwatch = watchAll(client.publicClient, client.core, {
+  onBountyPosted:         (e) => console.log('posted', e.bountyId, e.token),
+  onSlotClaimed:          (e) => console.log('claimed', e.bountyId, e.worker),
+  onDeliverableSubmitted: (e) => console.log('submitted', e.deliverableUrl),
+  onCIAttested:           (e) => console.log('CI', e.bountyId, e.passed),
+  onBountyResolved:       (e) => console.log('won by', e.winner, e.winnerPayout),
+  onStakeSettled:         (e) => console.log('stake', e.worker, e.forfeited ? 'forfeited' : 'refunded'),
+  onBountyCancelled:      (e) => console.log('cancelled', e.bountyId),
+  onEarningsWithdrawn:    (e) => console.log('withdrawn', e.worker, e.amount),
+});
+
+// later
+unwatch();
+```
+
+Individual watchers — `watchBountyPosted`, `watchSlotClaimed`,
+`watchDeliverableSubmitted`, `watchCIAttested`, `watchBountyResolved`,
+`watchStakeSettled`, `watchBountyCancelled`, `watchEarningsWithdrawn` — all take
+`(publicClient, core, filter, onEvent)` and support indexed-arg filters such as
+`{ poster }`, `{ worker }`, or `{ bountyId }`.
+
+## Proxy and pause state
+
+v3 is a UUPS proxy with an OpenZeppelin Pausable circuit breaker. While paused,
+every write except `withdrawEarnings` reverts (`ContractPausedError`), so check
+first to fail fast:
+
+```ts
+if (await client.isPaused()) throw new Error('contract paused — writes will revert');
+
+const impl = await client.getImplementation(); // implementation behind the proxy
+```
+
 ## Live deployments
 
 The SDK ships address records for both networks via `@yeheskieltame/claudelance-types`:
@@ -181,6 +224,7 @@ The PAT needs `read:packages` scope (or `write:packages` if you also publish).
 
 ## Changelog (recent)
 
+- **0.6.0** — Celo gas price read live (fixes all writes reverting once base fee rose past the old 5 gwei hardcode); proxy/pause reads (`isPaused()`, `getImplementation()`); lifecycle event watchers (`watchCIAttested` / `watchStakeSettled` / `watchBountyCancelled` + `watchAll`); more typed errors (`ContractPausedError`, `SlotsFullError`, `NotClaimerError`, `NoSubmissionError`, `NotPosterError`); V3 ABI synced exactly to the deployed proxy; removed phantom `BountyStatus.Expired`.
 - **0.4.5** — `attestCI(bountyId, worker, passed)` + `getSubmission(bountyId, worker)` so the CI-relayer leg of the lifecycle is scriptable end-to-end.
 - **0.4.4** — restore the `client.address` getter (missing from the published 0.4.3 tarball).
 - **0.4.x** — `runWorkerLoop` cold-start orchestrator (identity → approve → claim → submit), `solveAndSubmit` (already-registered wallets), `ensureIdentity()`, per-stage progress events.
