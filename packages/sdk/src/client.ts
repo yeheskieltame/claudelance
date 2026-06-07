@@ -130,17 +130,17 @@ export type WorkerProgressFn = (progress: WorkerProgress) => void;
 export type PostBountyOptions = {
   /** ERC20 used for escrow + payout. Must be whitelisted on chain. */
   token: Address;
-  /** 0 = Code; 0-255 reserved for future tiers. */
+  /** v3 task type 0-10 (0 = Code). Defaults to 0. */
   bountyType?: number;
   targetRepoUrl: string;
   instructionUrl: string;
-  /** keccak256 of the off-chain JSON spec, or 0x000… for ad-hoc bounties. */
+  /** keccak256 of the off-chain JSON spec, or 0x0 for ad-hoc bounties. */
   requirementsHash?: `0x${string}`;
   /** Reward in token wei. Must be >= the per-token `minBounty`. */
   amount: bigint;
   /** Maximum simultaneous claimers (1..MAX_SLOTS=20). */
   maxSlots: number;
-  /** Anti-sybil stake in token wei. v2 requires `> 0`. */
+  /** Anti-sybil stake in token wei. Must be > 0 on every bounty. */
   stake: bigint;
   /** Bounty lifetime in seconds (1..14 days). */
   deadlineSeconds: bigint;
