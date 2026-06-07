@@ -2290,7 +2290,41 @@ export const CLAUDELANCE_CORE_V3_ABI = [
     "anonymous": false
   },
   { "type": "error", "name": "EnforcedPause", "inputs": [] },
-  { "type": "error", "name": "ExpectedPause", "inputs": [] }
+  { "type": "error", "name": "ExpectedPause", "inputs": [] },
+  {
+    "type": "event",
+    "name": "Upgraded",
+    "inputs": [
+      { "name": "implementation", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "function",
+    "name": "proxiableUUID",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "UPGRADE_INTERFACE_VERSION",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "string", "internalType": "string" }
+    ],
+    "stateMutability": "view"
+  },
+  { "type": "error", "name": "ERC1967InvalidImplementation", "inputs": [ { "name": "implementation", "type": "address", "internalType": "address" } ] },
+  { "type": "error", "name": "ERC1967NonPayable", "inputs": [] },
+  { "type": "error", "name": "UUPSUnauthorizedCallContext", "inputs": [] },
+  { "type": "error", "name": "UUPSUnsupportedProxiableUUID", "inputs": [ { "name": "slot", "type": "bytes32", "internalType": "bytes32" } ] },
+  { "type": "error", "name": "FailedInnerCall", "inputs": [] },
+  { "type": "error", "name": "AddressEmptyCode", "inputs": [ { "name": "target", "type": "address", "internalType": "address" } ] },
+  { "type": "error", "name": "AddressInsufficientBalance", "inputs": [ { "name": "account", "type": "address", "internalType": "address" } ] },
+  { "type": "error", "name": "SafeERC20FailedOperation", "inputs": [ { "name": "token", "type": "address", "internalType": "address" } ] }
 ] as const;
 
 export type ClaudelanceCoreV3Abi = typeof CLAUDELANCE_CORE_V3_ABI;
