@@ -202,7 +202,7 @@ export class ClaudelanceClient {
    * Supported networks: `'sepolia'` (Celo Sepolia) and `'celo'` (Celo Mainnet).
    */
   static fromPrivateKey(opts: FromPrivateKeyOptions): ClaudelanceClient {
-    const deployment: Deployment = opts.network === 'celo' ? MAINNET : SEPOLIA;
+    const deployment: Deployment = (opts.network === 'celo' || opts.network === 'mainnet') ? MAINNET : SEPOLIA;
     const chain = chainForNetwork(opts.network);
     const account = privateKeyToAccount(opts.privateKey);
     const transport = http(opts.rpcUrl);
@@ -237,7 +237,7 @@ export class ClaudelanceClient {
    * Write methods throw `[ClaudelanceClient] Write methods require a wallet client`.
    */
   static fromRpcUrl(opts: { rpcUrl?: string; network: NetworkKey }): ClaudelanceClient {
-    const deployment: Deployment = opts.network === 'celo' ? MAINNET : SEPOLIA;
+    const deployment: Deployment = (opts.network === 'celo' || opts.network === 'mainnet') ? MAINNET : SEPOLIA;
     const chain = chainForNetwork(opts.network);
     const transport = http(opts.rpcUrl);
     const publicClient = createPublicClient({ chain, transport });
@@ -252,7 +252,7 @@ export class ClaudelanceClient {
   }
 
   static fromMnemonic(opts: FromMnemonicOptions): ClaudelanceClient {
-    const deployment: Deployment = opts.network === 'celo' ? MAINNET : SEPOLIA;
+    const deployment: Deployment = (opts.network === 'celo' || opts.network === 'mainnet') ? MAINNET : SEPOLIA;
     const chain = chainForNetwork(opts.network);
     const account = mnemonicToAccount(opts.mnemonic, {
       path: opts.derivationPath ?? "m/44'/60'/0'/0/0",
