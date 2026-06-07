@@ -2,11 +2,11 @@
  * Real-time event subscriptions for ClaudelanceCoreV3.
  *
  * Each watcher uses viem's `watchContractEvent` under the hood and returns
- * an `unwatch` function that stops the subscription when called — same
+ * an `unwatch` function that stops the subscription when called - same
  * pattern as viem's own watch helpers.
  *
  * Works in both Node.js (polling) and browser (WebSocket if supported).
- * No extra dependencies — only viem (already a peer dependency).
+ * No extra dependencies - only viem (already a peer dependency).
  *
  * Usage:
  *   const unwatch = watchBountyPosted(client, {}, (evt) => console.log(evt))
@@ -21,7 +21,7 @@ import {
 } from 'viem';
 import { CLAUDELANCE_CORE_V3_ABI } from '@yeheskieltame/claudelance-types';
 
-// ── Shared types ─────────────────────────────────────────────────────────────
+// Shared types
 
 export type WatchOptions = {
   /** Override the default polling interval (ms). Only used in polling mode. */
@@ -32,7 +32,7 @@ export type WatchOptions = {
 
 export type UnwatchFn = () => void;
 
-// ── BountyPosted ──────────────────────────────────────────────────────────────
+// BountyPosted
 
 export type BountyPostedEvent = {
   bountyId: bigint;
@@ -94,7 +94,7 @@ export function watchBountyPosted(
   });
 }
 
-// ── DeliverableSubmitted ──────────────────────────────────────────────────────
+// DeliverableSubmitted
 
 export type DeliverableSubmittedEvent = {
   bountyId: bigint;
@@ -145,7 +145,7 @@ export function watchDeliverableSubmitted(
   });
 }
 
-// ── BountyResolved ────────────────────────────────────────────────────────────
+// BountyResolved
 
 export type BountyResolvedEvent = {
   bountyId: bigint;
@@ -200,7 +200,7 @@ export function watchBountyResolved(
   });
 }
 
-// ── SlotClaimed ───────────────────────────────────────────────────────────────
+// SlotClaimed
 
 export type SlotClaimedEvent = {
   bountyId: bigint;
@@ -240,7 +240,7 @@ export function watchSlotClaimed(
   });
 }
 
-// ── EarningsWithdrawn ─────────────────────────────────────────────────────────
+// EarningsWithdrawn
 
 export type EarningsWithdrawnEvent = {
   worker: Address;
@@ -285,7 +285,7 @@ export function watchEarningsWithdrawn(
   });
 }
 
-// ── CIAttested ────────────────────────────────────────────────────────────────
+// CIAttested
 
 export type CIAttestedEvent = {
   bountyId: bigint;
@@ -329,7 +329,7 @@ export function watchCIAttested(
   });
 }
 
-// ── StakeSettled ──────────────────────────────────────────────────────────────
+// StakeSettled
 
 export type StakeSettledEvent = {
   bountyId: bigint;
@@ -380,7 +380,7 @@ export function watchStakeSettled(
   });
 }
 
-// ── BountyCancelled ───────────────────────────────────────────────────────────
+// BountyCancelled
 
 export type BountyCancelledEvent = {
   bountyId: bigint;
@@ -417,7 +417,7 @@ export function watchBountyCancelled(
   });
 }
 
-// ── Convenience: watch all core events ───────────────────────────────────────
+// Convenience: watch all core events
 
 export type CoreEventHandlers = {
   onBountyPosted?: (evt: BountyPostedEvent) => void;
