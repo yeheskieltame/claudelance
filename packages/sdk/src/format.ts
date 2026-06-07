@@ -60,7 +60,7 @@ export function formatBountySummary(
   opts: { tokenSymbol?: string; tokenDecimals?: number } = {}
 ): string {
   const { tokenSymbol = 'token', tokenDecimals = 18 } = opts;
-  const statusLabel = ['OPEN', 'RESOLVED', 'CANCELLED', 'EXPIRED'][bounty.status] ?? '?';
+  const statusLabel = ['OPEN', 'RESOLVED', 'CANCELLED'][bounty.status] ?? '?';
   const remaining = timeRemaining(bounty);
   const days = Math.max(0, Math.floor(remaining / 86_400));
   const hours = Math.max(0, Math.floor((remaining % 86_400) / 3600));
