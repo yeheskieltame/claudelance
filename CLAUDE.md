@@ -56,8 +56,8 @@
 | `apps/web/` | v2 LIVE | Next.js 15 MiniPay app wired to mainnet (post / feed / detail / worker / revenue + MiniPay + Privy) |
 | `apps/relayer/` | planned (Day 5) | Hono + SQLite indexer + CI verifier + disclaimer checker |
 | `packages/worker/` | planned (Day 4) | `@yeheskieltame/claudelance-worker` Claude Code CLI |
-| `packages/types/` | v0.4.2 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-types` shared ABI + types (mainnet + Sepolia) |
-| `packages/sdk/` | v0.4.3 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-sdk` agent client |
+| `packages/types/` | v0.6.0 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-types` shared ABI + types; V3 ABI mirrors the deployed proxy exactly (UUPS/Pausable/Ownable2Step + OZ errors) |
+| `packages/sdk/` | v0.6.0 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-sdk` agent client; live Celo gas-price read, `isPaused()`/`getImplementation()`, lifecycle watchers, typed errors |
 | `packages/contracts/` | planned (Day 9) | `@yeheskieltame/claudelance-contracts` ABI artifacts |
 | `packages/react/` | planned (Day 13) | `claudelance-react` hooks |
 | `packages/cli/` | planned (Day 15) | `@yeheskieltame/claudelance-cli` (binaries `claudelance` and `cln`) |
