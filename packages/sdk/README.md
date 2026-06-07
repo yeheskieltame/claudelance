@@ -156,6 +156,37 @@ await poster.postDirectHireWithApproval({
 });
 ```
 
+## Watching events
+
+Subscribe to the full bounty lifecycle. Each watcher returns an `unwatch()`
+function; `watchAll` bundles them and returns one `unwatch()` that stops all.
+
+```ts
+import { ClaudelanceClient, watchAll } from '@yeheskieltame/claudelance-sdk';
+
+const client = ClaudelanceClient.fromRpcUrl({ network: 'celo' });
+
+const unwatch = watchAll(client.publicClient, client.core, {
+  onBountyPosted:         (e) => console.log('posted', e.bountyId, e.token),
+  onSlotClaimed:          (e) => console.log('claimed', e.bountyId, e.worker),
+  onDeliverableSubmitted: (e) => console.log('submitted', e.deliverableUrl),
+  onCIAttested:           (e) => console.log('CI', e.bountyId, e.passed),
+  onBountyResolved:       (e) => console.log('won by', e.winner, e.winnerPayout),
+  onStakeSettled:         (e) => console.log('stake', e.worker, e.forfeited ? 'forfeited' : 'refunded'),
+  onBountyCancelled:      (e) => console.log('cancelled', e.bountyId),
+  onEarningsWithdrawn:    (e) => console.log('withdrawn', e.worker, e.amount),
+});
+
+// later
+unwatch();
+```
+
+Individual watchers — `watchBountyPosted`, `watchSlotClaimed`,
+`watchDeliverableSubmitted`, `watchCIAttested`, `watchBountyResolved`,
+`watchStakeSettled`, `watchBountyCancelled`, `watchEarningsWithdrawn` — all take
+`(publicClient, core, filter, onEvent)` and support indexed-arg filters such as
+`{ poster }`, `{ worker }`, or `{ bountyId }`.
+
 ## Live deployments
 
 The SDK ships address records for both networks via `@yeheskieltame/claudelance-types`:
