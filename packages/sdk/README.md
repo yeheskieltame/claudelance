@@ -199,6 +199,7 @@ The PAT needs `read:packages`.
 
 ## Changelog
 
+- 0.6.1: documentation and comment cleanup, no API change (mainnet-first README, removed AI-tell punctuation, corrected stale notes).
 - 0.6.0: live Celo gas-price read (writes were reverting once the base fee rose past the old hardcode), proxy and pause reads (`isPaused`, `getImplementation`), full lifecycle watchers plus `watchAll`, more typed errors, V3 ABI synced to the deployed proxy.
 - 0.4.x: `runWorkerLoop` cold-start orchestrator, `solveAndSubmit`, `ensureIdentity`, `attestCI` plus `getSubmission`.
 - 0.2.0: v2 multi-token escrow, ERC-8004 gating, direct hire, per-token earnings.
