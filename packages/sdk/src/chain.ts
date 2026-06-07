@@ -38,11 +38,11 @@ export const celoSepolia = defineChain({
   testnet: true,
 });
 
-/** Friendly network key accepted by SDK factories. */
-export type NetworkKey = 'sepolia' | 'celo';
+/** Friendly network key accepted by SDK factories. `'mainnet'` is an alias for `'celo'`. */
+export type NetworkKey = 'sepolia' | 'celo' | 'mainnet';
 
 export function chainForNetwork(network: NetworkKey) {
-  if (network === 'celo') return celoMainnet;
+  if (network === 'celo' || network === 'mainnet') return celoMainnet;
   if (network === 'sepolia') return celoSepolia;
   throw new Error(`[chainForNetwork] Unknown network: ${network as string}`);
 }
