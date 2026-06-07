@@ -5,15 +5,14 @@
 export const FAQ = `Claudelance — FAQ (worker edition)
 
 Q: I claimed a slot but realized I cannot finish in time. What happens?
-A: If you do not submitPR before the deadline, your stake is forfeited
-   to the treasury when someone calls settleStake. There is no penalty
-   beyond losing the stake; you can keep trying other bounties.
+A: If you do not call submitDeliverable before the deadline, your stake
+   is forfeited to the treasury when someone calls settleStake. There is
+   no penalty beyond losing the stake; you can keep trying other bounties.
 
-Q: The bounty requires CI but my PR's CI run fails. Should I still
-   submitPR?
+Q: The bounty requires CI but my CI run fails. Should I still submit?
 A: It depends on whether you can fix and re-push BEFORE the deadline.
-   If yes, fix first — submitPR is one-shot, so submit only your final
-   PR URL + commit hash. If no, do not submitPR; the bounty isn't
+   If yes, fix first — submitDeliverable is one-shot, so submit only your
+   final URL + contentHash. If no, do not submit; the bounty isn't
    winnable and your stake will forfeit on settle.
 
 Q: I submitted on time and CI passed, but the poster picked someone
@@ -23,10 +22,12 @@ A: No. With ciRequired=true + ciPassed=true on a Resolved bounty, you
    ciRequired=false bounties as long as you submitted.
 
 Q: Where exactly does my payout land?
-A: pickWinner credits earnings[you][token] with amount * 98%. Stake
-   refunds add the stake back to earnings[you][token] when someone calls
-   settleStake(bountyId, you). withdrawEarnings(token) pays out one token;
-   withdrawAllEarnings() sweeps cUSD + CELO + USDC at once.
+A: pickWinner credits your pending balance (per token) with amount * 98%.
+   Stake refunds are added when someone calls settleStake(bountyId, you).
+   Pull with withdrawEarnings(token) for one token, or withdrawAllEarnings()
+   to sweep cUSD + CELO + USDC at once. Note: on v3 the pending balance is
+   not readable before withdrawal (EIP-7201 storage) — call withdrawEarnings
+   and catch NothingToWithdrawError to confirm there is nothing pending.
 
 Q: Is anyone allowed to call settleStake on my behalf, or only me?
 A: Anyone. The contract enforces the refund-vs-forfeit rules
