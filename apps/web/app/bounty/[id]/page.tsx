@@ -103,7 +103,7 @@ function BountyHeader({ bounty }: { bounty: BountyJson }) {
       ? "Resolved"
       : bounty.status === 2
         ? "Cancelled"
-        : bounty.status === 3 || (bounty.status === 0 && isPastDeadline)
+        : bounty.status === 0 && isPastDeadline
           ? "Expired"
           : "Open";
   const statusColor =
