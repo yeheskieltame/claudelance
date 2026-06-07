@@ -29,6 +29,7 @@ import { chainForNetwork, type NetworkKey } from './chain.js';
 import { CUSD_ABI } from './cusd-abi.js';
 import {
   throwTyped,
+  parseContractError,
   AlreadyClaimedError,
   NothingToWithdrawError,
 } from './errors.js';
@@ -736,19 +737,33 @@ export class ClaudelanceClient {
 
   /**
    * Convenience: sweep earnings for every whitelisted token.
-   * On v3, the `earnings` mapping is not a public getter, so this attempts
-   * each `withdrawEarnings` and silently skips `NothingToWithdraw` reverts.
+   *
+   * v3 has no `earnings` getter, so each token is probed with a simulation
+   * first: tokens with nothing to withdraw revert `NothingToWithdraw` and are
+   * skipped (no gas burned on a guaranteed-revert tx). Real withdrawals are
+   * sent one at a time, awaiting each receipt before the next, so nonces
+   * advance cleanly. Firing all three back-to-back collides on nonce.
    */
   async withdrawAllEarnings(): Promise<Array<{ token: Address; hash: `0x${string}` }>> {
+    const wallet = this.requireWalletClient();
     const tokens: Address[] = [this.tokens.cUSD, this.tokens.CELO, this.tokens.USDC];
     const out: Array<{ token: Address; hash: `0x${string}` }> = [];
     for (const t of tokens) {
       try {
-        out.push({ token: t, hash: await this.withdrawEarnings(t) });
+        await this.publicClient.simulateContract({
+          address: this.core,
+          abi: CLAUDELANCE_CORE_V3_ABI,
+          functionName: 'withdrawEarnings',
+          args: [t],
+          account: wallet.account,
+        });
       } catch (err) {
-        if (err instanceof NothingToWithdrawError) continue;
+        if (parseContractError(err) instanceof NothingToWithdrawError) continue;
         throwTyped(err);
       }
+      const hash = await this.withdrawEarnings(t);
+      await this.publicClient.waitForTransactionReceipt({ hash });
+      out.push({ token: t, hash });
     }
     return out;
   }
