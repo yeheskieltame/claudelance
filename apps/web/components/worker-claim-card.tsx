@@ -32,9 +32,12 @@ export type ClaimRow = {
 export function WorkerClaimCard({
   pageAddress,
   claimable,
+  onClaimed,
 }: {
   pageAddress: string;
   claimable: ClaimRow[];
+  /** Called after a confirmed claim. Defaults to a router refresh (server-fed pages). */
+  onClaimed?: () => void;
 }) {
   const router = useRouter();
   const { address, isConnected } = useAccount();
@@ -49,8 +52,10 @@ export function WorkerClaimCard({
   });
   const { isSuccess: claimed } = useWaitForTransactionReceipt({ hash: txHash ?? undefined });
   React.useEffect(() => {
-    if (claimed) router.refresh();
-  }, [claimed, router]);
+    if (!claimed) return;
+    if (onClaimed) onClaimed();
+    else router.refresh();
+  }, [claimed, router, onClaimed]);
 
   const isOwner = isConnected && !!address && address.toLowerCase() === pageAddress.toLowerCase();
   if (!isOwner) return null;
