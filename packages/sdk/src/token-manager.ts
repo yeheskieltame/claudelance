@@ -75,17 +75,15 @@ const TOKEN_ALLOWED_ABI = [
 ] as const;
 
 /**
- * Batches all token reads into the fewest possible multicall round-trips.
+ * Batches all token reads into the fewest multicall round-trips.
  *
- * Why this exists (the RTK pattern applied to token reads):
- *   Without TokenManager: 9 separate RPC calls for 3 tokens × (balance, allowance, minBounty).
- *   With TokenManager: 1 multicall for balances + allowances (6 calls), minBounties are
- *   fetched from event logs once and cached with a long TTL (they change rarely).
+ * Without it: 9 RPC calls for 3 tokens (balance, allowance, minBounty each).
+ * With it: 1 multicall for balances + allowances (6 calls); minBounties come
+ * from a cached event-log scan, since they only change on admin action.
  *
  * Usage:
  *   const tm = new TokenManager({ publicClient, core, tokens })
  *   const state = await tm.getTokenState(walletAddress)
- *   // state.balances.cUSD, state.allowances.CELO, state.minBounties.USDC, etc.
  */
 export class TokenManager {
   readonly publicClient: PublicClient;
@@ -207,7 +205,7 @@ export class TokenManager {
    *   1. balances + allowances (1 multicall, 6 calls)
    *   2. minBounties (from cached event log scan, rarely needs a fresh fetch)
    *
-   * This replaces 9+ individual RPC calls with 1–2 batched calls.
+   * Replaces 9+ individual RPC calls with 1 to 2 batched calls.
    */
   async getTokenState(account: Address): Promise<TokenState> {
     const [balances, allowances, minBounties] = await Promise.all([
