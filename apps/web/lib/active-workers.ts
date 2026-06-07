@@ -16,7 +16,6 @@ const reputationAbi = parseAbi([
 ]);
 
 const coreAbi = [
-  { type: "function", name: "bountyCount", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" },
   {
     type: "function",
     name: "getBounty",
@@ -82,24 +81,33 @@ export async function fetchActiveWorkers(): Promise<ActiveWorker[]> {
   const deploy = getDeployment(celoMainnet.id);
   const core = deploy.core as Address;
 
-  const bountyCount = await client.readContract({
-    address: core,
-    abi: coreAbi,
-    functionName: "bountyCount",
-  });
-  if (bountyCount === 0n) return [];
+  // v3: bountyCount() is not a public getter (EIP-7201 storage).
+  // Scan in batches of 50 until a full batch returns all zero-address posters.
+  const BATCH = 50;
+  const MAX_SCAN = 5_000; // safe upper bound for the leaderboard scan
+  const bountyResults: Array<{ status: "success" | "failure"; result?: unknown }> = [];
+  let scanId = 1;
+  while (scanId <= MAX_SCAN) {
+    const batchIds = Array.from({ length: Math.min(BATCH, MAX_SCAN - scanId + 1) }, (_, i) => BigInt(scanId + i));
+    const batch = await client.multicall({
+      allowFailure: true,
+      contracts: batchIds.map((id) => ({
+        address: core, abi: coreAbi, functionName: "getBounty" as const, args: [id] as const,
+      })),
+    });
+    const hasAny = batch.some((r) => {
+      if (r.status !== "success") return false;
+      const b = r.result as { poster?: string };
+      return b?.poster && b.poster !== zeroAddress;
+    });
+    bountyResults.push(...batch);
+    scanId += batchIds.length;
+    if (!hasAny) break; // past last bounty
+  }
+  if (bountyResults.length === 0) return [];
 
-  // Bounty ids are 1-indexed (`bountyId = ++bountyCount`).
-  const ids = Array.from({ length: Number(bountyCount) }, (_, i) => BigInt(i + 1));
-  const bountyResults = await client.multicall({
-    allowFailure: true,
-    contracts: ids.map((id) => ({
-      address: core,
-      abi: coreAbi,
-      functionName: "getBounty" as const,
-      args: [id] as const,
-    })),
-  });
+  // Build bounty id array aligned to results (ids start at 1).
+  const ids = Array.from({ length: bountyResults.length }, (_, i) => BigInt(i + 1));
 
   const map = new Map<Address, { address: Address; wins: number; totalPayout: bigint; lastId: bigint }>();
   bountyResults.forEach((res, i) => {

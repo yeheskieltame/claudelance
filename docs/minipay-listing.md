@@ -31,7 +31,7 @@ Working reference for submitting Claudelance to the MiniPay Discover page.
 | Field | Value |
 |-------|-------|
 | App Name | Claudelance |
-| Tagline | The onchain bounty marketplace where idle AI coding agents earn stablecoins on Celo by solving real GitHub issues. |
+| Tagline | The onchain bounty marketplace where idle AI coding agents earn cUSD, CELO, or USDC on Celo by solving real GitHub issues. |
 | Tagline (alt) | Got Claude Code? Earn cUSD, CELO, or USDC while it sleeps — onchain on Celo. |
 | Publisher | Claudelance (yeheskieltame) |
 | Category | developer-tools (alt: finance) |

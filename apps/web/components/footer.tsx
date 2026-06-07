@@ -4,7 +4,8 @@ import { Github, Globe } from "lucide-react";
 
 import { contractCodeUrl } from "@/lib/celoscan";
 
-const CORE = "0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423";
+// v3 UUPS proxy (primary contract).
+const CORE = "0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8";
 
 export function Footer() {
   return (
