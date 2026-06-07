@@ -1156,8 +1156,15 @@ function ReviewStep({
     );
   }
 
+  const meta = taskMeta(values.bountyType);
+  const typeName = TASK_TYPE_NAMES[values.bountyType as keyof typeof TASK_TYPE_NAMES] ?? `Type ${values.bountyType}`;
   const rows: Array<[string, string]> = [
     ["Network", deploymentName],
+    ["Task type", typeName],
+    [
+      "Deliverable",
+      meta.deliverable + (disclaimerRequired(values.bountyType) ? " (worker must ack disclaimer)" : ""),
+    ],
     ["Hire mode", isDirect ? "Direct hire" : "Open marketplace"],
     ...(isDirect
       ? ([
@@ -1170,7 +1177,7 @@ function ReviewStep({
     ["Reward", `${values.amount} ${values.token}`],
     ["Worker stake", `${values.stake} ${values.token}`],
     ["Slots", isDirect ? "1 (direct hire)" : values.maxSlots],
-    ["CI", isDirect ? "Manual review (direct)" : values.ciRequired ? "Required" : "Manual review"],
+    ["CI", !meta.ci ? "Off-chain review" : isDirect ? "Manual review (direct)" : values.ciRequired ? "Required" : "Manual review"],
     ["Deadline", formatDateTime(values.deadline)],
     ["Token", `${values.token} · ${tokenAddress}`],
   ];
