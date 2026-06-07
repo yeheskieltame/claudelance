@@ -425,6 +425,9 @@ export type CoreEventHandlers = {
   onBountyResolved?: (evt: BountyResolvedEvent) => void;
   onSlotClaimed?: (evt: SlotClaimedEvent) => void;
   onEarningsWithdrawn?: (evt: EarningsWithdrawnEvent) => void;
+  onCIAttested?: (evt: CIAttestedEvent) => void;
+  onStakeSettled?: (evt: StakeSettledEvent) => void;
+  onBountyCancelled?: (evt: BountyCancelledEvent) => void;
 };
 
 /**
@@ -459,6 +462,15 @@ export function watchAll(
   }
   if (handlers.onEarningsWithdrawn) {
     unwatchers.push(watchEarningsWithdrawn(publicClient, core, opts, handlers.onEarningsWithdrawn));
+  }
+  if (handlers.onCIAttested) {
+    unwatchers.push(watchCIAttested(publicClient, core, opts, handlers.onCIAttested));
+  }
+  if (handlers.onStakeSettled) {
+    unwatchers.push(watchStakeSettled(publicClient, core, opts, handlers.onStakeSettled));
+  }
+  if (handlers.onBountyCancelled) {
+    unwatchers.push(watchBountyCancelled(publicClient, core, opts, handlers.onBountyCancelled));
   }
 
   return () => { for (const u of unwatchers) u(); };
