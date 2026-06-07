@@ -285,6 +285,138 @@ export function watchEarningsWithdrawn(
   });
 }
 
+// ── CIAttested ────────────────────────────────────────────────────────────────
+
+export type CIAttestedEvent = {
+  bountyId: bigint;
+  worker: Address;
+  passed: boolean;
+  log: Log;
+};
+
+export type CIAttestedFilter = WatchOptions & {
+  bountyId?: bigint;
+  worker?: Address;
+};
+
+/**
+ * Subscribe to CI attestations from the relayer. For a `ciRequired` bounty,
+ * `pickWinner` is only valid for a worker with `passed: true`.
+ */
+export function watchCIAttested(
+  publicClient: PublicClient,
+  core: Address,
+  opts: CIAttestedFilter,
+  onEvent: (evt: CIAttestedEvent) => void,
+): UnwatchFn {
+  return publicClient.watchContractEvent({
+    address: core,
+    abi: CLAUDELANCE_CORE_V3_ABI,
+    eventName: 'CIAttested',
+    args: {
+      ...(opts.bountyId !== undefined ? { bountyId: opts.bountyId } : {}),
+      ...(opts.worker ? { worker: opts.worker } : {}),
+    },
+    pollingInterval: opts.pollingInterval,
+    fromBlock: opts.fromBlock,
+    onLogs: (logs) => {
+      for (const log of logs) {
+        const a = log.args as Partial<CIAttestedEvent>;
+        if (a.bountyId === undefined) continue;
+        onEvent({ bountyId: a.bountyId, worker: a.worker ?? '0x', passed: a.passed ?? false, log });
+      }
+    },
+  });
+}
+
+// ── StakeSettled ──────────────────────────────────────────────────────────────
+
+export type StakeSettledEvent = {
+  bountyId: bigint;
+  worker: Address;
+  forfeited: boolean;
+  amount: bigint;
+  log: Log;
+};
+
+export type StakeSettledFilter = WatchOptions & {
+  bountyId?: bigint;
+  worker?: Address;
+};
+
+/**
+ * Subscribe to stake settlements. `forfeited: true` means the stake went to
+ * the treasury (bad-faith worker); otherwise it was credited back to the worker.
+ */
+export function watchStakeSettled(
+  publicClient: PublicClient,
+  core: Address,
+  opts: StakeSettledFilter,
+  onEvent: (evt: StakeSettledEvent) => void,
+): UnwatchFn {
+  return publicClient.watchContractEvent({
+    address: core,
+    abi: CLAUDELANCE_CORE_V3_ABI,
+    eventName: 'StakeSettled',
+    args: {
+      ...(opts.bountyId !== undefined ? { bountyId: opts.bountyId } : {}),
+      ...(opts.worker ? { worker: opts.worker } : {}),
+    },
+    pollingInterval: opts.pollingInterval,
+    fromBlock: opts.fromBlock,
+    onLogs: (logs) => {
+      for (const log of logs) {
+        const a = log.args as Partial<StakeSettledEvent>;
+        if (a.bountyId === undefined) continue;
+        onEvent({
+          bountyId: a.bountyId,
+          worker: a.worker ?? '0x',
+          forfeited: a.forfeited ?? false,
+          amount: a.amount ?? 0n,
+          log,
+        });
+      }
+    },
+  });
+}
+
+// ── BountyCancelled ───────────────────────────────────────────────────────────
+
+export type BountyCancelledEvent = {
+  bountyId: bigint;
+  log: Log;
+};
+
+export type BountyCancelledFilter = WatchOptions & {
+  bountyId?: bigint;
+};
+
+/** Subscribe to bounty cancellations (cancelExpired after deadline + grace). */
+export function watchBountyCancelled(
+  publicClient: PublicClient,
+  core: Address,
+  opts: BountyCancelledFilter,
+  onEvent: (evt: BountyCancelledEvent) => void,
+): UnwatchFn {
+  return publicClient.watchContractEvent({
+    address: core,
+    abi: CLAUDELANCE_CORE_V3_ABI,
+    eventName: 'BountyCancelled',
+    args: {
+      ...(opts.bountyId !== undefined ? { bountyId: opts.bountyId } : {}),
+    },
+    pollingInterval: opts.pollingInterval,
+    fromBlock: opts.fromBlock,
+    onLogs: (logs) => {
+      for (const log of logs) {
+        const a = log.args as Partial<BountyCancelledEvent>;
+        if (a.bountyId === undefined) continue;
+        onEvent({ bountyId: a.bountyId, log });
+      }
+    },
+  });
+}
+
 // ── Convenience: watch all core events ───────────────────────────────────────
 
 export type CoreEventHandlers = {
@@ -293,6 +425,9 @@ export type CoreEventHandlers = {
   onBountyResolved?: (evt: BountyResolvedEvent) => void;
   onSlotClaimed?: (evt: SlotClaimedEvent) => void;
   onEarningsWithdrawn?: (evt: EarningsWithdrawnEvent) => void;
+  onCIAttested?: (evt: CIAttestedEvent) => void;
+  onStakeSettled?: (evt: StakeSettledEvent) => void;
+  onBountyCancelled?: (evt: BountyCancelledEvent) => void;
 };
 
 /**
@@ -327,6 +462,15 @@ export function watchAll(
   }
   if (handlers.onEarningsWithdrawn) {
     unwatchers.push(watchEarningsWithdrawn(publicClient, core, opts, handlers.onEarningsWithdrawn));
+  }
+  if (handlers.onCIAttested) {
+    unwatchers.push(watchCIAttested(publicClient, core, opts, handlers.onCIAttested));
+  }
+  if (handlers.onStakeSettled) {
+    unwatchers.push(watchStakeSettled(publicClient, core, opts, handlers.onStakeSettled));
+  }
+  if (handlers.onBountyCancelled) {
+    unwatchers.push(watchBountyCancelled(publicClient, core, opts, handlers.onBountyCancelled));
   }
 
   return () => { for (const u of unwatchers) u(); };
