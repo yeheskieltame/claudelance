@@ -7,20 +7,32 @@ import {
   CLAUDELANCE_CORE_V3_ABI,
   MAINNET_V3,
   TASK_TYPE_NAMES,
+  TASK_TYPE_DISCLAIMER_REQUIRED,
 } from "@yeheskieltame/claudelance-types";
 import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   CheckCircle2,
   ClipboardCheck,
+  Code2,
   Coins,
   FileCode2,
-  GitPullRequest,
+  FileSearch,
+  GraduationCap,
+  Landmark,
+  Languages,
   Loader2,
+  Microscope,
+  PenLine,
+  Scale,
+  Shapes,
   ShieldCheck,
+  Sparkles,
   Users,
   Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import type { Address, Hash } from "viem";
 import { getAddress, isAddress, keccak256, parseUnits, toBytes } from "viem";
@@ -55,11 +67,49 @@ type HireMode = "open" | "direct";
 // Mirrors on-chain minBounty(token) on v3 mainnet proxy.
 const TOKEN_MIN: Record<TokenSymbol, string> = { cUSD: "0.5", CELO: "1", USDC: "0.5" };
 
-// Task type options from the v3 contract (types 0–10).
+// Task type options from the v3 contract (types 0-10).
 const TASK_TYPE_OPTIONS = Object.entries(TASK_TYPE_NAMES).map(([id, name]) => ({
   id: Number(id),
   name: name as string,
 }));
+
+type TaskMeta = {
+  icon: LucideIcon;
+  /** One-line role shown in the picker card. */
+  blurb: string;
+  /** Poster-facing deliverable format the worker will return. */
+  deliverable: string;
+  /** Does the on-chain CI gate apply to this type? Only Code + Code Audit. */
+  ci: boolean;
+  /** Label for the first URL field (repo for code, reference for the rest). */
+  repoLabel: string;
+  /** Is the first URL field mandatory? Only true code types need a repo. */
+  repoRequired: boolean;
+};
+
+// Per-type UI metadata. `disclaimerRequired` comes from the types package so the
+// contract stays the source of truth; everything else is presentation only.
+const TASK_META: Record<number, TaskMeta> = {
+  0:  { icon: Code2,         blurb: "Ship code via a GitHub PR",        deliverable: "GitHub Pull Request",                       ci: true,  repoLabel: "Repository URL",          repoRequired: true },
+  1:  { icon: BarChart3,     blurb: "Notebooks, datasets, insights",    deliverable: "Notebook + dataset (Gist or IPFS)",         ci: false, repoLabel: "Data source URL (optional)", repoRequired: false },
+  2:  { icon: Microscope,    blurb: "Investigate and write it up",      deliverable: "Report, Markdown or PDF (Gist/IPFS/Arweave)", ci: false, repoLabel: "Reference URL (optional)", repoRequired: false },
+  3:  { icon: PenLine,       blurb: "Articles, copy, media, video",     deliverable: "Draft or media link (Gist/IPFS/hosting URL)", ci: false, repoLabel: "Reference URL (optional)", repoRequired: false },
+  4:  { icon: FileSearch,    blurb: "Review and improve a document",    deliverable: "Reviewed doc (GitHub PR or Gist)",          ci: false, repoLabel: "Document or repo URL (optional)", repoRequired: false },
+  5:  { icon: ShieldCheck,   blurb: "Security review of a codebase",    deliverable: "Audit report (Gist or IPFS)",               ci: true,  repoLabel: "Repository URL",          repoRequired: true },
+  6:  { icon: Languages,     blurb: "Translate content across languages", deliverable: "Translated content (Gist or IPFS)",       ci: false, repoLabel: "Source content URL (optional)", repoRequired: false },
+  7:  { icon: GraduationCap, blurb: "Tutorials and course material",    deliverable: "Tutorial or course (Gist/IPFS/Arweave)",    ci: false, repoLabel: "Reference URL (optional)", repoRequired: false },
+  8:  { icon: Scale,         blurb: "Legal analysis (disclaimer)",      deliverable: "Legal analysis (Gist or IPFS)",             ci: false, repoLabel: "Case source URL (optional)", repoRequired: false },
+  9:  { icon: Landmark,      blurb: "Financial analysis (disclaimer)",  deliverable: "Financial analysis (Gist or IPFS)",         ci: false, repoLabel: "Data source URL (optional)", repoRequired: false },
+  10: { icon: Sparkles,      blurb: "Anything else, you define it",     deliverable: "Any verifiable URL per your spec",          ci: false, repoLabel: "Reference URL (optional)", repoRequired: false },
+};
+
+function taskMeta(type: number): TaskMeta {
+  return TASK_META[type] ?? TASK_META[10]!;
+}
+
+function disclaimerRequired(type: number): boolean {
+  return Boolean(TASK_TYPE_DISCLAIMER_REQUIRED[type as keyof typeof TASK_TYPE_DISCLAIMER_REQUIRED]);
+}
 
 type FormState = {
   hireMode: HireMode;
@@ -123,7 +173,7 @@ const erc20Abi = [
 
 const steps = [
   { id: 0, label: "Token", icon: Coins },
-  { id: 1, label: "Links", icon: GitPullRequest },
+  { id: 1, label: "Task", icon: Shapes },
   { id: 2, label: "Rules", icon: ShieldCheck },
   { id: 3, label: "Review", icon: ClipboardCheck },
 ] as const;
@@ -138,14 +188,29 @@ const tokenStepSchema = tokenStepObject.refine(
   (v) => ({ message: `Minimum bounty is ${TOKEN_MIN[v.token]} ${v.token}.`, path: ["amount"] }),
 );
 
-const linksStepSchema = z.object({
+const linksStepObject = z.object({
   bountyType: z.number().int().min(0).max(10),
-  // repoUrl = "Spec URL": for code bounties this should be a GitHub repo; for other
-  // types it can be any verifiable URL (Gist, IPFS, Arweave, GitHub repo, etc.).
-  repoUrl: z.string().url("Enter a valid URL for the target repo or spec location."),
-  // issueUrl = "Instruction URL": full spec / brief for the task.
-  issueUrl: z.string().url("Enter a valid instruction URL (GitHub issue, Gist, or any spec URL)."),
+  // repoUrl is the first URL field: a GitHub repo for code types, an optional
+  // reference link (data source, brief location) for everything else.
+  repoUrl: z.string(),
+  // issueUrl is the brief / full spec. Required for every task type.
+  issueUrl: z.string().url("Enter a valid brief or instruction URL (GitHub issue, Gist, or any spec URL)."),
 });
+
+// repoUrl is mandatory only for true code types (Code, Code Audit). For the rest
+// it is an optional reference link: blank, or a valid URL if provided.
+function refineRepoUrl(v: { bountyType: number; repoUrl: string }, ctx: z.RefinementCtx) {
+  const trimmed = v.repoUrl.trim();
+  if (taskMeta(v.bountyType).repoRequired) {
+    if (!isUrl(trimmed)) {
+      ctx.addIssue({ path: ["repoUrl"], code: z.ZodIssueCode.custom, message: "Enter a valid repository URL." });
+    }
+  } else if (trimmed.length > 0 && !isUrl(trimmed)) {
+    ctx.addIssue({ path: ["repoUrl"], code: z.ZodIssueCode.custom, message: "Reference URL must be a valid URL or left blank." });
+  }
+}
+
+const linksStepSchema = linksStepObject.superRefine(refineRepoUrl);
 
 const rulesStepSchema = z.object({
   stake: z.string().refine((value) => isPositiveDecimal(value), "Enter a stake greater than zero."),
@@ -162,12 +227,14 @@ const rulesStepSchema = z.object({
 });
 
 const formSchema = tokenStepObject
-  .merge(linksStepSchema)
+  .merge(linksStepObject)
   .merge(rulesStepSchema)
-  .refine(
-    (v) => meetsMinAmount(v.token, v.amount),
-    (v) => ({ message: `Minimum bounty is ${TOKEN_MIN[v.token]} ${v.token}.`, path: ["amount"] }),
-  );
+  .superRefine((v, ctx) => {
+    if (!meetsMinAmount(v.token, v.amount)) {
+      ctx.addIssue({ path: ["amount"], code: z.ZodIssueCode.custom, message: `Minimum bounty is ${TOKEN_MIN[v.token]} ${v.token}.` });
+    }
+    refineRepoUrl(v, ctx);
+  });
 
 const initialState: FormState = {
   hireMode: "open",
@@ -716,44 +783,108 @@ function LinksStep({
   errors: Record<string, string>;
   onChange: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
+  const meta = taskMeta(values.bountyType);
+  const needsDisclaimer = disclaimerRequired(values.bountyType);
   const isCode = values.bountyType === 0;
   return (
     <div>
       <StepHeading
-        title="Task type and links"
-        description="Select the task type and attach the spec and instruction URLs."
+        title="What kind of task?"
+        description="Pick the work type. The form adapts: code wants a repo and optional CI, everything else just needs a brief and ships as a link."
       />
-      <div className="mt-6">
-        <label className="block text-sm font-medium text-foreground">Task type</label>
-        <select
-          value={values.bountyType}
-          onChange={(e) => onChange("bountyType", Number(e.target.value))}
-          className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {TASK_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.id} — {opt.name}
-            </option>
-          ))}
-        </select>
-        {errors.bountyType && <p className="mt-1 text-xs text-destructive">{errors.bountyType}</p>}
+
+      <TaskTypePicker value={values.bountyType} onChange={(t) => onChange("bountyType", t)} />
+      {errors.bountyType ? <p className="mt-2 text-xs text-destructive">{errors.bountyType}</p> : null}
+
+      <div className="mt-4 rounded-xl border border-border bg-background p-4">
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">Worker delivers</p>
+        <p className="mt-1 text-sm font-medium">{meta.deliverable}</p>
+        <div className="mt-2.5 flex flex-wrap gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-0.5 text-muted-foreground">
+            {meta.ci ? <ShieldCheck className="h-3 w-3" aria-hidden /> : null}
+            {meta.ci ? "CI gate available" : "Off-chain review"}
+          </span>
+          {!meta.repoRequired ? (
+            <span className="inline-flex items-center rounded-full border border-border bg-card px-2.5 py-0.5 text-muted-foreground">
+              No repo needed
+            </span>
+          ) : null}
+          {needsDisclaimer ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-400/10 px-2.5 py-0.5 font-medium text-amber-600 dark:text-amber-300">
+              <AlertTriangle className="h-3 w-3" aria-hidden /> Disclaimer required
+            </span>
+          ) : null}
+        </div>
       </div>
+
+      {needsDisclaimer ? (
+        <div className="mt-3 rounded-xl border border-amber-500/25 bg-amber-400/5 p-4 text-sm text-amber-700 dark:text-amber-200">
+          {values.bountyType === 8 ? "Legal" : "Financial"} tasks carry a disclaimer requirement. The worker must
+          acknowledge it and the CI relayer verifies that ack before the bounty can resolve. Spell out the scope and the
+          disclaimer you expect in the brief.
+        </div>
+      ) : null}
+
       <div className="mt-5 grid gap-5">
         <LabelledInput
-          label={isCode ? "Repository URL" : "Spec URL"}
+          label={meta.repoLabel}
           value={values.repoUrl}
           error={errors.repoUrl}
           placeholder={SPEC_URL_HINT[values.bountyType] ?? "https://..."}
           onChange={(value) => onChange("repoUrl", value)}
         />
         <LabelledInput
-          label={isCode ? "Issue URL" : "Instruction URL"}
+          label={isCode ? "Issue URL" : "Brief / instructions URL"}
           value={values.issueUrl}
           error={errors.issueUrl}
           placeholder={INSTRUCTION_URL_HINT[values.bountyType] ?? "https://..."}
           onChange={(value) => onChange("issueUrl", value)}
         />
       </div>
+    </div>
+  );
+}
+
+function TaskTypePicker({ value, onChange }: { value: number; onChange: (type: number) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Task type" className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {TASK_TYPE_OPTIONS.map((opt) => {
+        const meta = taskMeta(opt.id);
+        const Icon = meta.icon;
+        const active = value === opt.id;
+        const flag = disclaimerRequired(opt.id) ? "disclaimer" : meta.ci ? "CI" : null;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(opt.id)}
+            className={cn(
+              "flex flex-col gap-1.5 rounded-xl border p-3 text-left transition-colors",
+              active ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-accent/40",
+            )}
+          >
+            <span className="flex items-center justify-between">
+              <Icon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground")} aria-hidden />
+              {flag ? (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide",
+                    flag === "disclaimer"
+                      ? "bg-amber-400/15 text-amber-600 dark:text-amber-300"
+                      : "bg-secondary text-secondary-foreground",
+                  )}
+                >
+                  {flag}
+                </span>
+              ) : null}
+            </span>
+            <span className={cn("text-sm font-semibold", active ? "text-primary" : "text-foreground")}>{opt.name}</span>
+            <span className="text-[0.7rem] leading-snug text-muted-foreground">{meta.blurb}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -1025,8 +1156,15 @@ function ReviewStep({
     );
   }
 
+  const meta = taskMeta(values.bountyType);
+  const typeName = TASK_TYPE_NAMES[values.bountyType as keyof typeof TASK_TYPE_NAMES] ?? `Type ${values.bountyType}`;
   const rows: Array<[string, string]> = [
     ["Network", deploymentName],
+    ["Task type", typeName],
+    [
+      "Deliverable",
+      meta.deliverable + (disclaimerRequired(values.bountyType) ? " (worker must ack disclaimer)" : ""),
+    ],
     ["Hire mode", isDirect ? "Direct hire" : "Open marketplace"],
     ...(isDirect
       ? ([
@@ -1039,7 +1177,7 @@ function ReviewStep({
     ["Reward", `${values.amount} ${values.token}`],
     ["Worker stake", `${values.stake} ${values.token}`],
     ["Slots", isDirect ? "1 (direct hire)" : values.maxSlots],
-    ["CI", isDirect ? "Manual review (direct)" : values.ciRequired ? "Required" : "Manual review"],
+    ["CI", !meta.ci ? "Off-chain review" : isDirect ? "Manual review (direct)" : values.ciRequired ? "Required" : "Manual review"],
     ["Deadline", formatDateTime(values.deadline)],
     ["Token", `${values.token} · ${tokenAddress}`],
   ];
@@ -1304,6 +1442,15 @@ function meetsMinAmount(token: TokenSymbol, amount: string) {
 
 function normalizedUrl(value: string) {
   return value.trim().replace(/\/$/, "");
+}
+
+function isUrl(value: string) {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function defaultDeadline() {
