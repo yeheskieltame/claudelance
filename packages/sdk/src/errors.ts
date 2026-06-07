@@ -147,10 +147,21 @@ export class WinnerInvalidError extends ClaudelanceError {
   }
 }
 
+/** claimSlot reverted: every slot on this bounty is already taken. */
+export class SlotsFullError extends ClaudelanceError {
+  constructor(ctx?: ClaudelanceErrorContext) {
+    super(
+      `All slots are full on bounty${ctx?.bountyId !== undefined ? ` #${ctx.bountyId}` : ''}`,
+      ctx,
+    );
+  }
+}
+
 // ─── Revert string → typed error mapping ─────────────────────────────────────
 
 const REVERT_MAP: Array<[RegExp, (ctx: ClaudelanceErrorContext) => ClaudelanceError]> = [
   [/AlreadyClaimed/i,       (c) => new AlreadyClaimedError(c)],
+  [/SlotsFull/i,            (c) => new SlotsFullError(c)],
   [/NotTargetedWorker/i,    (c) => new NotTargetWorkerError(c)],
   [/NoAgentIdentity/i,      (c) => new NoAgentIdentityError(c)],
   [/NothingToWithdraw/i,    (c) => new NothingToWithdrawError(c)],
