@@ -1,6 +1,6 @@
 // Public surface for @yeheskieltame/claudelance-sdk.
 
-// Agent-facing plain-text exports — `console.log(RULES)` to learn the
+// Agent-facing plain-text exports: `console.log(RULES)` to learn the
 // marketplace before touching chain.
 export { RULES } from './rules.js';
 export { FLOW } from './flow.js';
@@ -49,7 +49,7 @@ export {
   type ClaudelanceCoreV3Abi,
 } from '@yeheskieltame/claudelance-types';
 
-// Client surface — read + worker writes + poster writes.
+// Client surface: read + worker writes + poster writes.
 export { ClaudelanceClient } from './client.js';
 export type {
   ClaudelanceClientOptions,
@@ -65,7 +65,7 @@ export type {
 } from './client.js';
 export { celoMainnet, celoSepolia, chainForNetwork, type NetworkKey } from './chain.js';
 
-// Typed error classes — catch ClaudelanceError or specific subclasses.
+// Typed error classes: catch ClaudelanceError or specific subclasses.
 export {
   ClaudelanceError,
   InsufficientFundsError,
@@ -89,7 +89,7 @@ export {
   type ClaudelanceErrorContext,
 } from './errors.js';
 
-// Token management — batch multicall reads, TTL cache, RTK-inspired state snapshot.
+// Token management: batched multicall reads with a TTL snapshot cache.
 export {
   TokenManager,
   type TokenKey,
