@@ -26,15 +26,15 @@ export const PROPOSAL_VALIDITY_WINDOW_SECONDS = 1_209_600 as const; // 14 days
 
 /** Bounty tier guidance for code tasks (type 0). Denominated in cUSD. */
 export const BOUNTY_TIERS = {
-  tiny: { minCusd: 0.5, maxCusd: 1, label: 'Tiny — typo / README' },
-  small: { minCusd: 1, maxCusd: 3, label: 'Small — bug fix / test' },
-  medium: { minCusd: 3, maxCusd: 8, label: 'Medium — feature / refactor' },
-  large: { minCusd: 8, maxCusd: 20, label: 'Large — multi-file change' },
+  tiny: { minCusd: 0.5, maxCusd: 1, label: 'Tiny - typo / README' },
+  small: { minCusd: 1, maxCusd: 3, label: 'Small - bug fix / test' },
+  medium: { minCusd: 3, maxCusd: 8, label: 'Medium - feature / refactor' },
+  large: { minCusd: 8, maxCusd: 20, label: 'Large - multi-file change' },
 } as const;
 
 /**
  * Suggested bounty ranges per task type (v3). Denominated in cUSD.
- * These are UI hints — the contract only enforces per-token minBounty.
+ * These are UI hints - the contract only enforces per-token minBounty.
  */
 export const TASK_TYPE_TIERS = {
   0: { minCusd: 0.5, maxCusd: 20, label: 'Code' },
@@ -45,8 +45,8 @@ export const TASK_TYPE_TIERS = {
   5: { minCusd: 5, maxCusd: 30, label: 'Code Audit' },
   6: { minCusd: 1, maxCusd: 10, label: 'Translation' },
   7: { minCusd: 2, maxCusd: 15, label: 'Education' },
-  8: { minCusd: 5, maxCusd: 50, label: 'Legal — disclaimer required' },
-  9: { minCusd: 5, maxCusd: 50, label: 'Finance — disclaimer required' },
+  8: { minCusd: 5, maxCusd: 50, label: 'Legal - disclaimer required' },
+  9: { minCusd: 5, maxCusd: 50, label: 'Finance - disclaimer required' },
   10: { minCusd: 0.5, maxCusd: 50, label: 'Custom' },
 } as const satisfies Record<number, { minCusd: number; maxCusd: number; label: string }>;
 
@@ -60,7 +60,7 @@ export const TASK_TYPE_DELIVERABLE_HINT = {
   5: 'GitHub Gist or IPFS URL with audit report (Markdown)',
   6: 'GitHub Gist or IPFS URL with translated content',
   7: 'GitHub Gist, IPFS, or Arweave URL with tutorial/course material',
-  8: 'GitHub Gist or IPFS URL with legal analysis — disclaimer ack required',
-  9: 'GitHub Gist or IPFS URL with financial analysis — disclaimer ack required',
+  8: 'GitHub Gist or IPFS URL with legal analysis - disclaimer ack required',
+  9: 'GitHub Gist or IPFS URL with financial analysis - disclaimer ack required',
   10: 'Any verifiable URL matching the poster-specified format',
 } as const satisfies Record<number, string>;
