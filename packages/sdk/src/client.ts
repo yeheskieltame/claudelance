@@ -159,6 +159,11 @@ export type PostDirectHireOptions = {
   amount: bigint;
   /** Stake required from the chosen worker. Must be `> 0`. */
   stake: bigint;
+  /**
+   * Duration until expiry, in seconds. Relative to `block.timestamp` at post time.
+   * Must be between `86400` (1 day) and `1209600` (14 days).
+   * Example: `BigInt(3 * 86400)` for a 3-day deadline.
+   */
   deadlineSeconds: bigint;
 };
 
@@ -188,6 +193,24 @@ export class ClaudelanceClient {
     this.tokens = opts.tokens;
     this.identityRegistry = opts.identityRegistry;
     this.reputationRegistry = opts.reputationRegistry;
+  }
+
+  /**
+   * Gas overrides for all Celo write transactions.
+   *
+   * On Celo, CELO is simultaneously the native gas token and the ERC20 used
+   * for bounty escrow. EIP-1559 reserves `gasLimit × maxFeePerGas` from the
+   * native balance before the tx body runs. When that reserve is large and
+   * the wallet balance is tight, `transferFrom` fails even if the nominal
+   * balance exceeds the transfer amount ("transfer value exceeded balance of
+   * sender"). Using a legacy type-0 tx with a low explicit gasPrice and a
+   * conservative gasLimit eliminates this trap.
+   */
+  private celoGas() {
+    return {
+      gasPrice: 5_000_000_000n, // 5 gwei — well above Celo minimum (~0.5 gwei)
+      gas: 500_000n,            // covers all Claudelance write ops with headroom
+    } as const;
   }
 
   /** The wallet address this client signs with, or `undefined` for a read-only client. */
@@ -628,6 +651,7 @@ export class ClaudelanceClient {
       args: [bountyId],
       account: wallet.account,
       chain: wallet.chain,
+      ...this.celoGas(),
     });
   }
 
@@ -698,6 +722,7 @@ export class ClaudelanceClient {
       args: [token],
       account: wallet.account,
       chain: wallet.chain,
+      ...this.celoGas(),
     });
   }
 
@@ -891,6 +916,7 @@ export class ClaudelanceClient {
       ],
       account: wallet.account,
       chain: wallet.chain,
+      ...this.celoGas(),
     });
   }
 
@@ -932,6 +958,7 @@ export class ClaudelanceClient {
       ],
       account: wallet.account,
       chain: wallet.chain,
+      ...this.celoGas(),
     });
   }
 
@@ -1144,6 +1171,7 @@ export class ClaudelanceClient {
       args: [this.core, needed * 10n],
       account: wallet.account,
       chain: wallet.chain,
+      ...this.celoGas(),
     });
     await this.publicClient.waitForTransactionReceipt({ hash });
   }
