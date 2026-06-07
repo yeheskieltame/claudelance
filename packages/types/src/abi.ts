@@ -2376,7 +2376,17 @@ export const CLAUDELANCE_CORE_V3_ABI = [
     "stateMutability": "nonpayable"
   },
   { "type": "error", "name": "OwnableInvalidOwner", "inputs": [ { "name": "owner", "type": "address", "internalType": "address" } ] },
-  { "type": "error", "name": "OwnableUnauthorizedAccount", "inputs": [ { "name": "account", "type": "address", "internalType": "address" } ] }
+  { "type": "error", "name": "OwnableUnauthorizedAccount", "inputs": [ { "name": "account", "type": "address", "internalType": "address" } ] },
+  {
+    "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      { "name": "version", "type": "uint64", "indexed": false, "internalType": "uint64" }
+    ],
+    "anonymous": false
+  },
+  { "type": "error", "name": "InvalidInitialization", "inputs": [] },
+  { "type": "error", "name": "NotInitializing", "inputs": [] }
 ] as const;
 
 export type ClaudelanceCoreV3Abi = typeof CLAUDELANCE_CORE_V3_ABI;
