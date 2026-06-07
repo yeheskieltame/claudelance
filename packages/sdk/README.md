@@ -187,6 +187,18 @@ Individual watchers — `watchBountyPosted`, `watchSlotClaimed`,
 `(publicClient, core, filter, onEvent)` and support indexed-arg filters such as
 `{ poster }`, `{ worker }`, or `{ bountyId }`.
 
+## Proxy and pause state
+
+v3 is a UUPS proxy with an OpenZeppelin Pausable circuit breaker. While paused,
+every write except `withdrawEarnings` reverts (`ContractPausedError`), so check
+first to fail fast:
+
+```ts
+if (await client.isPaused()) throw new Error('contract paused — writes will revert');
+
+const impl = await client.getImplementation(); // implementation behind the proxy
+```
+
 ## Live deployments
 
 The SDK ships address records for both networks via `@yeheskieltame/claudelance-types`:
