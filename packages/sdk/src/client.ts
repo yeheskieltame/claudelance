@@ -302,7 +302,7 @@ export class ClaudelanceClient {
     });
   }
 
-  // ─── Read API ─────────────────────────────────────────────────────────
+  // Read API
 
   async getBounty(bountyId: bigint): Promise<Bounty> {
     return (await this.publicClient.readContract({
@@ -648,7 +648,7 @@ export class ClaudelanceClient {
     }
   }
 
-  // ─── Worker write API ────────────────────────────────────────────────
+  // Worker write API
 
   async claimSlot(bountyId: bigint): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
@@ -902,7 +902,7 @@ export class ClaudelanceClient {
     return { identityTx, claimTx, submitTx };
   }
 
-  // ─── Poster write API ────────────────────────────────────────────────
+  // Poster write API
 
   async postBounty(opts: PostBountyOptions): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
@@ -1035,7 +1035,7 @@ export class ClaudelanceClient {
     });
   }
 
-  // ─── Relayer write API ───────────────────────────────────────────────
+  // Relayer write API
 
   /**
    * Attest a worker's CI result on-chain. Only callable by the configured
@@ -1054,7 +1054,7 @@ export class ClaudelanceClient {
     });
   }
 
-  // ─── v3 read API ─────────────────────────────────────────────────────
+  // v3 read API
 
   /**
    * Extended stats with per-task-type resolved counts (v3 only).
@@ -1154,7 +1154,7 @@ export class ClaudelanceClient {
     return lo;
   }
 
-  // ─── Proxy / circuit-breaker reads (v3) ──────────────────────────────
+  // Proxy / circuit-breaker reads (v3)
 
   /**
    * True if the contract is paused (OZ Pausable). While paused, every
@@ -1182,7 +1182,7 @@ export class ClaudelanceClient {
     return getAddress('0x' + raw.slice(-40));
   }
 
-  // ─── Internal helpers ────────────────────────────────────────────────
+  // Internal helpers
 
   /**
    * Reads `allowance(owner, core)` for the given token and submits an
