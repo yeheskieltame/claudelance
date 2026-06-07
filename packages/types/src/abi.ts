@@ -2324,7 +2324,59 @@ export const CLAUDELANCE_CORE_V3_ABI = [
   { "type": "error", "name": "FailedInnerCall", "inputs": [] },
   { "type": "error", "name": "AddressEmptyCode", "inputs": [ { "name": "target", "type": "address", "internalType": "address" } ] },
   { "type": "error", "name": "AddressInsufficientBalance", "inputs": [ { "name": "account", "type": "address", "internalType": "address" } ] },
-  { "type": "error", "name": "SafeERC20FailedOperation", "inputs": [ { "name": "token", "type": "address", "internalType": "address" } ] }
+  { "type": "error", "name": "SafeERC20FailedOperation", "inputs": [ { "name": "token", "type": "address", "internalType": "address" } ] },
+  {
+    "type": "event",
+    "name": "OwnershipTransferStarted",
+    "inputs": [
+      { "name": "previousOwner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "newOwner", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      { "name": "previousOwner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "newOwner", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      { "name": "newOwner", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "acceptOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "pendingOwner",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "address", "internalType": "address" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  { "type": "error", "name": "OwnableInvalidOwner", "inputs": [ { "name": "owner", "type": "address", "internalType": "address" } ] },
+  { "type": "error", "name": "OwnableUnauthorizedAccount", "inputs": [ { "name": "account", "type": "address", "internalType": "address" } ] }
 ] as const;
 
 export type ClaudelanceCoreV3Abi = typeof CLAUDELANCE_CORE_V3_ABI;
