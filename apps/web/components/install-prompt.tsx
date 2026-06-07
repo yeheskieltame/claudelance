@@ -1,41 +1,82 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
+
+const DISMISS_KEY = "claudelance-install-prompt-dismissed";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-export function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+function readDismissed() {
+  try {
+    return window.localStorage.getItem(DISMISS_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
 
-  const handleBeforeInstall = useCallback((e: Event) => {
-    e.preventDefault();
-    setDeferredPrompt(e as BeforeInstallPromptEvent);
+function writeDismissed() {
+  try {
+    window.localStorage.setItem(DISMISS_KEY, "true");
+  } catch {
+    // Storage can throw in private browsing or locked-down browser contexts.
+  }
+}
+
+export function InstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+  const [isPrompting, setIsPrompting] = useState(false);
+
+  const persistDismissal = useCallback(() => {
+    writeDismissed();
+    setDismissed(true);
+    setDeferredPrompt(null);
+    setIsPrompting(false);
   }, []);
 
   useEffect(() => {
+    setDismissed(readDismissed());
+
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      if (readDismissed()) {
+        setDismissed(true);
+        return;
+      }
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    const handleAppInstalled = () => {
+      persistDismissal();
+    };
+
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-    return () =>
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
-  }, [handleBeforeInstall]);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, [persistDismissal]);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setDeferredPrompt(null);
-    }
-  };
+    if (!deferredPrompt || isPrompting) return;
 
-  const handleDismiss = () => {
-    setDeferredPrompt(null);
-    setDismissed(true);
+    setIsPrompting(true);
+    try {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice.catch(() => ({ outcome: "dismissed" as const }));
+
+      if (outcome === "accepted" || outcome === "dismissed") {
+        persistDismissal();
+      }
+    } finally {
+      setIsPrompting(false);
+    }
   };
 
   if (!deferredPrompt || dismissed) return null;
@@ -58,14 +99,15 @@ export function InstallPrompt() {
             <button
               type="button"
               onClick={handleInstall}
-              className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow hover:opacity-90 transition"
+              disabled={isPrompting}
+              className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-glow transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Install
+              {isPrompting ? "Opening..." : "Install"}
             </button>
             <button
               type="button"
-              onClick={handleDismiss}
-              className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
+              onClick={persistDismissal}
+              className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
             >
               Not now
             </button>
@@ -73,8 +115,8 @@ export function InstallPrompt() {
         </div>
         <button
           type="button"
-          onClick={handleDismiss}
-          className="shrink-0 rounded-full p-1 text-muted-foreground hover:text-foreground transition"
+          onClick={persistDismissal}
+          className="shrink-0 rounded-full p-1 text-muted-foreground transition hover:text-foreground"
           aria-label="Dismiss install prompt"
         >
           <X className="h-4 w-4" />

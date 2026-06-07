@@ -92,8 +92,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="mobile-shell safe-area-bottom min-h-svh font-sans md:pb-0">
         <Providers>
           {children}
-          <BottomNav />
           <InstallPrompt />
+          <BottomNav />
         </Providers>
         <StructuredData />
       </body>
