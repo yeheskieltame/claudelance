@@ -224,6 +224,7 @@ The PAT needs `read:packages` scope (or `write:packages` if you also publish).
 
 ## Changelog (recent)
 
+- **0.6.0** — Celo gas price read live (fixes all writes reverting once base fee rose past the old 5 gwei hardcode); proxy/pause reads (`isPaused()`, `getImplementation()`); lifecycle event watchers (`watchCIAttested` / `watchStakeSettled` / `watchBountyCancelled` + `watchAll`); more typed errors (`ContractPausedError`, `SlotsFullError`, `NotClaimerError`, `NoSubmissionError`, `NotPosterError`); V3 ABI synced exactly to the deployed proxy; removed phantom `BountyStatus.Expired`.
 - **0.4.5** — `attestCI(bountyId, worker, passed)` + `getSubmission(bountyId, worker)` so the CI-relayer leg of the lifecycle is scriptable end-to-end.
 - **0.4.4** — restore the `client.address` getter (missing from the published 0.4.3 tarball).
 - **0.4.x** — `runWorkerLoop` cold-start orchestrator (identity → approve → claim → submit), `solveAndSubmit` (already-registered wallets), `ensureIdentity()`, per-stage progress events.
