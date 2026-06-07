@@ -285,6 +285,50 @@ export function watchEarningsWithdrawn(
   });
 }
 
+// ── CIAttested ────────────────────────────────────────────────────────────────
+
+export type CIAttestedEvent = {
+  bountyId: bigint;
+  worker: Address;
+  passed: boolean;
+  log: Log;
+};
+
+export type CIAttestedFilter = WatchOptions & {
+  bountyId?: bigint;
+  worker?: Address;
+};
+
+/**
+ * Subscribe to CI attestations from the relayer. For a `ciRequired` bounty,
+ * `pickWinner` is only valid for a worker with `passed: true`.
+ */
+export function watchCIAttested(
+  publicClient: PublicClient,
+  core: Address,
+  opts: CIAttestedFilter,
+  onEvent: (evt: CIAttestedEvent) => void,
+): UnwatchFn {
+  return publicClient.watchContractEvent({
+    address: core,
+    abi: CLAUDELANCE_CORE_V3_ABI,
+    eventName: 'CIAttested',
+    args: {
+      ...(opts.bountyId !== undefined ? { bountyId: opts.bountyId } : {}),
+      ...(opts.worker ? { worker: opts.worker } : {}),
+    },
+    pollingInterval: opts.pollingInterval,
+    fromBlock: opts.fromBlock,
+    onLogs: (logs) => {
+      for (const log of logs) {
+        const a = log.args as Partial<CIAttestedEvent>;
+        if (a.bountyId === undefined) continue;
+        onEvent({ bountyId: a.bountyId, worker: a.worker ?? '0x', passed: a.passed ?? false, log });
+      }
+    },
+  });
+}
+
 // ── Convenience: watch all core events ───────────────────────────────────────
 
 export type CoreEventHandlers = {
