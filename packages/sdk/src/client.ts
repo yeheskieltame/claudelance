@@ -327,7 +327,8 @@ export class ClaudelanceClient {
    * public RPCs like forno load-balance, so a read issued right after a mined
    * write can hit a lagging node and return pre-write state. e.g. after
    * `pickWinner`, `await waitForBounty(id, (b) => b.status === 1)` before
-   * `settleStake` so it doesn't revert `BountyNotResolved`.
+   * `settleStake` so it doesn't revert `BountyNotExpired` (the v3 guard for
+   * settling a stake while the bounty is still Open).
    */
   async waitForBounty(
     bountyId: bigint,
