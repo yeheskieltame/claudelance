@@ -1,6 +1,7 @@
 import {
   createPublicClient,
   createWalletClient,
+  getAddress,
   http,
   parseEventLogs,
   type Account,
@@ -326,7 +327,8 @@ export class ClaudelanceClient {
    * public RPCs like forno load-balance, so a read issued right after a mined
    * write can hit a lagging node and return pre-write state. e.g. after
    * `pickWinner`, `await waitForBounty(id, (b) => b.status === 1)` before
-   * `settleStake` so it doesn't revert `BountyNotResolved`.
+   * `settleStake` so it doesn't revert `BountyNotExpired` (the v3 guard for
+   * settling a stake while the bounty is still Open).
    */
   async waitForBounty(
     bountyId: bigint,
@@ -1144,6 +1146,34 @@ export class ClaudelanceClient {
       else hi = mid;
     }
     return lo;
+  }
+
+  // ─── Proxy / circuit-breaker reads (v3) ──────────────────────────────
+
+  /**
+   * True if the contract is paused (OZ Pausable). While paused, every
+   * state-changing call except `withdrawEarnings` reverts `EnforcedPause`.
+   * Check this before a worker/poster write to fail fast with a clear reason.
+   */
+  async isPaused(): Promise<boolean> {
+    return (await this.publicClient.readContract({
+      address: this.core,
+      abi: CLAUDELANCE_CORE_V3_ABI,
+      functionName: 'paused',
+    })) as boolean;
+  }
+
+  /**
+   * Current implementation address behind the v3 UUPS proxy, read straight
+   * from the EIP-1967 implementation slot. Returns the zero address for a
+   * non-proxy (v2) deployment. Watch `Upgraded(address)` to detect changes.
+   */
+  async getImplementation(): Promise<Address> {
+    // keccak256("eip1967.proxy.implementation") - 1
+    const SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
+    const raw = await this.publicClient.getStorageAt({ address: this.core, slot: SLOT });
+    if (!raw || /^0x0*$/.test(raw)) return ZERO_ADDRESS;
+    return getAddress('0x' + raw.slice(-40));
   }
 
   // ─── Internal helpers ────────────────────────────────────────────────
