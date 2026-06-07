@@ -187,9 +187,21 @@ export class NotPosterError extends ClaudelanceError {
   }
 }
 
+/**
+ * A state-changing call reverted because the contract is paused (OZ Pausable,
+ * `EnforcedPause`). Only `withdrawEarnings` stays callable while paused.
+ * Check {@link ClaudelanceClient.isPaused} before broadcasting.
+ */
+export class ContractPausedError extends ClaudelanceError {
+  constructor(ctx?: ClaudelanceErrorContext) {
+    super('Contract is paused — only withdrawEarnings is callable', ctx);
+  }
+}
+
 // ─── Revert string → typed error mapping ─────────────────────────────────────
 
 const REVERT_MAP: Array<[RegExp, (ctx: ClaudelanceErrorContext) => ClaudelanceError]> = [
+  [/EnforcedPause/i,        (c) => new ContractPausedError(c)],
   [/AlreadyClaimed/i,       (c) => new AlreadyClaimedError(c)],
   [/SlotsFull/i,            (c) => new SlotsFullError(c)],
   [/NotTargetedWorker/i,    (c) => new NotTargetWorkerError(c)],
