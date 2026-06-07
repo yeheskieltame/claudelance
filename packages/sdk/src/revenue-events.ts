@@ -14,8 +14,8 @@ export type ProtocolRevenueAccrual = {
 
 /**
  * Page the last `lookback` blocks of `ProtocolRevenueAccrued` events from the
- * Claudelance Core. Default lookback is 50k blocks (~3 days on Celo at 5s
- * blocktime). Returns newest-first.
+ * Claudelance Core. Default 50k blocks is about 14 hours at Celo's ~1s L2
+ * blocktime; pass a larger lookback for a wider window. Returns newest-first.
  */
 export async function listProtocolRevenueEvents(
   client: PublicClient,

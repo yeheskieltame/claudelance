@@ -1,14 +1,7 @@
 /**
- * listBounties — filtered, paginated bounty reads for ClaudelanceCoreV3.
- *
- * Why a separate module:
- *   The original listOpenBounties() does a full O(n) multicall scan.
- *   This module adds filter + page support without modifying the client class,
- *   so it composes cleanly with both v2 and v3 clients.
- *
- * Filters are applied client-side after the multicall batch — no extra RPC
- * round-trips. The trade-off (reading all bounties for filtering) is acceptable
- * at hackathon scale (hundreds of bounties) and avoids indexer dependencies.
+ * Filtered, paginated bounty reads for ClaudelanceCoreV3. Kept out of the
+ * client class so it composes with both v2 and v3. Filters run client-side
+ * after one multicall batch: fine at hackathon scale, no indexer needed.
  */
 
 import { type PublicClient, type Address } from 'viem';
@@ -30,13 +23,13 @@ export type ListBountiesOptions = {
   status?: BountyStatus | 'all';
   /** Filter by escrow token address. */
   token?: Address;
-  /** Filter by task type (0–10 for canonical types). */
+  /** Filter by task type (0-10 for canonical types). */
   bountyType?: number;
   /** Filter by poster address. */
   poster?: Address;
   /** 1-based page number. Defaults to 1. */
   page?: number;
-  /** Number of items per page (1–100). Defaults to 20. */
+  /** Number of items per page (1-100). Defaults to 20. */
   pageSize?: number;
 };
 
@@ -55,7 +48,7 @@ export type BountyPage = {
  * Return a paginated, filtered list of bounties from a v3 contract.
  *
  * @param publicClient  viem PublicClient connected to the right network.
- * @param core          v3 proxy address (or v2 address — getBounty ABI is compatible).
+ * @param core          v3 proxy address (or v2 address - getBounty ABI is compatible).
  * @param maxId         Highest bounty ID to scan. Pass the result of
  *                      `client.getBountyCountV3()` or a known upper bound.
  * @param opts          Filter and pagination options.

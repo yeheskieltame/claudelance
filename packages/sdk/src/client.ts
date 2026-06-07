@@ -64,7 +64,7 @@ export type FromMnemonicOptions = {
   /** Override the default forno RPC; useful for an Alchemy/Infura key. */
   rpcUrl?: string;
   /**
-   * BIP-44 derivation path. Defaults to `m/44'/60'/0'/0/0` — the Ethereum
+   * BIP-44 derivation path. Defaults to `m/44'/60'/0'/0/0` - the Ethereum
    * standard for the first account / first address, which matches what
    * MetaMask + most desktop wallets produce.
    */
@@ -80,7 +80,7 @@ export type ClaudelanceClientOptions = {
   tokens: TokenSet;
   /** ERC-8004 Identity Registry. Workers must hold a token here to claimSlot. */
   identityRegistry: Address;
-  /** ERC-8004 Reputation Registry — feedback (reputation) about agents. */
+  /** ERC-8004 Reputation Registry - feedback (reputation) about agents. */
   reputationRegistry: Address;
 };
 
@@ -130,17 +130,17 @@ export type WorkerProgressFn = (progress: WorkerProgress) => void;
 export type PostBountyOptions = {
   /** ERC20 used for escrow + payout. Must be whitelisted on chain. */
   token: Address;
-  /** 0 = Code; 0-255 reserved for future tiers. */
+  /** v3 task type 0-10 (0 = Code). Defaults to 0. */
   bountyType?: number;
   targetRepoUrl: string;
   instructionUrl: string;
-  /** keccak256 of the off-chain JSON spec, or 0x000… for ad-hoc bounties. */
+  /** keccak256 of the off-chain JSON spec, or 0x0 for ad-hoc bounties. */
   requirementsHash?: `0x${string}`;
   /** Reward in token wei. Must be >= the per-token `minBounty`. */
   amount: bigint;
   /** Maximum simultaneous claimers (1..MAX_SLOTS=20). */
   maxSlots: number;
-  /** Anti-sybil stake in token wei. v2 requires `> 0`. */
+  /** Anti-sybil stake in token wei. Must be > 0 on every bounty. */
   stake: bigint;
   /** Bounty lifetime in seconds (1..14 days). */
   deadlineSeconds: bigint;
@@ -173,7 +173,7 @@ export type PostDirectHireOptions = {
  *
  * Default target is the v3 UUPS proxy which supports all 10 task types and
  * `submitDeliverable` (not just GitHub PRs). v2 methods are kept for backward
- * compat but `submitPR` is deprecated — use `submitDeliverable` instead.
+ * compat but `submitPR` is deprecated - use `submitDeliverable` instead.
  *
  * Multi-token escrow: every write that moves tokens takes (or infers from
  * the bounty) the ERC20 to use. Workers must be registered ERC-8004 agents
@@ -200,7 +200,7 @@ export class ClaudelanceClient {
    * Gas overrides for all Celo write transactions.
    *
    * On Celo, CELO is simultaneously the native gas token and the ERC20 used
-   * for bounty escrow. EIP-1559 reserves `gasLimit × maxFeePerGas` from the
+   * for bounty escrow. EIP-1559 reserves `gasLimit x maxFeePerGas` from the
    * native balance before the tx body runs, so a CELO escrow `transferFrom`
    * can fail even when the balance covers the transfer. A legacy type-0 tx
    * with an explicit gasPrice avoids that trap.
@@ -208,7 +208,7 @@ export class ClaudelanceClient {
    * The price is read live (not hardcoded): Celo's base fee floats and has
    * risen well past old fixed values, which made writes revert with
    * "gas fee cap is below the minimum base fee". 2x the current price is the
-   * legacy cap — on an EIP-1559 chain the sender is still only charged the
+   * legacy cap - on an EIP-1559 chain the sender is still only charged the
    * actual base fee + tip, so the headroom is free insurance against the base
    * fee moving between read and broadcast.
    */
@@ -251,19 +251,8 @@ export class ClaudelanceClient {
   }
 
   /**
-   * Build a fully-wired client from a BIP-39 mnemonic + network key.
-   * Friendly onboarding path: an operator can paste their seed phrase
-   * (12 or 24 words) without ever extracting the raw private key.
-   *
-   * Default derivation `m/44'/60'/0'/0/0` (Ethereum standard, first
-   * account / first address). Override `derivationPath` to use a
-   * different index — e.g. `m/44'/60'/0'/0/1` for the second address.
-   *
-   * Supported networks: `'sepolia'` (Celo Sepolia) and `'celo'` (Celo Mainnet).
-   */
-  /**
    * Build a read-only client from an RPC URL + network key.
-   * No private key required — only read methods are available.
+   * No private key required, only read methods are available.
    * Write methods throw `[ClaudelanceClient] Write methods require a wallet client`.
    */
   static fromRpcUrl(opts: { rpcUrl?: string; network: NetworkKey }): ClaudelanceClient {
@@ -281,6 +270,17 @@ export class ClaudelanceClient {
     });
   }
 
+  /**
+   * Build a fully-wired client from a BIP-39 mnemonic + network key.
+   * Friendly onboarding path: an operator can paste their seed phrase
+   * (12 or 24 words) without ever extracting the raw private key.
+   *
+   * Default derivation `m/44'/60'/0'/0/0` (Ethereum standard, first
+   * account / first address). Override `derivationPath` to use a
+   * different index, e.g. `m/44'/60'/0'/0/1` for the second address.
+   *
+   * Supported networks: `'sepolia'` (Celo Sepolia) and `'celo'` (Celo Mainnet).
+   */
   static fromMnemonic(opts: FromMnemonicOptions): ClaudelanceClient {
     const deployment: Deployment = (opts.network === 'celo' || opts.network === 'mainnet') ? MAINNET : SEPOLIA;
     const chain = chainForNetwork(opts.network);
@@ -302,7 +302,7 @@ export class ClaudelanceClient {
     });
   }
 
-  // ─── Read API ─────────────────────────────────────────────────────────
+  // Read API
 
   async getBounty(bountyId: bigint): Promise<Bounty> {
     return (await this.publicClient.readContract({
@@ -457,7 +457,7 @@ export class ClaudelanceClient {
    *
    * v2 only: reads the `earnings(address, token)` public mapping getter.
    * On v3 this getter does not exist (EIP-7201 storage). For v3, earnings
-   * are opaque until `withdrawEarnings` is called — use `EarningsWithdrawn`
+   * are opaque until `withdrawEarnings` is called - use `EarningsWithdrawn`
    * event logs via `listProtocolRevenueEvents` or `watchEarningsWithdrawn`
    * to audit past withdrawals.
    */
@@ -477,7 +477,7 @@ export class ClaudelanceClient {
 
   /**
    * Pending earnings for the connected wallet in a specific token.
-   * Returns 0 on v3 (earnings not readable — see `getEarnings` for details).
+   * Returns 0 on v3 (earnings not readable - see `getEarnings` for details).
    */
   async getMyEarnings(token: Address): Promise<bigint> {
     return this.getEarnings(this.requireAccount(), token);
@@ -615,7 +615,7 @@ export class ClaudelanceClient {
    * Note: the `hasClaimed(bountyId, worker)` mapping getter exists on v2 but
    * is not a public getter on v3 (EIP-7201 namespaced storage). To check if
    * the wallet already claimed on v3, call `getClaimers(bountyId)` and search
-   * the result — or just attempt `claimSlot` and catch `AlreadyClaimedError`.
+   * the result - or just attempt `claimSlot` and catch `AlreadyClaimedError`.
    */
   async canClaim(bountyId: bigint, account?: Address): Promise<boolean> {
     const who = account ?? this.requireAccount();
@@ -643,12 +643,12 @@ export class ClaudelanceClient {
         })) as boolean;
         return !claimed;
       } catch {
-        return true; // cannot determine — optimistically allow
+        return true; // cannot determine - optimistically allow
       }
     }
   }
 
-  // ─── Worker write API ────────────────────────────────────────────────
+  // Worker write API
 
   async claimSlot(bountyId: bigint): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
@@ -845,11 +845,11 @@ export class ClaudelanceClient {
    * Use this for cold-start workers; use {@link solveAndSubmit} when already set up.
    *
    * Stages emitted in order:
-   *   1. ensure-identity — mints ERC-8004 Identity NFT if missing
-   *   2. approve         — approves Core to pull token stake (skipped if already max)
-   *   3. claim           — claimSlot(bountyId) (skipped if already claimed)
-   *   4. submit          — submitDeliverable(bountyId, ...)
-   *   5. done            — terminal event with the final submit tx hash
+   *   1. ensure-identity - mints ERC-8004 Identity NFT if missing
+   *   2. approve         - approves Core to pull token stake (skipped if already max)
+   *   3. claim           - claimSlot(bountyId) (skipped if already claimed)
+   *   4. submit          - submitDeliverable(bountyId, ...)
+   *   5. done            - terminal event with the final submit tx hash
    */
   async runWorkerLoop(opts: {
     bountyId: bigint;
@@ -902,7 +902,7 @@ export class ClaudelanceClient {
     return { identityTx, claimTx, submitTx };
   }
 
-  // ─── Poster write API ────────────────────────────────────────────────
+  // Poster write API
 
   async postBounty(opts: PostBountyOptions): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
@@ -979,7 +979,7 @@ export class ClaudelanceClient {
   /**
    * Post a direct-hire bounty (with approval) and return its id parsed from the
    * `BountyPosted` event in the receipt. Prefer this over `postDirectHire` +
-   * `getBountyCount()` — see {@link postBountyAndGetId}.
+   * `getBountyCount()` - see {@link postBountyAndGetId}.
    */
   async postDirectHireAndGetId(
     opts: PostDirectHireOptions,
@@ -1035,7 +1035,7 @@ export class ClaudelanceClient {
     });
   }
 
-  // ─── Relayer write API ───────────────────────────────────────────────
+  // Relayer write API
 
   /**
    * Attest a worker's CI result on-chain. Only callable by the configured
@@ -1054,7 +1054,7 @@ export class ClaudelanceClient {
     });
   }
 
-  // ─── v3 read API ─────────────────────────────────────────────────────
+  // v3 read API
 
   /**
    * Extended stats with per-task-type resolved counts (v3 only).
@@ -1113,7 +1113,7 @@ export class ClaudelanceClient {
 
   /**
    * Register or update a task type configuration (v3, owner-only).
-   * Types 0–10 are pre-configured at deploy; use this to enable custom types or
+   * Types 0-10 are pre-configured at deploy; use this to enable custom types or
    * adjust `disclaimerRequired` / `ciSupported` flags.
    */
   async configureTaskType(typeId: number, config: TypeConfig): Promise<`0x${string}`> {
@@ -1154,7 +1154,7 @@ export class ClaudelanceClient {
     return lo;
   }
 
-  // ─── Proxy / circuit-breaker reads (v3) ──────────────────────────────
+  // Proxy / circuit-breaker reads (v3)
 
   /**
    * True if the contract is paused (OZ Pausable). While paused, every
@@ -1182,7 +1182,7 @@ export class ClaudelanceClient {
     return getAddress('0x' + raw.slice(-40));
   }
 
-  // ─── Internal helpers ────────────────────────────────────────────────
+  // Internal helpers
 
   /**
    * Reads `allowance(owner, core)` for the given token and submits an
@@ -1198,7 +1198,7 @@ export class ClaudelanceClient {
       args: [owner, this.core],
     })) as bigint;
     if (allowance >= needed) return;
-    // Approve 10× the immediate need so repeated bounty claims/posts don't each
+    // Approve 10x the immediate need so repeated bounty claims/posts don't each
     // require a separate approve transaction.
     const hash = await wallet.writeContract({
       address: token,
@@ -1214,7 +1214,7 @@ export class ClaudelanceClient {
 
   /**
    * @internal Wait for a post tx and pull the new bounty id out of the
-   * `BountyPosted` event — reliable regardless of read-replica lag.
+   * `BountyPosted` event - reliable regardless of read-replica lag.
    */
   protected async bountyIdFromReceipt(hash: `0x${string}`): Promise<bigint> {
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
@@ -1235,7 +1235,7 @@ export class ClaudelanceClient {
     const acct = this.walletClient?.account?.address;
     if (!acct) {
       throw new Error(
-        '[ClaudelanceClient] No wallet client wired up — use fromPrivateKey() ' +
+        '[ClaudelanceClient] No wallet client wired up - use fromPrivateKey() ' +
           'or pass a walletClient to the constructor.'
       );
     }
@@ -1246,7 +1246,7 @@ export class ClaudelanceClient {
   protected requireWalletClient(): WalletClient<Transport, Chain, Account> {
     if (!this.walletClient) {
       throw new Error(
-        '[ClaudelanceClient] Write methods require a wallet client — use ' +
+        '[ClaudelanceClient] Write methods require a wallet client - use ' +
           'fromPrivateKey() or pass a walletClient to the constructor.'
       );
     }

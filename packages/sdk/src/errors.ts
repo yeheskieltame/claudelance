@@ -74,7 +74,7 @@ export class NotTargetWorkerError extends ClaudelanceError {
 export class NoAgentIdentityError extends ClaudelanceError {
   constructor(ctx?: ClaudelanceErrorContext) {
     super(
-      'Wallet does not hold an ERC-8004 Identity NFT — call ensureIdentity() first',
+      'Wallet does not hold an ERC-8004 Identity NFT - call ensureIdentity() first',
       ctx,
     );
   }
@@ -122,7 +122,7 @@ export class TokenNotAllowedError extends ClaudelanceError {
   readonly token: string;
 
   constructor(token: string, ctx?: ClaudelanceErrorContext) {
-    super(`Token ${token} is not whitelisted — call allowToken() via owner`, ctx);
+    super(`Token ${token} is not whitelisted - call allowToken() via owner`, ctx);
     this.token = token;
   }
 }
@@ -141,7 +141,7 @@ export class AlreadySubmittedError extends ClaudelanceError {
 export class WinnerInvalidError extends ClaudelanceError {
   constructor(ctx?: ClaudelanceErrorContext) {
     super(
-      `Winner is invalid for bounty${ctx?.bountyId !== undefined ? ` #${ctx.bountyId}` : ''} — check submission and CI status`,
+      `Winner is invalid for bounty${ctx?.bountyId !== undefined ? ` #${ctx.bountyId}` : ''} - check submission and CI status`,
       ctx,
     );
   }
@@ -194,11 +194,11 @@ export class NotPosterError extends ClaudelanceError {
  */
 export class ContractPausedError extends ClaudelanceError {
   constructor(ctx?: ClaudelanceErrorContext) {
-    super('Contract is paused — only withdrawEarnings is callable', ctx);
+    super('Contract is paused - only withdrawEarnings is callable', ctx);
   }
 }
 
-// ─── Revert string → typed error mapping ─────────────────────────────────────
+// Revert-string to typed-error mapping.
 
 const REVERT_MAP: Array<[RegExp, (ctx: ClaudelanceErrorContext) => ClaudelanceError]> = [
   [/EnforcedPause/i,        (c) => new ContractPausedError(c)],
