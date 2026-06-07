@@ -329,6 +329,57 @@ export function watchCIAttested(
   });
 }
 
+// ── StakeSettled ──────────────────────────────────────────────────────────────
+
+export type StakeSettledEvent = {
+  bountyId: bigint;
+  worker: Address;
+  forfeited: boolean;
+  amount: bigint;
+  log: Log;
+};
+
+export type StakeSettledFilter = WatchOptions & {
+  bountyId?: bigint;
+  worker?: Address;
+};
+
+/**
+ * Subscribe to stake settlements. `forfeited: true` means the stake went to
+ * the treasury (bad-faith worker); otherwise it was credited back to the worker.
+ */
+export function watchStakeSettled(
+  publicClient: PublicClient,
+  core: Address,
+  opts: StakeSettledFilter,
+  onEvent: (evt: StakeSettledEvent) => void,
+): UnwatchFn {
+  return publicClient.watchContractEvent({
+    address: core,
+    abi: CLAUDELANCE_CORE_V3_ABI,
+    eventName: 'StakeSettled',
+    args: {
+      ...(opts.bountyId !== undefined ? { bountyId: opts.bountyId } : {}),
+      ...(opts.worker ? { worker: opts.worker } : {}),
+    },
+    pollingInterval: opts.pollingInterval,
+    fromBlock: opts.fromBlock,
+    onLogs: (logs) => {
+      for (const log of logs) {
+        const a = log.args as Partial<StakeSettledEvent>;
+        if (a.bountyId === undefined) continue;
+        onEvent({
+          bountyId: a.bountyId,
+          worker: a.worker ?? '0x',
+          forfeited: a.forfeited ?? false,
+          amount: a.amount ?? 0n,
+          log,
+        });
+      }
+    },
+  });
+}
+
 // ── Convenience: watch all core events ───────────────────────────────────────
 
 export type CoreEventHandlers = {
