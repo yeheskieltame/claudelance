@@ -766,44 +766,108 @@ function LinksStep({
   errors: Record<string, string>;
   onChange: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
+  const meta = taskMeta(values.bountyType);
+  const needsDisclaimer = disclaimerRequired(values.bountyType);
   const isCode = values.bountyType === 0;
   return (
     <div>
       <StepHeading
-        title="Task type and links"
-        description="Select the task type and attach the spec and instruction URLs."
+        title="What kind of task?"
+        description="Pick the work type. The form adapts: code wants a repo and optional CI, everything else just needs a brief and ships as a link."
       />
-      <div className="mt-6">
-        <label className="block text-sm font-medium text-foreground">Task type</label>
-        <select
-          value={values.bountyType}
-          onChange={(e) => onChange("bountyType", Number(e.target.value))}
-          className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {TASK_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.id} — {opt.name}
-            </option>
-          ))}
-        </select>
-        {errors.bountyType && <p className="mt-1 text-xs text-destructive">{errors.bountyType}</p>}
+
+      <TaskTypePicker value={values.bountyType} onChange={(t) => onChange("bountyType", t)} />
+      {errors.bountyType ? <p className="mt-2 text-xs text-destructive">{errors.bountyType}</p> : null}
+
+      <div className="mt-4 rounded-xl border border-border bg-background p-4">
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground">Worker delivers</p>
+        <p className="mt-1 text-sm font-medium">{meta.deliverable}</p>
+        <div className="mt-2.5 flex flex-wrap gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-0.5 text-muted-foreground">
+            {meta.ci ? <ShieldCheck className="h-3 w-3" aria-hidden /> : null}
+            {meta.ci ? "CI gate available" : "Off-chain review"}
+          </span>
+          {!meta.repoRequired ? (
+            <span className="inline-flex items-center rounded-full border border-border bg-card px-2.5 py-0.5 text-muted-foreground">
+              No repo needed
+            </span>
+          ) : null}
+          {needsDisclaimer ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-400/10 px-2.5 py-0.5 font-medium text-amber-600 dark:text-amber-300">
+              <AlertTriangle className="h-3 w-3" aria-hidden /> Disclaimer required
+            </span>
+          ) : null}
+        </div>
       </div>
+
+      {needsDisclaimer ? (
+        <div className="mt-3 rounded-xl border border-amber-500/25 bg-amber-400/5 p-4 text-sm text-amber-700 dark:text-amber-200">
+          {values.bountyType === 8 ? "Legal" : "Financial"} tasks carry a disclaimer requirement. The worker must
+          acknowledge it and the CI relayer verifies that ack before the bounty can resolve. Spell out the scope and the
+          disclaimer you expect in the brief.
+        </div>
+      ) : null}
+
       <div className="mt-5 grid gap-5">
         <LabelledInput
-          label={isCode ? "Repository URL" : "Spec URL"}
+          label={meta.repoLabel}
           value={values.repoUrl}
           error={errors.repoUrl}
           placeholder={SPEC_URL_HINT[values.bountyType] ?? "https://..."}
           onChange={(value) => onChange("repoUrl", value)}
         />
         <LabelledInput
-          label={isCode ? "Issue URL" : "Instruction URL"}
+          label={isCode ? "Issue URL" : "Brief / instructions URL"}
           value={values.issueUrl}
           error={errors.issueUrl}
           placeholder={INSTRUCTION_URL_HINT[values.bountyType] ?? "https://..."}
           onChange={(value) => onChange("issueUrl", value)}
         />
       </div>
+    </div>
+  );
+}
+
+function TaskTypePicker({ value, onChange }: { value: number; onChange: (type: number) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Task type" className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {TASK_TYPE_OPTIONS.map((opt) => {
+        const meta = taskMeta(opt.id);
+        const Icon = meta.icon;
+        const active = value === opt.id;
+        const flag = disclaimerRequired(opt.id) ? "disclaimer" : meta.ci ? "CI" : null;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(opt.id)}
+            className={cn(
+              "flex flex-col gap-1.5 rounded-xl border p-3 text-left transition-colors",
+              active ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-accent/40",
+            )}
+          >
+            <span className="flex items-center justify-between">
+              <Icon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground")} aria-hidden />
+              {flag ? (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide",
+                    flag === "disclaimer"
+                      ? "bg-amber-400/15 text-amber-600 dark:text-amber-300"
+                      : "bg-secondary text-secondary-foreground",
+                  )}
+                >
+                  {flag}
+                </span>
+              ) : null}
+            </span>
+            <span className={cn("text-sm font-semibold", active ? "text-primary" : "text-foreground")}>{opt.name}</span>
+            <span className="text-[0.7rem] leading-snug text-muted-foreground">{meta.blurb}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
