@@ -51,7 +51,7 @@ export type TokenManagerOptions = {
 
 // v3 mainnet proxy deployed at block 68,536,240 (2026-06-04).
 // v2 mainnet deployed at block 68,143,824 (2026-05-14).
-// Use v2 deploy block as the safe lower bound — no allowToken events exist before it.
+// Use v2 deploy block as the safe lower bound: no allowToken events exist before it.
 const CLAUDELANCE_MAINNET_DEPLOY_BLOCK = 68_143_824n;
 const CLAUDELANCE_SEPOLIA_DEPLOY_BLOCK = 0n; // Sepolia block numbers differ; scan all.
 
