@@ -2,7 +2,7 @@ import { TASK_TYPE_NAMES, type Bounty } from '@yeheskieltame/claudelance-types';
 
 /**
  * Convert a token wei amount (bigint) to a plain number for UI / log lines.
- * Precision is lossy beyond ~15 decimal digits — fine for human display,
+ * Precision is lossy beyond ~15 decimal digits: fine for human display,
  * NEVER use the result for math that affects on-chain state.
  */
 export function tokenToFloat(wei: bigint, decimals = 18): number {
