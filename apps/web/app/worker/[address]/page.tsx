@@ -6,6 +6,7 @@ import type { Address } from "viem";
 import { Button } from "@/components/ui/button";
 import { ConnectedSelfBadge } from "@/components/connected-self-badge";
 import { Header } from "@/components/header";
+import { WorkerClaimCard, type ClaimRow } from "@/components/worker-claim-card";
 import { WorkerEarningsCard } from "@/components/worker-earnings-card";
 import { WorkerHistoryCard } from "@/components/worker-history-card";
 import { WorkerIdentityCard } from "@/components/worker-identity-card";
@@ -34,6 +35,15 @@ export default async function WorkerPage({ params }: { params: Params }) {
     fetchWorkerHistory(lowercased).catch(() => []),
     fetchWorkerIdentity(lowercased),
   ]);
+
+  // bigint earnings serialized to wei strings for the client claim card.
+  const decimals: Record<ClaimRow["symbol"], number> = { cUSD: 18, CELO: 18, USDC: 6 };
+  const claimable: ClaimRow[] = stats.earnings.map((e) => ({
+    symbol: e.symbol,
+    token: e.token,
+    amount: e.amount.toString(),
+    decimals: decimals[e.symbol],
+  }));
 
   return (
     <main className="relative isolate min-h-svh overflow-x-clip">
@@ -64,6 +74,7 @@ export default async function WorkerPage({ params }: { params: Params }) {
 
         <div className="mt-6 grid gap-4">
           <WorkerIdentityCard identity={identity} />
+          <WorkerClaimCard pageAddress={lowercased} claimable={claimable} />
           <WorkerEarningsCard earnings={stats.earnings} />
           <WorkerHistoryCard rows={history} />
         </div>
