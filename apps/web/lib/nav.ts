@@ -1,4 +1,4 @@
-import { Home, Target, SquarePen, Users, Landmark } from "lucide-react";
+import { Home, Target, SquarePen, Users, Landmark, HandCoins } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
@@ -28,6 +28,12 @@ export const PRIMARY_NAV: NavItem[] = [
     label: "Workers",
     icon: Users,
     match: (p) => p.startsWith("/workers") || p.startsWith("/worker/"),
+  },
+  {
+    href: "/claim",
+    label: "Claim",
+    icon: HandCoins,
+    match: (p) => p === "/claim" || p.startsWith("/claim/"),
   },
   {
     href: "/revenue",
