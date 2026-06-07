@@ -1,12 +1,15 @@
 /**
  * Lifecycle states for an on-chain bounty.
- * Mirrors `enum BountyStatus` in `ClaudelanceCore.sol`.
+ * Mirrors `enum BountyStatus` in the contract — exactly three states.
+ *
+ * There is no on-chain "Expired" state: an unresolved bounty past its
+ * deadline stays `Open` until `cancelExpired` flips it to `Cancelled`.
+ * Derive "expired" from `status === Open && deadline <= now`.
  */
 export enum BountyStatus {
   Open = 0,
   Resolved = 1,
   Cancelled = 2,
-  Expired = 3,
 }
 
 /**
