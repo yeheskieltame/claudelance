@@ -157,6 +157,26 @@ export class SlotsFullError extends ClaudelanceError {
   }
 }
 
+/** submit/settleStake reverted: caller never claimed a slot on this bounty. */
+export class NotClaimerError extends ClaudelanceError {
+  constructor(ctx?: ClaudelanceErrorContext) {
+    super(
+      `Caller has not claimed a slot on bounty${ctx?.bountyId !== undefined ? ` #${ctx.bountyId}` : ''}`,
+      ctx,
+    );
+  }
+}
+
+/** pickWinner reverted: the chosen worker has no submission. */
+export class NoSubmissionError extends ClaudelanceError {
+  constructor(ctx?: ClaudelanceErrorContext) {
+    super(
+      `No submission from the chosen worker on bounty${ctx?.bountyId !== undefined ? ` #${ctx.bountyId}` : ''}`,
+      ctx,
+    );
+  }
+}
+
 // ─── Revert string → typed error mapping ─────────────────────────────────────
 
 const REVERT_MAP: Array<[RegExp, (ctx: ClaudelanceErrorContext) => ClaudelanceError]> = [
@@ -170,6 +190,8 @@ const REVERT_MAP: Array<[RegExp, (ctx: ClaudelanceErrorContext) => ClaudelanceEr
   [/TaskTypeNotEnabled/i,   (c) => new TaskTypeNotEnabledError(-1, c)],
   [/TokenNotAllowed/i,      (c) => new TokenNotAllowedError('unknown', c)],
   [/AlreadySubmitted/i,     (c) => new AlreadySubmittedError(c)],
+  [/NoSubmission/i,         (c) => new NoSubmissionError(c)],
+  [/NotClaimer/i,           (c) => new NotClaimerError(c)],
   [/WinnerInvalid/i,        (c) => new WinnerInvalidError(c)],
 ];
 
