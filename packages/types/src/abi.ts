@@ -2254,7 +2254,6 @@ export const CLAUDELANCE_CORE_V3_ABI = [
   { "type": "error", "name": "TaskTypeNotEnabled", "inputs": [] },
   { "type": "error", "name": "NotTargetedWorker", "inputs": [] },
   { "type": "error", "name": "BountyNotOpen", "inputs": [] },
-  { "type": "error", "name": "BountyNotResolved", "inputs": [] },
   { "type": "error", "name": "BountyNotExpired", "inputs": [] },
   { "type": "error", "name": "DeadlinePassed", "inputs": [] },
   { "type": "error", "name": "GracePeriodActive", "inputs": [] },
