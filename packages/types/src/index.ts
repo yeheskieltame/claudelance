@@ -26,3 +26,9 @@ export {
   TASK_TYPE_DISCLAIMER_REQUIRED,
   type TypeConfig,
 } from './task-types.js';
+export {
+  TASK_DISCLAIMER,
+  disclaimerForType,
+  buildSubmissionMetadata,
+  type DisclaimerAck,
+} from './disclaimer.js';
