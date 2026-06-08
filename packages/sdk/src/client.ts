@@ -353,6 +353,29 @@ export class ClaudelanceClient {
   }
 
   /**
+   * Poll `getSubmission` until `predicate` holds (or attempts run out), returning
+   * the last-read submission. Bridges a submit write and a dependent read: forno
+   * load-balances, so a read issued right after a mined `submitDeliverable` can
+   * hit a lagging replica and return an empty submission. Default predicate waits
+   * for a non-zero `submittedAt`. Mirrors {@link waitForBounty}.
+   */
+  async waitForSubmission(
+    bountyId: bigint,
+    worker: Address,
+    predicate: (submission: Submission) => boolean = (s) => s.submittedAt > 0n,
+    opts?: { attempts?: number; intervalMs?: number },
+  ): Promise<Submission> {
+    const attempts = opts?.attempts ?? 10;
+    const intervalMs = opts?.intervalMs ?? 2500;
+    let submission = await this.getSubmission(bountyId, worker);
+    for (let i = 1; i < attempts && !predicate(submission); i++) {
+      await new Promise<void>((resolve) => setTimeout(() => resolve(), intervalMs));
+      submission = await this.getSubmission(bountyId, worker);
+    }
+    return submission;
+  }
+
+  /**
    * Total bounty count. On v2, reads the `bountyCount` public getter.
    * On v3 (EIP-7201 storage, no public getter), falls back to `getBountyCountV3`.
    *
