@@ -199,6 +199,7 @@ The PAT needs `read:packages`.
 
 ## Changelog
 
+- 0.6.4: `waitForSubmission(bountyId, worker)` to bridge a `submitDeliverable` write and a dependent read across forno replica lag (mirrors `waitForBounty`).
 - 0.6.3: `exports` now exposes `./package.json` (tools and `require(".../package.json")` resolve again). Re-exports the shared Legal/Finance disclaimer helpers (`disclaimerForType`, `buildSubmissionMetadata`) from the types package.
 - 0.6.2: `withdrawAllEarnings` no longer collides on nonce or burns gas on empty tokens. It probes each token with a simulation, skips the ones with nothing to withdraw, and sends real withdrawals one at a time. Found via a full mainnet lifecycle dry-run.
 - 0.6.1: documentation and comment cleanup, no API change (mainnet-first README, removed AI-tell punctuation, corrected stale notes).
