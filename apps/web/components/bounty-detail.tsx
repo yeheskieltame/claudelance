@@ -14,6 +14,8 @@ import {
   CLAUDELANCE_CORE_V3_ABI,
   TASK_TYPE_NAMES,
   deploymentByChainId,
+  disclaimerForType,
+  buildSubmissionMetadata,
 } from "@yeheskieltame/claudelance-types";
 import type { Address, Hash } from "viem";
 
@@ -389,12 +391,18 @@ function SubmitDeliverableCard({ bountyId, bountyType = 0 }: { bountyId: string;
 
   const [deliverableUrl, setDeliverableUrl] = React.useState("");
   const [contentHash, setContentHash] = React.useState("");
+  const [ackChecked, setAckChecked] = React.useState(false);
   const core = deploymentByChainId(chainId || DEFAULT_CHAIN_ID)!.core as Address;
+
+  // Legal (8) and Finance (9) require the worker to acknowledge a disclaimer,
+  // recorded in the submission metadata for the relayer to verify.
+  const disclaimer = disclaimerForType(bountyType);
 
   // Validate: URL required; contentHash can be a 40-char commit SHA or 64-char keccak hex.
   const canSubmit = (() => {
     try { new URL(deliverableUrl); } catch { return false; }
     if (!deliverableUrl) return false;
+    if (disclaimer && !ackChecked) return false;
     const h = contentHash.replace(/^0x/, "").toLowerCase();
     return h.length === 40 || h.length === 64;
   })();
@@ -410,11 +418,14 @@ function SubmitDeliverableCard({ bountyId, bountyType = 0 }: { bountyId: string;
   const submit = async () => {
     if (!canSubmit) return;
     try {
+      const metadata = disclaimer
+        ? buildSubmissionMetadata({ taskType: bountyType, at: Math.floor(Date.now() / 1000), ack: true })
+        : "";
       const hash = (await writeContractAsync({
         address: core,
         abi: CLAUDELANCE_CORE_V3_ABI,
         functionName: "submitDeliverable",
-        args: [BigInt(bountyId), deliverableUrl, normalizeHash(contentHash), ""],
+        args: [BigInt(bountyId), deliverableUrl, normalizeHash(contentHash), metadata],
         feeCurrency: miniPayFeeCurrency(),
       })) as Hash;
       setTxHash(hash);
@@ -451,6 +462,19 @@ function SubmitDeliverableCard({ bountyId, bountyType = 0 }: { bountyId: string;
               maxLength={66}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
+            {disclaimer ? (
+              <label className="flex items-start gap-2.5 rounded-lg border border-amber-500/25 bg-amber-400/5 p-3 text-xs leading-relaxed text-amber-700 dark:text-amber-200">
+                <input
+                  type="checkbox"
+                  checked={ackChecked}
+                  onChange={(e) => setAckChecked(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary"
+                />
+                <span>
+                  {disclaimer} <strong className="font-semibold">I acknowledge this.</strong>
+                </span>
+              </label>
+            ) : null}
             <Button size="sm" onClick={submit} disabled={!canSubmit || isPending}>
               {isPending ? (
                 <>
