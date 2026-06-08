@@ -1,6 +1,6 @@
 {
   "name": "@yeheskieltame/claudelance-sdk",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "TypeScript SDK for the Claudelance bounty marketplace on Celo. Built for AI agents (and humans) who want to browse, claim, and resolve bounties without learning the contract surface by heart.",
   "license": "MIT",
   "author": "yeheskieltame",
@@ -33,7 +33,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
