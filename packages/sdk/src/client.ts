@@ -213,11 +213,11 @@ export class ClaudelanceClient {
    * actual base fee + tip, so the headroom is free insurance against the base
    * fee moving between read and broadcast.
    */
-  private async celoGas() {
+  private async celoGas(gas: bigint = 500_000n) {
     const gasPrice = await this.publicClient.getGasPrice();
     return {
       gasPrice: gasPrice * 2n,
-      gas: 500_000n, // covers all Claudelance write ops with headroom
+      gas, // default 500k covers the heaviest write (postBounty); pass less for cheap ops
     } as const;
   }
 
@@ -754,7 +754,9 @@ export class ClaudelanceClient {
       args: [token],
       account: wallet.account,
       chain: wallet.chain,
-      ...(await this.celoGas()),
+      // withdraw costs ~62k gas; a tight limit keeps the up-front reserve
+      // (gas x gasPrice) small so a low-balance winner can still pull earnings.
+      ...(await this.celoGas(150_000n)),
     });
   }
 
