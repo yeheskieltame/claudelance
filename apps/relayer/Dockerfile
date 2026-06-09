@@ -4,8 +4,10 @@
 
 FROM node:22-alpine AS build
 # Plain global install (not corepack): the repo pins packageManager pnpm@10.0.0,
-# whose `deploy` lacks --legacy; corepack would auto-switch back to the pin.
+# whose `deploy` lacks --legacy. pnpm also self-switches to the pinned version
+# at runtime, so that feature must be off or 10.12.1 silently re-execs 10.0.0.
 RUN npm i -g pnpm@10.12.1
+ENV npm_config_manage_package_manager_versions=false
 WORKDIR /repo
 
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
