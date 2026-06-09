@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 // OZ v5: Initializable + UUPSUpgradeable live in the MAIN contracts package
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -14,6 +15,7 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 // OZ v5 dropped ReentrancyGuardUpgradeable — reentrancy flag lives in CoreStorage instead
 
 import { IClaudelanceCoreV3 } from "./interfaces/IClaudelanceCoreV3.sol";
+import { IReputationRegistry } from "./interfaces/IReputationRegistry.sol";
 import { ClaudelanceStorageV3 } from "./storage/ClaudelanceStorageV3.sol";
 import { CoreStorage } from "./storage/ClaudelanceStorageV3.sol";
 import { BountyLib } from "./libraries/BountyLib.sol";
@@ -41,7 +43,10 @@ import {
     NoStakeRequired,
     NoAgentIdentity,
     WinnerInvalid,
-    NotClaimer
+    NotClaimer,
+    BountyNotResolved,
+    AlreadyAttested,
+    AgentNotWinner
 } from "./types/ClaudelanceTypes.sol";
 
 /// @title ClaudelanceCoreV3
@@ -407,6 +412,37 @@ contract ClaudelanceCoreV3 is
         emit StakeSettled(bountyId, worker, forfeited, b.stakeRequired);
     }
 
+    /// @inheritdoc IClaudelanceCoreV3
+    /// @dev Deliberately outside pickWinner: the escrow payout must never be
+    ///      blockable by the external registry, and the registry has no
+    ///      address→agentId lookup so the caller supplies it (verified via
+    ///      ownerOf). whenNotPaused gives the owner a brake on the only
+    ///      outbound external call the protocol makes.
+    function attestReputation(uint256 bountyId, uint256 agentId) external whenNotPaused nonReentrant {
+        CoreStorage storage s = _s();
+        Bounty storage b = s.bounties[bountyId];
+
+        if (b.status != BountyStatus.Resolved) revert BountyNotResolved();
+        if (s.reputationAttested[bountyId]) revert AlreadyAttested();
+        if (IERC721(s.identityRegistry).ownerOf(agentId) != b.winner) revert AgentNotWinner();
+
+        s.reputationAttested[bountyId] = true;
+
+        Submission storage sub = s.submissions[bountyId][b.winner];
+        IReputationRegistry(s.reputationRegistry).giveFeedback(
+            agentId,
+            1,
+            0,
+            "claudelance",
+            Strings.toString(b.bountyType),
+            "",
+            sub.deliverableUrl,
+            sub.deliverableHash
+        );
+
+        emit ReputationAttested(bountyId, agentId, b.winner);
+    }
+
     // ─────────────────────────────────────────────────────────────
     // Admin: token whitelist
     // ─────────────────────────────────────────────────────────────
@@ -608,5 +644,13 @@ contract ClaudelanceCoreV3 is
 
     function getTaskTypeConfig(uint8 typeId) external view returns (TypeConfig memory) {
         return _s().taskTypeConfigs[typeId];
+    }
+
+    function isReputationAttested(uint256 bountyId) external view returns (bool) {
+        return _s().reputationAttested[bountyId];
+    }
+
+    function version() external pure returns (string memory) {
+        return "3.1.0";
     }
 }
