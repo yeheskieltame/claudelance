@@ -3,7 +3,9 @@
 # `pnpm deploy` packs a standalone production tree for the runtime stage.
 
 FROM node:22-alpine AS build
-RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+# Plain global install (not corepack): the repo pins packageManager pnpm@10.0.0,
+# whose `deploy` lacks --legacy; corepack would auto-switch back to the pin.
+RUN npm i -g pnpm@10.12.1
 WORKDIR /repo
 
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
