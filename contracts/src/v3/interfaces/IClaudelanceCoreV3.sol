@@ -64,6 +64,8 @@ interface IClaudelanceCoreV3 {
 
     event CIRelayerUpdated(address indexed previous, address indexed next);
 
+    event ReputationAttested(uint256 indexed bountyId, uint256 indexed agentId, address indexed worker);
+
     // ─────────────────────────────────────────────────────────────
     // Poster functions
     // ─────────────────────────────────────────────────────────────
@@ -130,6 +132,12 @@ interface IClaudelanceCoreV3 {
     /// @notice Settle stake for a worker after a bounty is resolved or cancelled.
     ///         Pull pattern — anyone can call; winner/loser determination is on-chain.
     function settleStake(uint256 bountyId, address worker) external;
+
+    /// @notice Write +1 ERC-8004 reputation feedback for a resolved bounty's winner.
+    ///         Anyone can call; `agentId` must be an Identity NFT owned by the winner
+    ///         (the registry has no reverse lookup, so the caller supplies it).
+    ///         Once per bounty; the registry records this contract as the client.
+    function attestReputation(uint256 bountyId, uint256 agentId) external;
 
     // ─────────────────────────────────────────────────────────────
     // Relayer functions
@@ -214,4 +222,9 @@ interface IClaudelanceCoreV3 {
         );
 
     function getTaskTypeConfig(uint8 typeId) external view returns (TypeConfig memory);
+
+    function isReputationAttested(uint256 bountyId) external view returns (bool);
+
+    /// @notice Implementation version behind the proxy, for upgrade verification.
+    function version() external pure returns (string memory);
 }

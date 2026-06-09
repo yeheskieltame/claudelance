@@ -99,3 +99,5 @@ error NoStakeRequired();
 error NoPendingChange();
 error TimelockNotElapsed();
 error ProposalExpired();
+error AlreadyAttested();
+error AgentNotWinner();
