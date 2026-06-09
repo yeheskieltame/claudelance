@@ -75,7 +75,7 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
   const safeStats = (i: number): StatsV3Tuple => {
     const r = statsResults[i];
     if (!r || r.status === "failure") return [0n, 0n, 0n, 0n, 0n, new Array(11).fill(0n) as bigint[]];
-    return r.result as StatsV3Tuple;
+    return r.result as unknown as StatsV3Tuple;
   };
 
   const [sCusd, sCelo, sUsdc] = [safeStats(0), safeStats(1), safeStats(2)];
@@ -85,7 +85,7 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
   const safeV2 = (i: number): StatsV2Tuple => {
     const r = statsResults[i];
     if (!r || r.status === "failure") return [0n, 0n, 0n, 0n, 0n];
-    return r.result as StatsV2Tuple;
+    return r.result as unknown as StatsV2Tuple;
   };
   const ZERO5: StatsV2Tuple = [0n, 0n, 0n, 0n, 0n];
   const [vCusd, vCelo, vUsdc] = isMainnet
@@ -94,7 +94,7 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
   const v2BountyCountRead = isMainnet ? statsResults[6] : undefined;
   const v2BountyCount =
     v2BountyCountRead && v2BountyCountRead.status === "success"
-      ? (v2BountyCountRead.result as bigint)
+      ? (v2BountyCountRead.result as unknown as bigint)
       : 0n;
 
   // Index: 0=volume, 1=revenue, 2=resolved, 3=posters, 4=workers
