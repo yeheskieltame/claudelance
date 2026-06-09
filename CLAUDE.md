@@ -54,7 +54,7 @@
 | `contracts/` | v2 LIVE mainnet + Sepolia | Foundry, Solidity 0.8.24, OZ v5 |
 | `contracts/src/v3/` | **v3 LIVE mainnet + Sepolia** | UUPS proxy, task types 0–10, EIP-7201 storage, 144 tests |
 | `apps/web/` | v2 LIVE | Next.js 15 MiniPay app wired to mainnet (post / feed / detail / worker / revenue + MiniPay + Privy) |
-| `apps/relayer/` | planned (Day 5) | Hono + SQLite indexer + CI verifier + disclaimer checker |
+| `apps/relayer/` | built (#459), not yet hosted | Hono + viem keeper on v3: permissionless settlement keeper (`settleStake`/`cancelExpired`) + signed GitHub CI attestation relayer (matches a run to a submission by deliverable URL). `DRY_RUN` default. No SQLite indexer / disclaimer checker yet. |
 | `packages/worker/` | planned (Day 4) | `@yeheskieltame/claudelance-worker` Claude Code CLI |
 | `packages/types/` | v0.6.0 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-types` shared ABI + types; V3 ABI mirrors the deployed proxy exactly (UUPS/Pausable/Ownable2Step + OZ errors) |
 | `packages/sdk/` | v0.6.0 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-sdk` agent client; live Celo gas-price read, `isPaused()`/`getImplementation()`, lifecycle watchers, typed errors |
