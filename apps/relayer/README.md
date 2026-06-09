@@ -14,8 +14,13 @@ It does two jobs against the `ClaudelanceCoreV3` proxy on Celo:
 2. **Settlement keeper.** A heartbeat scans every bounty and runs the
    permissionless calls that close the lifecycle without a human:
    `settleStake(bountyId, worker)` for resolved or cancelled bounties with a
-   locked stake, and `cancelExpired(bountyId)` once a bounty passes its
-   `deadline + RESOLUTION_GRACE_PERIOD`.
+   locked stake, `cancelExpired(bountyId)` once a bounty passes its
+   `deadline + RESOLUTION_GRACE_PERIOD`, and `attestReputation(bountyId,
+   agentId)` (v3.1) to write the winner's +1 ERC-8004 feedback. The winner's
+   agentId is resolved from Identity Registry mint logs, cached for the
+   process lifetime, and re-verified via `ownerOf` before every send; workers
+   whose identity cannot be resolved are skipped and logged, never retried in
+   a loop.
 
 The keeper only ever issues calls that an on-chain guard would accept, so a tick
 never queues a transaction that would revert.
@@ -66,6 +71,30 @@ that matter for a live deploy are `RELAYER_NETWORK`, `DRY_RUN`,
 | `GET /` | Agent identity + current config. |
 | `GET /health` | Liveness probe. |
 | `POST /webhooks/github` | GitHub `workflow_run` / `check_suite` webhook. Rejects unsigned bodies with 401. |
+
+## Production deployment (Railway)
+
+The service ships as a Docker image (`apps/relayer/Dockerfile`, build context =
+repo root, config in `railway.json`): multi-stage pnpm build, standalone
+production tree via `pnpm deploy`, runs as the non-root `node` user, no env
+files in the image. Railway health-checks `/health` and restarts on failure.
+
+Operational rules:
+
+- `RELAYER_PRIVATE_KEY` lives only in Railway service variables (encrypted at
+  rest, masked in build logs). It is never committed, never baked into the
+  image, and never printed by the service.
+- The relayer wallet is deliberately low-value. Keep roughly 1-2 CELO on it;
+  the keeper logs `keeper.low-balance` when it drops under 0.3 CELO.
+- Rollout order: deploy with `DRY_RUN=true` and no key, watch a few
+  `keeper.tick` / `keeper.dry-run` lines, then set the key and flip
+  `DRY_RUN=false`.
+- Every write is simulated first (`eth_call`) so a revert never burns gas, and
+  pinned to the live gas price (Celo's base fee floats around 200 gwei).
+- Writes are sequential and wait for the receipt before the next send, so the
+  keeper never races its own nonce and is safe even if two instances overlap
+  (the on-chain guards make duplicate actions revert in simulation, not on
+  chain).
 
 ## Tests
 
