@@ -1,0 +1,32 @@
+{
+  "name": "claudelance-relayer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Always-on protocol keeper for Claudelance: the ERC-8004 agent that attests CI on bounty deliverables and settles/cancels bounties so the marketplace closes out without a human.",
+  "license": "MIT",
+  "author": "yeheskieltame",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@yeheskieltame/claudelance-sdk": "workspace:*",
+    "hono": "^4.6.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
