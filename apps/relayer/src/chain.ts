@@ -200,60 +200,96 @@ export class ChainClient {
     return null;
   }
 
-  // Writes: simulate first (never burn gas on a revert) and pin the live gas
-  // price — Celo's base fee floats around ~200 gwei; stale estimates have
-  // broken writes before.
+  // Writes: simulate first (never burn gas on a revert), WITHOUT a gas price —
+  // a priced eth_call makes the node demand balance for the default 50M-gas
+  // allowance (~10 CELO at Celo's ~200 gwei floating base fee). The send then
+  // pins the live gas price with a fixed 500k limit, skipping eth_estimateGas
+  // and its identical upfront-balance quirk.
+
+  private static readonly GAS_LIMIT = 500_000n;
 
   async attestCI(bountyId: bigint, worker: Address, passed: boolean): Promise<`0x${string}`> {
     const wallet = this.requireWallet();
-    const { request } = await this.publicClient.simulateContract({
+    await this.publicClient.simulateContract({
       address: this.core,
       abi: ABI,
       functionName: 'attestCI',
       args: [bountyId, worker, passed],
       account: wallet.account,
+    });
+    return wallet.writeContract({
+      address: this.core,
+      abi: ABI,
+      functionName: 'attestCI',
+      args: [bountyId, worker, passed],
+      account: wallet.account,
+      chain: wallet.chain,
+      gas: ChainClient.GAS_LIMIT,
       gasPrice: await this.publicClient.getGasPrice(),
     });
-    return wallet.writeContract(request);
   }
 
   async settleStake(bountyId: bigint, worker: Address): Promise<`0x${string}`> {
     const wallet = this.requireWallet();
-    const { request } = await this.publicClient.simulateContract({
+    await this.publicClient.simulateContract({
       address: this.core,
       abi: ABI,
       functionName: 'settleStake',
       args: [bountyId, worker],
       account: wallet.account,
+    });
+    return wallet.writeContract({
+      address: this.core,
+      abi: ABI,
+      functionName: 'settleStake',
+      args: [bountyId, worker],
+      account: wallet.account,
+      chain: wallet.chain,
+      gas: ChainClient.GAS_LIMIT,
       gasPrice: await this.publicClient.getGasPrice(),
     });
-    return wallet.writeContract(request);
   }
 
   async cancelExpired(bountyId: bigint): Promise<`0x${string}`> {
     const wallet = this.requireWallet();
-    const { request } = await this.publicClient.simulateContract({
+    await this.publicClient.simulateContract({
       address: this.core,
       abi: ABI,
       functionName: 'cancelExpired',
       args: [bountyId],
       account: wallet.account,
+    });
+    return wallet.writeContract({
+      address: this.core,
+      abi: ABI,
+      functionName: 'cancelExpired',
+      args: [bountyId],
+      account: wallet.account,
+      chain: wallet.chain,
+      gas: ChainClient.GAS_LIMIT,
       gasPrice: await this.publicClient.getGasPrice(),
     });
-    return wallet.writeContract(request);
   }
 
   async attestReputation(bountyId: bigint, agentId: bigint): Promise<`0x${string}`> {
     const wallet = this.requireWallet();
-    const { request } = await this.publicClient.simulateContract({
+    await this.publicClient.simulateContract({
       address: this.core,
       abi: ABI,
       functionName: 'attestReputation',
       args: [bountyId, agentId],
       account: wallet.account,
+    });
+    return wallet.writeContract({
+      address: this.core,
+      abi: ABI,
+      functionName: 'attestReputation',
+      args: [bountyId, agentId],
+      account: wallet.account,
+      chain: wallet.chain,
+      gas: ChainClient.GAS_LIMIT,
       gasPrice: await this.publicClient.getGasPrice(),
     });
-    return wallet.writeContract(request);
   }
 
   /** Wait for inclusion so sequential keeper sends never race their own nonce. */
