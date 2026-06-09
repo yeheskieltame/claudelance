@@ -13,6 +13,7 @@ export type RelayerConfig = {
   port: number;
   keeperIntervalMs: number;
   eventsFromBlock: bigint;
+  identityEventsFromBlock: bigint;
 };
 
 function parseBool(value: string | undefined, fallback: boolean): boolean {
@@ -31,6 +32,16 @@ function parseNetwork(value: string | undefined): NetworkKey {
  */
 const DEFAULT_EVENTS_FROM_BLOCK: Record<NetworkKey, bigint> = {
   celo: 68_689_178n,
+  sepolia: 0n,
+};
+
+/**
+ * Floor for the agentId mint scan on the ERC-8004 Identity Registry. The
+ * mainnet registry went live early Feb 2026 (~block 58M), so no mint can
+ * predate it.
+ */
+const DEFAULT_IDENTITY_FROM_BLOCK: Record<NetworkKey, bigint> = {
+  celo: 58_000_000n,
   sepolia: 0n,
 };
 
@@ -65,5 +76,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayerConfig 
       env.EVENTS_FROM_BLOCK !== undefined && env.EVENTS_FROM_BLOCK !== ''
         ? BigInt(env.EVENTS_FROM_BLOCK)
         : DEFAULT_EVENTS_FROM_BLOCK[network],
+    identityEventsFromBlock:
+      env.IDENTITY_EVENTS_FROM_BLOCK !== undefined && env.IDENTITY_EVENTS_FROM_BLOCK !== ''
+        ? BigInt(env.IDENTITY_EVENTS_FROM_BLOCK)
+        : DEFAULT_IDENTITY_FROM_BLOCK[network],
   };
 }

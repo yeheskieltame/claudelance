@@ -1,0 +1,21 @@
+# Keep the relayer image context minimal: workspace manifests + the three
+# packages the build needs. Everything secret or irrelevant stays out.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig.base.json
+!packages
+packages/*
+!packages/types
+!packages/sdk
+!apps
+apps/*
+!apps/relayer
+
+# Never ship env files, deps, builds, or local state even from included dirs
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+**/*.log

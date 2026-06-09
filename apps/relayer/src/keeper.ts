@@ -24,21 +24,47 @@ export type TickSummary = {
   actions: number;
   executed: number;
   failed: number;
+  skipped: number;
 };
 
 /**
+ * agentId resolution cache shared across ticks. Positive entries are
+ * permanent (an Identity NFT id never changes); negative entries stop the
+ * keeper from repeating an expensive mint scan every tick for a worker that
+ * has no identity in range.
+ */
+export type AgentIdCache = {
+  byWorker: Map<string, bigint>;
+  unresolvable: Set<string>;
+};
+
+export function createAgentIdCache(): AgentIdCache {
+  return { byWorker: new Map(), unresolvable: new Set() };
+}
+
+const LOW_BALANCE_WEI = 300_000_000_000_000_000n; // 0.3 CELO
+
+/**
  * One keeper pass: scan every bounty and run any due permissionless action
- * (cancel an expired bounty, settle a locked stake). In dry-run mode actions
- * are logged but not broadcast.
+ * (cancel an expired bounty, settle a locked stake, attest the winner's
+ * reputation). In dry-run mode actions are logged but not broadcast.
  */
 export async function runKeeperTick(
   chain: ChainClient,
   cfg: RelayerConfig,
   log: Logger = defaultLogger,
+  cache: AgentIdCache = createAgentIdCache(),
 ): Promise<TickSummary> {
   const count = await chain.bountyCount();
   const now = BigInt(Math.floor(Date.now() / 1000));
-  const summary: TickSummary = { scanned: 0, actions: 0, executed: 0, failed: 0 };
+  const summary: TickSummary = { scanned: 0, actions: 0, executed: 0, failed: 0, skipped: 0 };
+
+  if (!cfg.dryRun) {
+    const balance = await chain.relayerBalance();
+    if (balance < LOW_BALANCE_WEI) {
+      log('keeper.low-balance', { relayer: chain.relayerAddress, balanceWei: balance.toString() });
+    }
+  }
 
   for (let id = 1n; id <= count; id++) {
     summary.scanned++;
@@ -50,19 +76,59 @@ export async function runKeeperTick(
     }
 
     let claimers: ClaimerState[] = [];
+    let attested = true;
     if (bounty.status === BountyStatus.Resolved || bounty.status === BountyStatus.Cancelled) {
       claimers = await collectClaimerStates(chain, id);
+      if (bounty.status === BountyStatus.Resolved) {
+        attested = await chain.isReputationAttested(id);
+      }
     }
 
-    const actions = decideKeeperActions(id, bounty, claimers, now);
+    const actions = decideKeeperActions(id, bounty, claimers, now, attested);
     for (const action of actions) {
       summary.actions++;
-      await execute(chain, cfg, action, log, summary);
+      await execute(chain, cfg, action, log, summary, cache);
     }
   }
 
   log('keeper.tick', { ...summary, dryRun: cfg.dryRun });
   return summary;
+}
+
+/**
+ * Resolve and verify the winner's agentId for an attest action. Returns null
+ * (and logs why) when the worker has no identity in scan range or no longer
+ * holds the NFT — those bounties are skipped, never failed.
+ */
+async function resolveAgentId(
+  chain: ChainClient,
+  cfg: RelayerConfig,
+  winner: `0x${string}`,
+  cache: AgentIdCache,
+  log: Logger,
+): Promise<bigint | null> {
+  const key = winner.toLowerCase();
+  if (cache.unresolvable.has(key)) return null;
+
+  let agentId = cache.byWorker.get(key) ?? null;
+  if (agentId === null) {
+    agentId = await chain.findAgentIdByOwner(winner, cfg.identityEventsFromBlock);
+    if (agentId === null) {
+      cache.unresolvable.add(key);
+      log('keeper.agent-unresolvable', { worker: winner });
+      return null;
+    }
+    cache.byWorker.set(key, agentId);
+  }
+
+  const owner = await chain.identityOwnerOf(agentId);
+  if (owner?.toLowerCase() !== key) {
+    // NFT moved since it was minted/cached; drop the stale entry and re-scan next tick.
+    cache.byWorker.delete(key);
+    log('keeper.agent-owner-mismatch', { worker: winner, agentId: agentId.toString() });
+    return null;
+  }
+  return agentId;
 }
 
 async function collectClaimerStates(chain: ChainClient, bountyId: bigint): Promise<ClaimerState[]> {
@@ -81,28 +147,59 @@ async function execute(
   action: KeeperAction,
   log: Logger,
   summary: TickSummary,
+  cache: AgentIdCache,
 ): Promise<void> {
+  let agentId: bigint | null = null;
+  if (action.kind === 'attestReputation') {
+    agentId = await resolveAgentId(chain, cfg, action.winner, cache, log);
+    if (agentId === null) {
+      summary.skipped++;
+      return;
+    }
+  }
+
   if (cfg.dryRun) {
-    log('keeper.dry-run', { action: action.kind, ...actionMeta(action) });
+    log('keeper.dry-run', { action: action.kind, ...actionMeta(action, agentId) });
     return;
   }
   try {
     const tx =
       action.kind === 'cancelExpired'
         ? await chain.cancelExpired(action.bountyId)
-        : await chain.settleStake(action.bountyId, action.worker);
-    summary.executed++;
-    log('keeper.sent', { action: action.kind, tx, ...actionMeta(action) });
+        : action.kind === 'settleStake'
+          ? await chain.settleStake(action.bountyId, action.worker)
+          : await chain.attestReputation(action.bountyId, agentId as bigint);
+    const status = await chain.waitForReceipt(tx);
+    if (status === 'success') {
+      summary.executed++;
+      log('keeper.sent', { action: action.kind, tx, ...actionMeta(action, agentId) });
+    } else {
+      summary.failed++;
+      log('keeper.reverted', { action: action.kind, tx, ...actionMeta(action, agentId) });
+    }
   } catch (err) {
     summary.failed++;
-    log('keeper.error', { action: action.kind, error: errorMessage(err), ...actionMeta(action) });
+    log('keeper.error', {
+      action: action.kind,
+      error: errorMessage(err),
+      ...actionMeta(action, agentId),
+    });
   }
 }
 
-function actionMeta(action: KeeperAction): Record<string, unknown> {
-  return action.kind === 'cancelExpired'
-    ? { bountyId: action.bountyId.toString() }
-    : { bountyId: action.bountyId.toString(), worker: action.worker };
+function actionMeta(action: KeeperAction, agentId: bigint | null): Record<string, unknown> {
+  switch (action.kind) {
+    case 'cancelExpired':
+      return { bountyId: action.bountyId.toString() };
+    case 'settleStake':
+      return { bountyId: action.bountyId.toString(), worker: action.worker };
+    case 'attestReputation':
+      return {
+        bountyId: action.bountyId.toString(),
+        worker: action.winner,
+        agentId: agentId?.toString(),
+      };
+  }
 }
 
 export type WebhookResult = {

@@ -1819,6 +1819,30 @@ export const CLAUDELANCE_CORE_V3_ABI = [
   },
   {
     "type": "function",
+    "name": "attestReputation",
+    "inputs": [
+      { "name": "bountyId", "type": "uint256", "internalType": "uint256" },
+      { "name": "agentId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isReputationAttested",
+    "inputs": [{ "name": "bountyId", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "version",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "string", "internalType": "string" }],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
     "name": "attestCI",
     "inputs": [
       { "name": "bountyId", "type": "uint256", "internalType": "uint256" },
@@ -2151,6 +2175,16 @@ export const CLAUDELANCE_CORE_V3_ABI = [
   },
   {
     "type": "event",
+    "name": "ReputationAttested",
+    "inputs": [
+      { "name": "bountyId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "agentId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "worker", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "EarningsWithdrawn",
     "inputs": [
       { "name": "worker", "type": "address", "indexed": true, "internalType": "address" },
@@ -2272,6 +2306,8 @@ export const CLAUDELANCE_CORE_V3_ABI = [
   { "type": "error", "name": "NoPendingChange", "inputs": [] },
   { "type": "error", "name": "TimelockNotElapsed", "inputs": [] },
   { "type": "error", "name": "ProposalExpired", "inputs": [] },
+  { "type": "error", "name": "AlreadyAttested", "inputs": [] },
+  { "type": "error", "name": "AgentNotWinner", "inputs": [] },
   {
     "type": "event",
     "name": "Paused",

@@ -23,6 +23,20 @@ import type { RelayerConfig } from './config.js';
 
 const ABI = CLAUDELANCE_CORE_V3_ABI;
 
+// keccak256("Transfer(address,address,uint256)") — ERC-721 mint scan on the identity registry
+const TRANSFER_TOPIC: `0x${string}` =
+  '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+
+const ERC721_OWNER_OF_ABI = [
+  {
+    type: 'function',
+    name: 'ownerOf',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ type: 'address' }],
+  },
+] as const;
+
 /** Decoded fields of a DeliverableSubmitted log passed to a findSubmission matcher. */
 export type DeliverableLog = {
   bountyId: bigint;
@@ -41,16 +55,24 @@ export class ChainClient {
   readonly publicClient: PublicClient;
   readonly walletClient?: WalletClient<Transport, Chain, Account>;
   readonly core: Address;
+  readonly identityRegistry: Address;
 
   constructor(cfg: RelayerConfig) {
     const chain = chainForNetwork(cfg.network);
     const transport = http(cfg.rpcUrl);
     this.publicClient = createPublicClient({ chain, transport });
     this.core = cfg.deployment.core;
+    this.identityRegistry = cfg.deployment.identityRegistry;
     if (cfg.relayerPrivateKey) {
       const account = privateKeyToAccount(cfg.relayerPrivateKey);
       this.walletClient = createWalletClient({ chain, transport, account });
     }
+  }
+
+  /** Native balance of the signing wallet (0n when keyless / dry-run). */
+  async relayerBalance(): Promise<bigint> {
+    if (!this.walletClient) return 0n;
+    return this.publicClient.getBalance({ address: this.walletClient.account.address });
   }
 
   get relayerAddress(): Address | undefined {
@@ -120,40 +142,124 @@ export class ChainClient {
     })) as TypeConfig;
   }
 
+  async isReputationAttested(bountyId: bigint): Promise<boolean> {
+    return (await this.publicClient.readContract({
+      address: this.core,
+      abi: ABI,
+      functionName: 'isReputationAttested',
+      args: [bountyId],
+    })) as boolean;
+  }
+
+  /** Current owner of an ERC-8004 Identity NFT, or null if the id does not exist. */
+  async identityOwnerOf(agentId: bigint): Promise<Address | null> {
+    try {
+      return (await this.publicClient.readContract({
+        address: this.identityRegistry,
+        abi: ERC721_OWNER_OF_ABI,
+        functionName: 'ownerOf',
+        args: [agentId],
+      })) as Address;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Resolve a worker's ERC-8004 agentId: the registry has no reverse lookup,
+   * so scan Identity Transfer mints to the worker, newest-first in fixed
+   * windows down to `fromBlock`. Returns the latest minted id, or null.
+   */
+  async findAgentIdByOwner(worker: Address, fromBlock: bigint): Promise<bigint | null> {
+    const WINDOW = 250_000n;
+    const MAX_WINDOWS = 100;
+    let hi = await this.publicClient.getBlockNumber();
+    const padded: `0x${string}` = `0x${worker.slice(2).toLowerCase().padStart(64, '0')}`;
+    const topics: [`0x${string}`, null, `0x${string}`] = [TRANSFER_TOPIC, null, padded];
+
+    for (let w = 0; w < MAX_WINDOWS && hi >= fromBlock; w++) {
+      const lo = hi > fromBlock + WINDOW ? hi - WINDOW + 1n : fromBlock;
+      const logs = (await this.publicClient
+        .request({
+          method: 'eth_getLogs',
+          params: [
+            {
+              address: this.identityRegistry,
+              topics,
+              fromBlock: `0x${lo.toString(16)}`,
+              toBlock: `0x${hi.toString(16)}`,
+            },
+          ],
+        })
+        .catch(() => null)) as Array<{ topics: string[] }> | null;
+      const tokenTopic = logs?.[logs.length - 1]?.topics[3];
+      if (tokenTopic) return BigInt(tokenTopic);
+      if (lo === fromBlock) break;
+      hi = lo - 1n;
+    }
+    return null;
+  }
+
+  // Writes: simulate first (never burn gas on a revert) and pin the live gas
+  // price — Celo's base fee floats around ~200 gwei; stale estimates have
+  // broken writes before.
+
   async attestCI(bountyId: bigint, worker: Address, passed: boolean): Promise<`0x${string}`> {
     const wallet = this.requireWallet();
-    return wallet.writeContract({
+    const { request } = await this.publicClient.simulateContract({
       address: this.core,
       abi: ABI,
       functionName: 'attestCI',
       args: [bountyId, worker, passed],
       account: wallet.account,
-      chain: wallet.chain,
+      gasPrice: await this.publicClient.getGasPrice(),
     });
+    return wallet.writeContract(request);
   }
 
   async settleStake(bountyId: bigint, worker: Address): Promise<`0x${string}`> {
     const wallet = this.requireWallet();
-    return wallet.writeContract({
+    const { request } = await this.publicClient.simulateContract({
       address: this.core,
       abi: ABI,
       functionName: 'settleStake',
       args: [bountyId, worker],
       account: wallet.account,
-      chain: wallet.chain,
+      gasPrice: await this.publicClient.getGasPrice(),
     });
+    return wallet.writeContract(request);
   }
 
   async cancelExpired(bountyId: bigint): Promise<`0x${string}`> {
     const wallet = this.requireWallet();
-    return wallet.writeContract({
+    const { request } = await this.publicClient.simulateContract({
       address: this.core,
       abi: ABI,
       functionName: 'cancelExpired',
       args: [bountyId],
       account: wallet.account,
-      chain: wallet.chain,
+      gasPrice: await this.publicClient.getGasPrice(),
     });
+    return wallet.writeContract(request);
+  }
+
+  async attestReputation(bountyId: bigint, agentId: bigint): Promise<`0x${string}`> {
+    const wallet = this.requireWallet();
+    const { request } = await this.publicClient.simulateContract({
+      address: this.core,
+      abi: ABI,
+      functionName: 'attestReputation',
+      args: [bountyId, agentId],
+      account: wallet.account,
+      gasPrice: await this.publicClient.getGasPrice(),
+    });
+    return wallet.writeContract(request);
+  }
+
+  /** Wait for inclusion so sequential keeper sends never race their own nonce. */
+  async waitForReceipt(hash: `0x${string}`): Promise<'success' | 'reverted'> {
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 });
+    return receipt.status;
   }
 
   /**

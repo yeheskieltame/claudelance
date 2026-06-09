@@ -5,13 +5,16 @@ export const GRACE_PERIOD_SECONDS = 3n * 24n * 60n * 60n;
 
 export type KeeperAction =
   | { kind: 'settleStake'; bountyId: bigint; worker: `0x${string}` }
-  | { kind: 'cancelExpired'; bountyId: bigint };
+  | { kind: 'cancelExpired'; bountyId: bigint }
+  | { kind: 'attestReputation'; bountyId: bigint; winner: `0x${string}` };
 
 export type ClaimerState = {
   worker: `0x${string}`;
   /** The contract's "stake already settled" flag (refund OR forfeit). */
   stakeSettled: boolean;
 };
+
+const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
 /**
  * Decide which permissionless keeper calls a bounty needs right now. Pure:
@@ -20,9 +23,10 @@ export type ClaimerState = {
  */
 export function decideKeeperActions(
   bountyId: bigint,
-  bounty: Pick<Bounty, 'status' | 'deadline' | 'stakeRequired'>,
+  bounty: Pick<Bounty, 'status' | 'deadline' | 'stakeRequired' | 'winner'>,
   claimers: ClaimerState[],
   nowSeconds: bigint,
+  reputationAttested: boolean,
   graceSeconds: bigint = GRACE_PERIOD_SECONDS,
 ): KeeperAction[] {
   if (bounty.status === BountyStatus.Open) {
@@ -33,17 +37,28 @@ export function decideKeeperActions(
     return [];
   }
 
+  const actions: KeeperAction[] = [];
+
   // Resolved or Cancelled: sweep every stake still locked in the contract.
   if (
     (bounty.status === BountyStatus.Resolved || bounty.status === BountyStatus.Cancelled) &&
     bounty.stakeRequired > 0n
   ) {
-    return claimers
-      .filter((c) => !c.stakeSettled)
-      .map((c) => ({ kind: 'settleStake', bountyId, worker: c.worker }) as const);
+    for (const c of claimers) {
+      if (!c.stakeSettled) actions.push({ kind: 'settleStake', bountyId, worker: c.worker });
+    }
   }
 
-  return [];
+  // Resolved: write the winner's ERC-8004 reputation once (v3.1 attestReputation).
+  if (
+    bounty.status === BountyStatus.Resolved &&
+    !reputationAttested &&
+    bounty.winner.toLowerCase() !== ZERO_ADDR
+  ) {
+    actions.push({ kind: 'attestReputation', bountyId, winner: bounty.winner });
+  }
+
+  return actions;
 }
 
 /** Map a CI run conclusion to a pass/fail verdict, or null when it isn't terminal. */
