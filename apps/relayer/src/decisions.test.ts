@@ -16,13 +16,15 @@ import {
 
 const WORKER_A = '0x1111111111111111111111111111111111111111' as const;
 const WORKER_B = '0x2222222222222222222222222222222222222222' as const;
+const ZERO = '0x0000000000000000000000000000000000000000' as const;
 
 test('open bounty inside its window needs no action', () => {
   const actions = decideKeeperActions(
     1n,
-    { status: BountyStatus.Open, deadline: 10_000n, stakeRequired: 1n },
+    { status: BountyStatus.Open, deadline: 10_000n, stakeRequired: 1n, winner: ZERO },
     [],
     5_000n,
+    false,
   );
   assert.deepEqual(actions, []);
 });
@@ -31,9 +33,10 @@ test('open bounty past deadline+grace is cancellable by anyone', () => {
   const deadline = 10_000n;
   const actions = decideKeeperActions(
     7n,
-    { status: BountyStatus.Open, deadline, stakeRequired: 1n },
+    { status: BountyStatus.Open, deadline, stakeRequired: 1n, winner: ZERO },
     [],
     deadline + GRACE_PERIOD_SECONDS,
+    false,
   );
   assert.deepEqual(actions, [{ kind: 'cancelExpired', bountyId: 7n }]);
 });
@@ -42,9 +45,10 @@ test('open bounty inside the grace window is left to the poster', () => {
   const deadline = 10_000n;
   const actions = decideKeeperActions(
     7n,
-    { status: BountyStatus.Open, deadline, stakeRequired: 1n },
+    { status: BountyStatus.Open, deadline, stakeRequired: 1n, winner: ZERO },
     [],
     deadline + GRACE_PERIOD_SECONDS - 1n,
+    false,
   );
   assert.deepEqual(actions, []);
 });
@@ -52,12 +56,13 @@ test('open bounty inside the grace window is left to the poster', () => {
 test('resolved bounty settles only unsettled stakes', () => {
   const actions = decideKeeperActions(
     3n,
-    { status: BountyStatus.Resolved, deadline: 1n, stakeRequired: 100n },
+    { status: BountyStatus.Resolved, deadline: 1n, stakeRequired: 100n, winner: WORKER_A },
     [
       { worker: WORKER_A, stakeSettled: true },
       { worker: WORKER_B, stakeSettled: false },
     ],
     9_999n,
+    true,
   );
   assert.deepEqual(actions, [{ kind: 'settleStake', bountyId: 3n, worker: WORKER_B }]);
 });
@@ -65,9 +70,10 @@ test('resolved bounty settles only unsettled stakes', () => {
 test('cancelled bounty also sweeps locked stakes', () => {
   const actions = decideKeeperActions(
     4n,
-    { status: BountyStatus.Cancelled, deadline: 1n, stakeRequired: 100n },
+    { status: BountyStatus.Cancelled, deadline: 1n, stakeRequired: 100n, winner: ZERO },
     [{ worker: WORKER_A, stakeSettled: false }],
     9_999n,
+    false,
   );
   assert.deepEqual(actions, [{ kind: 'settleStake', bountyId: 4n, worker: WORKER_A }]);
 });
@@ -75,9 +81,57 @@ test('cancelled bounty also sweeps locked stakes', () => {
 test('zero-stake resolved bounty produces no settle calls', () => {
   const actions = decideKeeperActions(
     5n,
-    { status: BountyStatus.Resolved, deadline: 1n, stakeRequired: 0n },
+    { status: BountyStatus.Resolved, deadline: 1n, stakeRequired: 0n, winner: WORKER_A },
     [{ worker: WORKER_A, stakeSettled: false }],
     9_999n,
+    true,
+  );
+  assert.deepEqual(actions, []);
+});
+
+test('resolved unattested bounty queues an attest for the winner', () => {
+  const actions = decideKeeperActions(
+    6n,
+    { status: BountyStatus.Resolved, deadline: 1n, stakeRequired: 0n, winner: WORKER_A },
+    [{ worker: WORKER_A, stakeSettled: true }],
+    9_999n,
+    false,
+  );
+  assert.deepEqual(actions, [{ kind: 'attestReputation', bountyId: 6n, winner: WORKER_A }]);
+});
+
+test('resolved unattested bounty with locked stakes settles then attests', () => {
+  const actions = decideKeeperActions(
+    6n,
+    { status: BountyStatus.Resolved, deadline: 1n, stakeRequired: 100n, winner: WORKER_A },
+    [{ worker: WORKER_B, stakeSettled: false }],
+    9_999n,
+    false,
+  );
+  assert.deepEqual(actions, [
+    { kind: 'settleStake', bountyId: 6n, worker: WORKER_B },
+    { kind: 'attestReputation', bountyId: 6n, winner: WORKER_A },
+  ]);
+});
+
+test('already-attested resolved bounty queues no attest', () => {
+  const actions = decideKeeperActions(
+    6n,
+    { status: BountyStatus.Resolved, deadline: 1n, stakeRequired: 0n, winner: WORKER_A },
+    [],
+    9_999n,
+    true,
+  );
+  assert.deepEqual(actions, []);
+});
+
+test('cancelled bounty never attests', () => {
+  const actions = decideKeeperActions(
+    6n,
+    { status: BountyStatus.Cancelled, deadline: 1n, stakeRequired: 0n, winner: ZERO },
+    [],
+    9_999n,
+    false,
   );
   assert.deepEqual(actions, []);
 });
