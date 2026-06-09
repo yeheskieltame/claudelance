@@ -11,7 +11,14 @@
     "deployedAt": 1780589936,
     "tokensWhitelisted": true,
     "celoscanProxy": "https://celoscan.io/address/0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8#code",
-    "celoscanImpl": "https://celoscan.io/address/0x92b7d04E9A3fa3C96bfc891D8E8dB61Fe6C1D49C#code"
+    "celoscanImpl": "https://celoscan.io/address/0x92b7d04E9A3fa3C96bfc891D8E8dB61Fe6C1D49C#code",
+    "v31": {
+      "implementation": "0x01A7Ee90F121Bd57BD1059f5B347C98e37aAaea7",
+      "deployedAt": 1781031177,
+      "status": "implementation deployed + verified; proxy upgrade pending Safe execution",
+      "upgradeCalldata": "0x4f1ef28600000000000000000000000001a7ee90f121bd57bd1059f5b347c98e37aaaea700000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000",
+      "celoscanImpl": "https://celoscan.io/address/0x01A7Ee90F121Bd57BD1059f5B347C98e37aAaea7#code"
+    }
   },
   "tokens": {
     "cUSD": "0x765DE816845861e75A25fCA122bb6898B8B1282a",
