@@ -46,6 +46,9 @@ struct CoreStorage {
 
     // ── Reentrancy guard (replaces ReentrancyGuardUpgradeable) ───
     bool _locked;
+
+    // ── v3.1 append: ERC-8004 reputation attestation ─────────────
+    mapping(uint256 => bool) reputationAttested; // bountyId → feedback already given
 }
 
 /// @title ClaudelanceStorageV3

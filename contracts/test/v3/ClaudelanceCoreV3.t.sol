@@ -8,6 +8,7 @@ import { ClaudelanceCoreV3 } from "../../src/v3/ClaudelanceCoreV3.sol";
 import { ClaudelanceProxy } from "../../src/v3/ClaudelanceProxy.sol";
 import { MockERC20 } from "../../src/mocks/MockERC20.sol";
 import { MockIdentityRegistry } from "../../src/mocks/MockIdentityRegistry.sol";
+import { MockReputationRegistry } from "../../src/mocks/MockReputationRegistry.sol";
 import {
     Bounty,
     Submission,
@@ -25,7 +26,10 @@ import {
     StakeAlreadySettled,
     NoAgentIdentity,
     DeadlinePassed,
-    GracePeriodActive
+    GracePeriodActive,
+    BountyNotResolved,
+    AlreadyAttested,
+    AgentNotWinner
 } from "../../src/v3/types/ClaudelanceTypes.sol";
 import { TaskTypeLib } from "../../src/v3/libraries/TaskTypeLib.sol";
 import { EscrowLib } from "../../src/v3/libraries/EscrowLib.sol";
@@ -44,6 +48,7 @@ contract ClaudelanceCoreV3Test is Test {
     MockERC20 internal cUSD;
     MockERC20 internal celo;
     MockIdentityRegistry internal identity;
+    MockReputationRegistry internal reputation;
 
     // ── Constants ────────────────────────────────────────────────
     uint96 constant BOUNTY_AMOUNT = 10e18;
@@ -62,12 +67,13 @@ contract ClaudelanceCoreV3Test is Test {
 
         // Deploy mock identity registry — all holders have 1 NFT
         identity = new MockIdentityRegistry();
+        reputation = new MockReputationRegistry();
 
         // Deploy impl + proxy
         ClaudelanceCoreV3 impl = new ClaudelanceCoreV3();
         bytes memory initData = abi.encodeCall(
             ClaudelanceCoreV3.initialize,
-            (treasury, relayer, owner, address(identity), address(identity))
+            (treasury, relayer, owner, address(identity), address(reputation))
         );
         ClaudelanceProxy proxy = new ClaudelanceProxy(address(impl), initData);
         core = ClaudelanceCoreV3(address(proxy));
@@ -459,7 +465,110 @@ contract ClaudelanceCoreV3Test is Test {
         assertEq(counts[TaskTypeLib.TYPE_RESEARCH], 1);
     }
 
+    // ── attestReputation (v3.1) ──────────────────────────────────
+
+    event ReputationAttested(uint256 indexed bountyId, uint256 indexed agentId, address indexed worker);
+
+    uint256 constant WORKER_AGENT_ID = 1;  // first register() in setUp
+    uint256 constant WORKER2_AGENT_ID = 2;
+
+    function test_attestReputation_happyPath() public {
+        uint256 id = _resolvedBounty();
+
+        vm.expectEmit(true, true, true, true);
+        emit ReputationAttested(id, WORKER_AGENT_ID, worker);
+        core.attestReputation(id, WORKER_AGENT_ID);
+
+        assertTrue(core.isReputationAttested(id));
+        assertEq(reputation.callCount(), 1);
+        assertEq(reputation.lastClient(), address(core));
+        assertEq(reputation.lastAgentId(), WORKER_AGENT_ID);
+        assertEq(reputation.lastValue(), int128(1));
+        assertEq(reputation.lastValueDecimals(), 0);
+        assertEq(reputation.lastTag1(), "claudelance");
+        assertEq(reputation.lastTag2(), "0"); // TYPE_CODE
+        assertEq(reputation.lastFeedbackURI(), DELIVERABLE_URL);
+        assertEq(reputation.lastFeedbackHash(), DELIVERABLE_HASH);
+    }
+
+    function test_attestReputation_permissionless() public {
+        uint256 id = _resolvedBounty();
+        vm.prank(makeAddr("anyone"));
+        core.attestReputation(id, WORKER_AGENT_ID);
+        assertTrue(core.isReputationAttested(id));
+    }
+
+    function test_attestReputation_revertsIfNotResolved() public {
+        uint256 id = _postAndClaim();
+        vm.expectRevert(BountyNotResolved.selector);
+        core.attestReputation(id, WORKER_AGENT_ID);
+    }
+
+    function test_attestReputation_revertsIfAgentNotWinner() public {
+        uint256 id = _resolvedBounty();
+        vm.expectRevert(AgentNotWinner.selector);
+        core.attestReputation(id, WORKER2_AGENT_ID);
+    }
+
+    function test_attestReputation_revertsIfAlreadyAttested() public {
+        uint256 id = _resolvedBounty();
+        core.attestReputation(id, WORKER_AGENT_ID);
+        vm.expectRevert(AlreadyAttested.selector);
+        core.attestReputation(id, WORKER_AGENT_ID);
+    }
+
+    function test_attestReputation_revertsWhenPaused() public {
+        uint256 id = _resolvedBounty();
+        vm.prank(owner);
+        core.pause();
+        vm.expectRevert();
+        core.attestReputation(id, WORKER_AGENT_ID);
+    }
+
+    function test_attestReputation_registryRevertPropagates() public {
+        uint256 id = _resolvedBounty();
+        reputation.setRevertOnFeedback(true);
+        vm.expectRevert("registry down");
+        core.attestReputation(id, WORKER_AGENT_ID);
+
+        // Flag must not stick after the revert; a retry succeeds
+        assertFalse(core.isReputationAttested(id));
+        reputation.setRevertOnFeedback(false);
+        core.attestReputation(id, WORKER_AGENT_ID);
+        assertTrue(core.isReputationAttested(id));
+    }
+
+    function test_attestReputation_pickWinnerUnaffectedByRegistry() public {
+        // Resolution must never depend on the registry: kill it, resolve fine
+        reputation.setRevertOnFeedback(true);
+        uint256 id = _resolvedBounty();
+        assertEq(_getBounty(id).winner, worker);
+    }
+
+    function test_upgrade_preservesStateAndAddsAttest() public {
+        uint256 id = _resolvedBounty();
+
+        ClaudelanceCoreV3 newImpl = new ClaudelanceCoreV3();
+        vm.prank(owner);
+        core.upgradeToAndCall(address(newImpl), "");
+
+        assertEq(core.version(), "3.1.0");
+        assertEq(_getBounty(id).winner, worker);
+        core.attestReputation(id, WORKER_AGENT_ID);
+        assertTrue(core.isReputationAttested(id));
+    }
+
     // ── Helpers ──────────────────────────────────────────────────
+
+    function _resolvedBounty() internal returns (uint256 id) {
+        id = _postAndClaim();
+        vm.prank(worker);
+        core.submitDeliverable(id, DELIVERABLE_URL, DELIVERABLE_HASH, "");
+        vm.prank(relayer);
+        core.attestCI(id, worker, true);
+        vm.prank(poster);
+        core.pickWinner(id, worker);
+    }
 
     function _postCodeBounty() internal returns (uint256) {
         vm.prank(poster);
