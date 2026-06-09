@@ -54,22 +54,27 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
   // v3 stats come from getStatsV3(token); v2 still has its public getters.
   const isMainnet = chainId === 42_220;
   const v2Core = MAINNET_V2.core;
-  const statsResults = await client.multicall({
-    contracts: [
-      { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.cUSD] },
-      { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.CELO] },
-      { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.USDC] },
-      ...(isMainnet
-        ? [
+  const [statsResults, v2Results] = await Promise.all([
+    client.multicall({
+      contracts: [
+        { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.cUSD] },
+        { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.CELO] },
+        { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.USDC] },
+      ],
+      allowFailure: true,
+    }),
+    isMainnet
+      ? client.multicall({
+          contracts: [
             { address: v2Core, abi: CLAUDELANCE_CORE_ABI, functionName: "getStats" as const, args: [deploy.cUSD] },
             { address: v2Core, abi: CLAUDELANCE_CORE_ABI, functionName: "getStats" as const, args: [deploy.CELO] },
             { address: v2Core, abi: CLAUDELANCE_CORE_ABI, functionName: "getStats" as const, args: [deploy.USDC] },
-            { address: v2Core, abi: CLAUDELANCE_CORE_ABI, functionName: "bountyCount" as const, args: [] },
-          ]
-        : []),
-    ],
-    allowFailure: true,
-  });
+            { address: v2Core, abi: CLAUDELANCE_CORE_ABI, functionName: "bountyCount" as const },
+          ],
+          allowFailure: true,
+        })
+      : Promise.resolve(null),
+  ]);
 
   type StatsV3Tuple = readonly [bigint, bigint, bigint, bigint, bigint, readonly bigint[]];
   const safeStats = (i: number): StatsV3Tuple => {
@@ -83,15 +88,12 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
   // v2 getStats returns the same 5 leading fields (no countByType).
   type StatsV2Tuple = readonly [bigint, bigint, bigint, bigint, bigint];
   const safeV2 = (i: number): StatsV2Tuple => {
-    const r = statsResults[i];
+    const r = v2Results?.[i];
     if (!r || r.status === "failure") return [0n, 0n, 0n, 0n, 0n];
     return r.result as unknown as StatsV2Tuple;
   };
-  const ZERO5: StatsV2Tuple = [0n, 0n, 0n, 0n, 0n];
-  const [vCusd, vCelo, vUsdc] = isMainnet
-    ? [safeV2(3), safeV2(4), safeV2(5)]
-    : [ZERO5, ZERO5, ZERO5];
-  const v2BountyCountRead = isMainnet ? statsResults[6] : undefined;
+  const [vCusd, vCelo, vUsdc] = [safeV2(0), safeV2(1), safeV2(2)];
+  const v2BountyCountRead = v2Results?.[3];
   const v2BountyCount =
     v2BountyCountRead && v2BountyCountRead.status === "success"
       ? (v2BountyCountRead.result as unknown as bigint)
