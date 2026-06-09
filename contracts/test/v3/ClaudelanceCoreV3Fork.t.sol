@@ -45,7 +45,10 @@ import {
     NoPendingChange,
     TimelockNotElapsed,
     NotTargetedWorker,
-    ProposalExpired
+    ProposalExpired,
+    AlreadyAttested,
+    AgentNotWinner,
+    BountyNotResolved
 } from "../../src/v3/types/ClaudelanceTypes.sol";
 import { TaskTypeLib } from "../../src/v3/libraries/TaskTypeLib.sol";
 import { EscrowLib } from "../../src/v3/libraries/EscrowLib.sol";
@@ -54,6 +57,13 @@ import { EscrowLib } from "../../src/v3/libraries/EscrowLib.sol";
 interface IErc8004 {
     function register() external returns (uint256);
     function balanceOf(address) external view returns (uint256);
+}
+
+// Live ERC-8004 Reputation Registry read surface (for v3.1 attest assertions)
+interface IRepRegistry {
+    function getClients(uint256 agentId) external view returns (address[] memory);
+    function getSummary(uint256 agentId, address[] calldata clients, string calldata tag1, string calldata tag2)
+        external view returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals);
 }
 
 contract ClaudelanceCoreV3ForkTest is Test {
@@ -710,6 +720,88 @@ contract ClaudelanceCoreV3ForkTest is Test {
         address[] memory eligible = core.getEligibleSubmissions(id);
         assertEq(eligible.length, 1);
         assertEq(eligible[0], worker); // only worker1 passes CI
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Section: v3.1 attestReputation against the LIVE reputation registry
+    // ─────────────────────────────────────────────────────────────
+
+    IRepRegistry internal repRegistry = IRepRegistry(0x8004B663056A597Dffe9eCcC1965A193B7388713);
+
+    function test_fork_upgradeToV31_attestReputation() public {
+        // Upgrade the live Sepolia proxy in-fork to this build
+        ClaudelanceCoreV3 newImpl = new ClaudelanceCoreV3();
+        vm.prank(owner);
+        core.upgradeToAndCall(address(newImpl), "");
+        assertEq(core.version(), "3.1.0");
+
+        // Fresh identity for the worker so we know its agentId
+        vm.prank(worker);
+        uint256 agentId = identity.register();
+
+        // Direct-hire lifecycle (research type: no CI), then attest
+        vm.prank(poster);
+        uint256 id = core.postDirectHire(
+            IERC20(address(cUSD)), worker,
+            TaskTypeLib.TYPE_RESEARCH,
+            REPO, ISSUE, RHASH, AMT, STAKE, DL
+        );
+        _claim(id, worker);
+        _submit(id, worker, GIST, DHASH);
+        vm.prank(poster);
+        core.pickWinner(id, worker);
+
+        vm.prank(attacker); // permissionless
+        core.attestReputation(id, agentId);
+        assertTrue(core.isReputationAttested(id));
+
+        // The REAL registry recorded the core proxy as client with +1
+        address[] memory clients = repRegistry.getClients(agentId);
+        assertEq(clients.length, 1);
+        assertEq(clients[0], address(core));
+        (uint64 count, int128 score, uint8 decimals_) = repRegistry.getSummary(agentId, clients, "", "");
+        assertEq(count, 1);
+        assertEq(score, 1);
+        assertEq(decimals_, 0);
+
+        // Tag filter works: feedback was tagged claudelance/<type>
+        (uint64 tagCount,,) = repRegistry.getSummary(agentId, clients, "claudelance", "2");
+        assertEq(tagCount, 1);
+
+        // Guards on the live path
+        vm.expectRevert(AlreadyAttested.selector);
+        core.attestReputation(id, agentId);
+    }
+
+    function test_fork_attestReputation_guards() public {
+        ClaudelanceCoreV3 newImpl = new ClaudelanceCoreV3();
+        vm.prank(owner);
+        core.upgradeToAndCall(address(newImpl), "");
+
+        vm.prank(worker);
+        uint256 workerAgent = identity.register();
+        vm.prank(worker2);
+        uint256 otherAgent = identity.register();
+
+        vm.prank(poster);
+        uint256 id = core.postDirectHire(
+            IERC20(address(cUSD)), worker,
+            TaskTypeLib.TYPE_RESEARCH,
+            REPO, ISSUE, RHASH, AMT, STAKE, DL
+        );
+        _claim(id, worker);
+        _submit(id, worker, GIST, DHASH);
+
+        // Not resolved yet
+        vm.expectRevert(BountyNotResolved.selector);
+        core.attestReputation(id, workerAgent);
+
+        vm.prank(poster);
+        core.pickWinner(id, worker);
+
+        // agentId not owned by the winner
+        vm.expectRevert(AgentNotWinner.selector);
+        core.attestReputation(id, otherAgent);
     }
 
     // ─────────────────────────────────────────────────────────────
