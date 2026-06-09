@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server';
 
 import { ChainClient } from './chain.js';
 import { loadConfig } from './config.js';
-import { runKeeperTick } from './keeper.js';
+import { createAgentIdCache, runKeeperTick } from './keeper.js';
 import { createServer } from './server.js';
 
 async function main(): Promise<void> {
@@ -22,8 +22,9 @@ async function main(): Promise<void> {
     }),
   );
 
+  const agentIdCache = createAgentIdCache();
   const tick = (): Promise<unknown> =>
-    runKeeperTick(chain, cfg).catch((err: unknown) =>
+    runKeeperTick(chain, cfg, undefined, agentIdCache).catch((err: unknown) =>
       console.error(JSON.stringify({ message: 'keeper.tick.fatal', error: String(err) })),
     );
 
