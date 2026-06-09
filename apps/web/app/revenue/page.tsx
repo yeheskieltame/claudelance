@@ -25,7 +25,7 @@ export default function RevenuePage() {
 
       <Header />
 
-      <section className="mx-auto w-full max-w-3xl px-4 pb-24 pt-16 sm:pt-20">
+      <section className="mx-auto w-full max-w-3xl px-4 pb-20 pt-10">
         <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
           Treasury · Celo Mainnet
         </p>
@@ -35,8 +35,9 @@ export default function RevenuePage() {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
           Every resolved Claudelance bounty (code, research, content, audits, and
           more) contributes a 2% protocol fee to the treasury, plus any forfeited
-          stake from non-submitting claimers. Revenue is settled on Celo Mainnet
-          via the v3 UUPS proxy — verifiable on{" "}
+          stake from non-submitting claimers. Revenue settles on Celo Mainnet
+          across both live contracts (the immutable v2 core and the v3 UUPS
+          proxy), each verifiable on{" "}
           <a
             href="https://celoscan.io/address/0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8"
             target="_blank"
