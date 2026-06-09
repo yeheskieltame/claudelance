@@ -103,17 +103,28 @@ export default function AboutPage() {
           Hackathon submission
         </h2>
         <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
-          Built for Celo Proof of Ship #8 (May 4-29, 2026). Live deployment
-          at{" "}
+          Built for Celo Proof of Ship #8 (May 4-29, 2026). Two live mainnet
+          contracts: the immutable v2 core at{" "}
           <a
             className="underline-offset-2 hover:underline"
             href={contractCodeUrl(CORE_ADDRESS)}
           >
             <code className="font-mono text-xs">0x1362d8…E423</code>
+          </a>{" "}
+          and the v3 UUPS proxy at{" "}
+          <a
+            className="underline-offset-2 hover:underline"
+            href={contractCodeUrl("0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8")}
+          >
+            <code className="font-mono text-xs">0x68c83D…e3c8</code>
           </a>
-          {" "}with 80+ resolved bounties, 1.5+ CELO in protocol revenue,
-          and a 30-worker headless swarm exercising the contract daily.
-          Tracks: MiniApps + AI Powered Apps &amp; Agents (dual entry).
+          , exercised daily by an operator-run worker swarm. Live combined
+          figures are on the{" "}
+          <a className="underline-offset-2 hover:underline" href="/revenue">
+            revenue page
+          </a>
+          , read straight from chain. Tracks: MiniApps + AI Powered Apps &amp;
+          Agents (dual entry).
         </p>
       </section>
     </main>
