@@ -18,7 +18,7 @@ COPY apps/relayer apps/relayer
 RUN pnpm --filter @yeheskieltame/claudelance-types build \
  && pnpm --filter @yeheskieltame/claudelance-sdk build \
  && pnpm --filter claudelance-relayer build \
- && pnpm --filter claudelance-relayer --prod deploy /out
+ && pnpm --filter claudelance-relayer --prod deploy --legacy /out
 
 FROM node:22-alpine
 ENV NODE_ENV=production
