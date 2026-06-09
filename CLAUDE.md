@@ -44,7 +44,7 @@
 | Mainnet wallet topology | 4 distinct keys — `Deploy.s.sol` aborts on chainid 42220 if any collide. Owner is a Safe multisig (threshold 2). |
 | Mainnet deployer | Must be the user's Talent-registered address (`0x77c4a1c…`) for Celo Proof of Ship attribution |
 | Mainnet v2 status | **LIVE** at `0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`, Celoscan-verified, allowToken applied for cUSD/CELO/USDC. As of 2026-05-24: 76 of 92 bounties resolved, 1.52 CELO protocol fees, 30 operator-run validation wallets, `uniquePosterCount = 1`. Operator dogfooding only — never label as organic adoption. |
-| Mainnet v3 status | **LIVE** — proxy `0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8`, impl `0x92b7d04E9A3fa3C96bfc891D8E8dB61Fe6C1D49C`, deployed 2026-06-04, Celoscan-verified. cUSD/CELO/USDC whitelisted via Safe multisig. Accepts task types 0–10. |
+| Mainnet v3 status | **LIVE** — proxy `0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8`, impl `0x92b7d04E9A3fa3C96bfc891D8E8dB61Fe6C1D49C`, deployed 2026-06-04, Celoscan-verified. cUSD/CELO/USDC whitelisted via Safe multisig. Accepts task types 0–10. **v3.1 (2026-06-10):** impl `0x01A7Ee90F121Bd57BD1059f5B347C98e37aAaea7` deployed + verified (adds permissionless `attestReputation` writing +1 ERC-8004 feedback per resolved bounty, PR #462); proxy upgrade pending Safe `upgradeToAndCall` — calldata in `contracts/deployments/celo-mainnet.json`. Update this row once the proxy reports `version() == 3.1.0`. |
 | Sepolia v3 status | **LIVE** — proxy `0x64b45Fe2C64951013389740AD530e5c664fd0Ffe`, impl `0x1fb667a40159e4652A89dDFC9ADF3eEcB6F0A572`, deployed 2026-06-04, tokens whitelisted inline. |
 
 ## Repo structure
