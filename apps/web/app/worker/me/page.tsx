@@ -38,7 +38,7 @@ export default function WorkerMePage() {
           <p className="mt-2 text-sm text-muted-foreground">
             {isConnected
               ? "One redirect away from your earnings + bounty history."
-              : "/worker/me is a personalised shortcut — connect a wallet so we know which address to route to."}
+              : "/worker/me is a personalised shortcut. Connect a wallet so we know which address to route to."}
           </p>
           {!isConnected && (
             <Button asChild className="mt-5" size="sm">
