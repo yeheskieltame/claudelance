@@ -12,6 +12,8 @@ export type RelayerConfig = {
   dryRun: boolean;
   port: number;
   keeperIntervalMs: number;
+  /** How often the event watcher polls for new logs that trigger an instant tick. */
+  eventPollMs: number;
   eventsFromBlock: bigint;
   identityEventsFromBlock: bigint;
 };
@@ -71,7 +73,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayerConfig 
     githubWebhookSecret: env.GITHUB_WEBHOOK_SECRET || undefined,
     dryRun,
     port: Number(env.PORT ?? 8787),
-    keeperIntervalMs: Number(env.KEEPER_INTERVAL_MS ?? 300_000),
+    keeperIntervalMs: Number(env.KEEPER_INTERVAL_MS ?? 60_000),
+    eventPollMs: Number(env.EVENT_POLL_MS ?? 5_000),
     eventsFromBlock:
       env.EVENTS_FROM_BLOCK !== undefined && env.EVENTS_FROM_BLOCK !== ''
         ? BigInt(env.EVENTS_FROM_BLOCK)
