@@ -61,3 +61,19 @@ while (Date.now() < deadline && !(settled && attested)) {
 }
 if (!settled) console.log('keeper did NOT settle stake within the watch window');
 if (!attested) console.log('keeper did NOT attest reputation within the watch window');
+
+// Poster-side service receipt: the keeper (agent 9144) closed this bounty's
+// tail, so the poster records +1 ERC-8004 feedback for it.
+if (settled && args['no-thanks'] === undefined) {
+  const KEEPER_AGENT_ID = 9144n;
+  try {
+    const fbTx = await cl.giveFeedback(KEEPER_AGENT_ID, {
+      tag1: 'claudelance',
+      tag2: 'keeper-service',
+      endpoint: `bounty:${args.bounty}`,
+    });
+    console.log(`poster feedback to keeper agent ${KEEPER_AGENT_ID} tx=${fbTx}`);
+  } catch (e) {
+    console.log(`poster feedback failed: ${(e.shortMessage ?? e.message).slice(0, 100)}`);
+  }
+}
