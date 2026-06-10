@@ -123,10 +123,30 @@ const config: Config = {
           "0%,100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-8px)" },
         },
+        "drift-a": {
+          "0%,100%": { transform: "translate(-50%, 0) scale(1)" },
+          "50%": { transform: "translate(-42%, 6%) scale(1.08)" },
+        },
+        "drift-b": {
+          "0%,100%": { transform: "translate(0, 0) scale(1)" },
+          "50%": { transform: "translate(8%, -6%) scale(1.12)" },
+        },
+        "drift-c": {
+          "0%,100%": { transform: "translate(0, 0) scale(1)" },
+          "50%": { transform: "translate(-7%, -5%) scale(0.94)" },
+        },
+        shimmer: {
+          from: { backgroundPosition: "200% 0" },
+          to: { backgroundPosition: "-200% 0" },
+        },
       },
       animation: {
         "fade-in": "fade-in 600ms ease-out",
         float: "float 6s ease-in-out infinite",
+        "drift-a": "drift-a 28s ease-in-out infinite",
+        "drift-b": "drift-b 36s ease-in-out infinite",
+        "drift-c": "drift-c 44s ease-in-out infinite",
+        shimmer: "shimmer 8s linear infinite",
       },
       transitionDuration: {
         DEFAULT: "180ms",
