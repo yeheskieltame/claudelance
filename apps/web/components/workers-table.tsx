@@ -68,7 +68,7 @@ export function WorkersTable({ rows }: { rows: WorkerRow[] }) {
       {visible.length === 0 ? (
         <EmptyState message={`No workers match “${query.trim()}”.`} />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card/70">
+        <div className="glow-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>

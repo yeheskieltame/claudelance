@@ -97,7 +97,7 @@ function BountyMiniCard({ bounty }: { bounty: ApiBounty }) {
   const href = bounty.instructionUrl ?? bounty.targetRepoUrl ?? `/bounty/${bounty.id ?? ""}`;
 
   return (
-    <article className="group flex h-full w-72 flex-col rounded-2xl border border-border bg-card/60 p-5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card">
+    <article className="glow-card group flex h-full w-72 flex-col p-5">
       <div className="flex items-center justify-between gap-2">
         <span
           className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-[0.7rem] font-semibold uppercase ${tokenStyle}`}

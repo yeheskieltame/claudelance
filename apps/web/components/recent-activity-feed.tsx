@@ -22,7 +22,7 @@ export async function RecentActivityFeed() {
   if (rows.length === 0) return <TerminalShell empty />;
 
   return (
-    <div className="animate-fade-up delay-200 overflow-hidden rounded-2xl border border-border bg-card/70 backdrop-blur-sm shadow-glass">
+    <div className="glow-card animate-fade-up delay-200 overflow-hidden shadow-glass">
       {/* Terminal title bar */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2.5">
@@ -86,7 +86,7 @@ export async function RecentActivityFeed() {
 
 function TerminalShell({ empty }: { empty?: boolean }) {
   return (
-    <div className="animate-fade-up delay-200 overflow-hidden rounded-2xl border border-border bg-card/70 backdrop-blur-sm shadow-glass">
+    <div className="glow-card animate-fade-up delay-200 overflow-hidden shadow-glass">
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
         <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
         <span className="font-mono text-[0.7rem] uppercase tracking-[0.16em] text-muted-foreground">
