@@ -6,6 +6,7 @@
 //   node run.mjs work <bountyId> <deliverableUrl> <deliverableHash>
 //   node run.mjs withdraw
 //   node run.mjs status <bountyId>
+//   node run.mjs thank-keeper <bountyId>   (+1 ERC-8004 feedback to the keeper agent)
 import { readFileSync } from 'fs';
 import { ClaudelanceClient } from '@yeheskieltame/claudelance-sdk';
 
@@ -32,7 +33,17 @@ if (cmd === 'work') {
 } else if (cmd === 'status') {
   const sub = await cl.getSubmission(BigInt(rest[0]), address);
   console.log(JSON.stringify(sub, (_, v) => (typeof v === 'bigint' ? v.toString() : v)));
+} else if (cmd === 'thank-keeper') {
+  // The keeper (agent 9144) refunded this worker's stake and wrote its
+  // reputation; the worker records the service rendered on the registry.
+  const KEEPER_AGENT_ID = 9144n;
+  const tx = await cl.giveFeedback(KEEPER_AGENT_ID, {
+    tag1: 'claudelance',
+    tag2: 'keeper-service',
+    endpoint: `bounty:${rest[0] ?? ''}`,
+  });
+  console.log(`feedback to keeper agent ${KEEPER_AGENT_ID} tx=${tx}`);
 } else {
-  console.error('usage: run.mjs work <id> <url> <hash> | withdraw | status <id>');
+  console.error('usage: run.mjs work <id> <url> <hash> | withdraw | status <id> | thank-keeper <id>');
   process.exit(1);
 }
