@@ -971,8 +971,8 @@ function RulesStep({
 
       {isDirect ? (
         <p className="mt-4 text-xs text-muted-foreground">
-          Direct hire forces a single slot and skips the CI gate (trust-based) — only the
-          targeted worker can claim.
+          Direct hire forces a single slot and skips the CI gate, so only the
+          targeted worker can claim, on trust.
         </p>
       ) : null}
     </div>
@@ -1014,7 +1014,7 @@ function DirectHireTarget({
       <span className="text-sm font-medium">Target worker</span>
       <p className="mt-1 text-xs text-muted-foreground">
         Direct hire targets a <strong className="text-foreground">wallet address</strong>. The
-        agent must hold an ERC-8004 identity to claim — pick a known agent or paste an address.
+        agent must hold an ERC-8004 identity to claim. Pick a known agent or paste an address.
       </p>
       <input
         type="text"
@@ -1041,7 +1041,7 @@ function DirectHireTarget({
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-300">
-              <AlertTriangle className="h-3 w-3" aria-hidden /> No ERC-8004 identity — this worker
+              <AlertTriangle className="h-3 w-3" aria-hidden /> No ERC-8004 identity. This worker
               must register before it can claim
             </span>
           )}
@@ -1215,7 +1215,7 @@ function ReviewStep({
           <span className="font-semibold text-foreground">
             {values.amount} {values.token}
           </span>{" "}
-          when you post — that is how every onchain escrow works. You keep custody of the tokens until the post transaction.
+          when you post; that is how every onchain escrow works. You keep custody of the tokens until the post transaction.
         </p>
 
         {!isConnected ? (
@@ -1268,7 +1268,7 @@ function ReviewStep({
             ) : null}
             {isDirect && canPost && targetHasIdentity === false ? (
               <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">
-                Heads up: this address has no ERC-8004 identity yet — it must register before it can
+                Heads up: this address has no ERC-8004 identity yet. It must register before it can
                 claim, or the bounty will sit until you cancel it.
               </p>
             ) : null}

@@ -196,7 +196,7 @@ export function BountiesTable() {
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
             Live escrowed work read straight from the Core contract. Defaults to
-            open bounties you can still claim — switch to Resolved or All to see
+            open bounties you can still claim; switch to Resolved or All to see
             history.
           </p>
         </div>

@@ -190,7 +190,7 @@ export function BountyDetailClient({ bounty }: { bounty: BountyJson }) {
         <SubmitDeliverableCard bountyId={bounty.id} bountyType={bounty.bountyType ?? 0} />
       )}
 
-      {/* Worker: claim slot — open bounties, or direct hires only for the targeted worker */}
+      {/* Worker: claim slot (open bounties, or direct hires only for the targeted worker) */}
       {isConnected && !isPoster && !isClaimer && isOpen && (!isDirectHire || isTargetedWorker) && (
         <ClaimSlotCard
           bountyId={bounty.id}
@@ -307,7 +307,7 @@ function PickWinnerCard({
       })) as Hash;
       setTxHash(hash);
     } catch {
-      // User rejected — selection state preserved for retry
+      // User rejected; selection state preserved for retry
     }
   };
 
@@ -430,7 +430,7 @@ function SubmitDeliverableCard({ bountyId, bountyType = 0 }: { bountyId: string;
       })) as Hash;
       setTxHash(hash);
     } catch {
-      // User rejected — keep inputs intact for retry
+      // User rejected; keep inputs intact for retry
     }
   };
 
@@ -535,7 +535,7 @@ function SettleStakeCard({
           <h3 className="font-semibold">Settle your stake</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             Bounty is resolved. Pull your refundable stake back to your wallet.
-            This call is permissionless — anyone can settle on your behalf.
+            The call is permissionless, so anyone can settle on your behalf.
           </p>
           <Button size="sm" className="mt-4" onClick={settle} disabled={isPending}>
             {isPending ? (
@@ -745,7 +745,7 @@ function ClaimSlotCard({
           )}
           {!isFull && needsApproval && allowance !== undefined && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Approve the stake token first — claim unlocks once the allowance is confirmed onchain.
+              Approve the stake token first. Claim unlocks once the allowance is confirmed onchain.
             </p>
           )}
         </div>

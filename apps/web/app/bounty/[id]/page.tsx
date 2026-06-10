@@ -168,7 +168,7 @@ function BountyHeader({ bounty }: { bounty: BountyJson }) {
           <div className="text-sm">
             <p className="font-semibold text-foreground">Reserved for a specific worker</p>
             <p className="mt-1 text-muted-foreground">
-              This is a direct hire — only{" "}
+              This is a direct hire. Only{" "}
               <Link
                 href={`/worker/${bounty.targetWorker.toLowerCase()}`}
                 className="font-mono text-primary hover:underline"
