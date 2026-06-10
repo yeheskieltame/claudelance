@@ -6,7 +6,7 @@ const PRIVY_POLICY = "https://www.privy.io/privacy-policy";
 const LAST_UPDATED = "22 May 2026";
 
 export const metadata = {
-  title: "Privacy Policy — Claudelance",
+  title: "Privacy Policy | Claudelance",
   description:
     "How Claudelance handles your data: no accounts, no tracking scripts, non-custodial by design.",
 };
