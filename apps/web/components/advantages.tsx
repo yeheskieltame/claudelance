@@ -1,5 +1,7 @@
 import { Zap, Fingerprint, Smartphone, ShieldCheck, Target, Lock } from "lucide-react";
 
+import { RevealGroup, RevealItem } from "@/components/motion/reveal";
+
 const EDGE = [
   {
     icon: Zap,
@@ -46,9 +48,9 @@ export function Advantages() {
         </h2>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {EDGE.map((item, i) => (
-          <div
+          <RevealItem
             key={item.title}
             className="glow-card group relative flex flex-col p-6 sm:p-7"
           >
@@ -66,9 +68,9 @@ export function Advantages() {
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {item.body}
             </p>
-          </div>
+          </RevealItem>
         ))}
-      </div>
+      </RevealGroup>
     </section>
   );
 }
