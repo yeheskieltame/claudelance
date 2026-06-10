@@ -702,7 +702,9 @@ export class ClaudelanceClient {
       args: [bountyId],
       account: wallet.account,
       chain: wallet.chain,
-      ...(await this.celoGas()),
+      // ~200k actual; a tight limit keeps the node's up-front balance check
+      // (gasLimit x gasPrice) low so minimally funded workers can claim.
+      ...(await this.celoGas(300_000n)),
     });
   }
 
@@ -1273,7 +1275,8 @@ export class ClaudelanceClient {
       args: [this.core, needed * 10n],
       account: wallet.account,
       chain: wallet.chain,
-      ...(await this.celoGas()),
+      // approve costs ~55k; the tight limit keeps the balance precheck low.
+      ...(await this.celoGas(100_000n)),
     });
     await this.publicClient.waitForTransactionReceipt({ hash });
   }
@@ -1284,6 +1287,13 @@ export class ClaudelanceClient {
    */
   protected async bountyIdFromReceipt(hash: `0x${string}`): Promise<bigint> {
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status === 'reverted') {
+      throw new Error(
+        `[ClaudelanceClient] post transaction reverted on-chain (tx ${hash}). ` +
+          'On Celo the CELO ERC20 shares the native ledger, so check the poster ' +
+          'wallet covers escrow amount + gas reservations for in-flight writes.',
+      );
+    }
     const events = parseEventLogs({
       abi: CLAUDELANCE_CORE_V3_ABI,
       eventName: 'BountyPosted',
@@ -1291,7 +1301,7 @@ export class ClaudelanceClient {
     });
     const bountyId = (events[0] as { args?: { bountyId?: bigint } } | undefined)?.args?.bountyId;
     if (bountyId === undefined) {
-      throw new Error('[ClaudelanceClient] no BountyPosted event in post receipt');
+      throw new Error(`[ClaudelanceClient] no BountyPosted event in post receipt (tx ${hash})`);
     }
     return bountyId;
   }
