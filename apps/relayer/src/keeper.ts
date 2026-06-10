@@ -11,7 +11,7 @@ import {
   type ClaimerState,
   type KeeperAction,
 } from './decisions.js';
-import { BountyStatus } from '@yeheskieltame/claudelance-sdk';
+import { BountyStatus, ZERO_ADDRESS } from '@yeheskieltame/claudelance-sdk';
 import type { ParsedCiEvent } from './github.js';
 
 export type Logger = (message: string, meta?: Record<string, unknown>) => void;
@@ -25,6 +25,8 @@ export type TickSummary = {
   executed: number;
   failed: number;
   skipped: number;
+  watermark: bigint;
+  durationMs: number;
 };
 
 /**
@@ -42,22 +44,55 @@ export function createAgentIdCache(): AgentIdCache {
   return { byWorker: new Map(), unresolvable: new Set() };
 }
 
+/**
+ * Cross-tick keeper state. `watermark` is the highest bounty id known to be
+ * terminal-and-done (nothing the keeper could ever do below it: stakes all
+ * settled, reputation attested where due), so steady-state ticks only read
+ * the live tail. In-memory by design: a restart pays one full rescan, which
+ * the batched reads make cheap.
+ */
+export type KeeperState = {
+  watermark: bigint;
+  cache: AgentIdCache;
+};
+
+export function createKeeperState(): KeeperState {
+  return { watermark: 0n, cache: createAgentIdCache() };
+}
+
 const LOW_BALANCE_WEI = 300_000_000_000_000_000n; // 0.3 CELO
+const SCAN_PAGE = 50;
+
+type BountyRow = {
+  id: bigint;
+  bounty: Awaited<ReturnType<ChainClient['getBounty']>>;
+  claimers: ClaimerState[];
+  attested: boolean;
+};
 
 /**
- * One keeper pass: scan every bounty and run any due permissionless action
- * (cancel an expired bounty, settle a locked stake, attest the winner's
- * reputation). In dry-run mode actions are logged but not broadcast.
+ * One keeper pass. Reads the live tail (everything above the watermark) in
+ * Multicall3 pages, decides all due permissionless actions, then broadcasts
+ * them back to back on sequential nonces and awaits the receipts together.
+ * In dry-run mode actions are logged but not broadcast.
  */
 export async function runKeeperTick(
   chain: ChainClient,
   cfg: RelayerConfig,
   log: Logger = defaultLogger,
-  cache: AgentIdCache = createAgentIdCache(),
+  state: KeeperState = createKeeperState(),
 ): Promise<TickSummary> {
-  const count = await chain.bountyCount();
+  const t0 = Date.now();
   const now = BigInt(Math.floor(Date.now() / 1000));
-  const summary: TickSummary = { scanned: 0, actions: 0, executed: 0, failed: 0, skipped: 0 };
+  const summary: TickSummary = {
+    scanned: 0,
+    actions: 0,
+    executed: 0,
+    failed: 0,
+    skipped: 0,
+    watermark: state.watermark,
+    durationMs: 0,
+  };
 
   if (!cfg.dryRun) {
     const balance = await chain.relayerBalance();
@@ -66,33 +101,163 @@ export async function runKeeperTick(
     }
   }
 
-  for (let id = 1n; id <= count; id++) {
-    summary.scanned++;
-    const bounty = await chain.getBounty(id);
-
-    // Cheap skip: an open bounty still inside its window has nothing to do.
-    if (bounty.status === BountyStatus.Open && now < bounty.deadline + GRACE_PERIOD_SECONDS) {
-      continue;
-    }
-
-    let claimers: ClaimerState[] = [];
-    let attested = true;
-    if (bounty.status === BountyStatus.Resolved || bounty.status === BountyStatus.Cancelled) {
-      claimers = await collectClaimerStates(chain, id);
-      if (bounty.status === BountyStatus.Resolved) {
-        attested = await chain.isReputationAttested(id);
+  // 1. Page the live tail. The empty struct (poster == zero) marks the end of
+  //    the id space, so no bountyCount probe is needed.
+  const rows: BountyRow[] = [];
+  for (let start = state.watermark + 1n; ; start += BigInt(SCAN_PAGE)) {
+    const page = await chain.getBountiesRange(start, SCAN_PAGE);
+    let ended = false;
+    for (let i = 0; i < page.length; i++) {
+      const bounty = page[i];
+      if (!bounty || bounty.poster === ZERO_ADDRESS) {
+        ended = true;
+        break;
       }
+      rows.push({ id: start + BigInt(i), bounty, claimers: [], attested: true });
     }
+    if (ended) break;
+  }
+  summary.scanned = rows.length;
 
-    const actions = decideKeeperActions(id, bounty, claimers, now, attested);
+  // 2. Batch-load claimer + attestation state for everything settleable.
+  const settleable = rows.filter(
+    (r) =>
+      r.bounty.status === BountyStatus.Resolved || r.bounty.status === BountyStatus.Cancelled,
+  );
+  const claimerLists = await chain.getClaimersBatch(settleable.map((r) => r.id));
+  const pairs: Array<{ bountyId: bigint; worker: Address; row: BountyRow }> = [];
+  settleable.forEach((row, i) => {
+    for (const worker of claimerLists[i] ?? []) pairs.push({ bountyId: row.id, worker, row });
+  });
+  const submissions = await chain.getSubmissionsBatch(
+    pairs.map((p) => ({ bountyId: p.bountyId, worker: p.worker })),
+  );
+  pairs.forEach((p, i) => {
+    p.row.claimers.push({ worker: p.worker, stakeSettled: submissions[i]?.stakeSettled ?? true });
+  });
+
+  const resolved = settleable.filter((r) => r.bounty.status === BountyStatus.Resolved);
+  const attestedFlags = await chain.isReputationAttestedBatch(resolved.map((r) => r.id));
+  resolved.forEach((row, i) => {
+    row.attested = attestedFlags[i] ?? true;
+  });
+
+  // 3. Decide.
+  const planned: KeeperAction[] = [];
+  const actionableIds = new Set<string>();
+  for (const row of rows) {
+    const actions = decideKeeperActions(row.id, row.bounty, row.claimers, now, row.attested);
     for (const action of actions) {
-      summary.actions++;
-      await execute(chain, cfg, action, log, summary, cache);
+      planned.push(action);
+      actionableIds.add(row.id.toString());
+    }
+  }
+  summary.actions = planned.length;
+
+  // 4. Advance the watermark over the contiguous done prefix. An id with
+  //    actions planned this tick stays above the watermark until a later tick
+  //    confirms it terminal, so nothing is ever skipped on a failed send.
+  for (const row of rows) {
+    if (row.id !== state.watermark + 1n) break;
+    if (actionableIds.has(row.id.toString())) break;
+    const terminal =
+      (row.bounty.status === BountyStatus.Resolved && row.attested) ||
+      row.bounty.status === BountyStatus.Cancelled;
+    if (!terminal || row.claimers.some((c) => !c.stakeSettled)) break;
+    state.watermark = row.id;
+  }
+  summary.watermark = state.watermark;
+
+  // 5. Execute: resolve agent ids first, then broadcast on sequential nonces
+  //    and await all receipts together.
+  await executeBatch(chain, cfg, planned, log, summary, state.cache);
+
+  summary.durationMs = Date.now() - t0;
+  log('keeper.tick', {
+    ...summary,
+    watermark: summary.watermark.toString(),
+    dryRun: cfg.dryRun,
+  });
+  return summary;
+}
+
+async function executeBatch(
+  chain: ChainClient,
+  cfg: RelayerConfig,
+  planned: KeeperAction[],
+  log: Logger,
+  summary: TickSummary,
+  cache: AgentIdCache,
+): Promise<void> {
+  type Ready = { action: KeeperAction; agentId: bigint | null };
+  const ready: Ready[] = [];
+  for (const action of planned) {
+    if (action.kind === 'attestReputation') {
+      const agentId = await resolveAgentId(chain, cfg, action.winner, cache, log);
+      if (agentId === null) {
+        summary.skipped++;
+        continue;
+      }
+      ready.push({ action, agentId });
+    } else {
+      ready.push({ action, agentId: null });
     }
   }
 
-  log('keeper.tick', { ...summary, dryRun: cfg.dryRun });
-  return summary;
+  if (cfg.dryRun) {
+    for (const r of ready) log('keeper.dry-run', { action: r.action.kind, ...actionMeta(r.action, r.agentId) });
+    return;
+  }
+  if (ready.length === 0) return;
+
+  const gasPrice = await chain.gasPrice();
+  let nonce = await chain.pendingNonce();
+  const inFlight: Array<Promise<void>> = [];
+
+  for (const { action, agentId } of ready) {
+    try {
+      // Send claims the next nonce only on success, so a rejected or
+      // failed-simulation send leaves no gap in the lane.
+      const tx =
+        action.kind === 'cancelExpired'
+          ? await chain.cancelExpired(action.bountyId, { nonce, gasPrice })
+          : action.kind === 'settleStake'
+            ? await chain.settleStake(action.bountyId, action.worker, { nonce, gasPrice })
+            : await chain.attestReputation(action.bountyId, agentId as bigint, { nonce, gasPrice });
+      nonce++;
+      inFlight.push(
+        chain.waitForReceipt(tx).then(
+          (status) => {
+            if (status === 'success') {
+              summary.executed++;
+              log('keeper.sent', { action: action.kind, tx, ...actionMeta(action, agentId) });
+            } else {
+              summary.failed++;
+              log('keeper.reverted', { action: action.kind, tx, ...actionMeta(action, agentId) });
+            }
+          },
+          (err: unknown) => {
+            summary.failed++;
+            log('keeper.receipt-error', {
+              action: action.kind,
+              tx,
+              error: errorMessage(err),
+              ...actionMeta(action, agentId),
+            });
+          },
+        ),
+      );
+    } catch (err) {
+      summary.failed++;
+      log('keeper.error', {
+        action: action.kind,
+        error: errorMessage(err),
+        ...actionMeta(action, agentId),
+      });
+    }
+  }
+
+  await Promise.all(inFlight);
 }
 
 /**
@@ -129,62 +294,6 @@ async function resolveAgentId(
     return null;
   }
   return agentId;
-}
-
-async function collectClaimerStates(chain: ChainClient, bountyId: bigint): Promise<ClaimerState[]> {
-  const claimers = await chain.getClaimers(bountyId);
-  const states: ClaimerState[] = [];
-  for (const worker of claimers) {
-    const submission = await chain.getSubmission(bountyId, worker);
-    states.push({ worker, stakeSettled: submission.stakeSettled });
-  }
-  return states;
-}
-
-async function execute(
-  chain: ChainClient,
-  cfg: RelayerConfig,
-  action: KeeperAction,
-  log: Logger,
-  summary: TickSummary,
-  cache: AgentIdCache,
-): Promise<void> {
-  let agentId: bigint | null = null;
-  if (action.kind === 'attestReputation') {
-    agentId = await resolveAgentId(chain, cfg, action.winner, cache, log);
-    if (agentId === null) {
-      summary.skipped++;
-      return;
-    }
-  }
-
-  if (cfg.dryRun) {
-    log('keeper.dry-run', { action: action.kind, ...actionMeta(action, agentId) });
-    return;
-  }
-  try {
-    const tx =
-      action.kind === 'cancelExpired'
-        ? await chain.cancelExpired(action.bountyId)
-        : action.kind === 'settleStake'
-          ? await chain.settleStake(action.bountyId, action.worker)
-          : await chain.attestReputation(action.bountyId, agentId as bigint);
-    const status = await chain.waitForReceipt(tx);
-    if (status === 'success') {
-      summary.executed++;
-      log('keeper.sent', { action: action.kind, tx, ...actionMeta(action, agentId) });
-    } else {
-      summary.failed++;
-      log('keeper.reverted', { action: action.kind, tx, ...actionMeta(action, agentId) });
-    }
-  } catch (err) {
-    summary.failed++;
-    log('keeper.error', {
-      action: action.kind,
-      error: errorMessage(err),
-      ...actionMeta(action, agentId),
-    });
-  }
 }
 
 function actionMeta(action: KeeperAction, agentId: bigint | null): Record<string, unknown> {
