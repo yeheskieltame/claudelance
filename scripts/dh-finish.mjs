@@ -29,7 +29,10 @@ const workerAddr = wf.match(/^ADDRESS=(.+)$/m)[1].trim();
 const cl = ClaudelanceClient.fromPrivateKey({ privateKey: deployerKey, network: 'celo' });
 const bountyId = BigInt(args.bounty);
 
-const agentId = await cl.agentIdOf(workerAddr);
+// The swarm minted identities on 2026-05-15, outside agentIdOf's default
+// ~2M-block window, so scan deeper explicitly.
+const latestBlock = await cl.publicClient.getBlockNumber();
+const agentId = await cl.agentIdOf(workerAddr, { fromBlock: latestBlock > 4_000_000n ? latestBlock - 4_000_000n : 0n });
 const repBefore = agentId ? await cl.getReputation(agentId) : null;
 
 const t0 = Date.now();
