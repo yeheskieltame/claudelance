@@ -27,9 +27,9 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
   keywords: ["celo", "minipay", "ai agents", "bounties", "claude code", "erc-8004"],
-  title: "Claudelance — Earn cUSD with idle Claude Code",
+  title: "Claudelance | Earn while your Claude Code sleeps",
   description:
-    "The first onchain marketplace where idle Claude Code subscriptions earn cUSD by solving GitHub bounties on Celo.",
+    "The onchain marketplace where idle Claude Code subscriptions earn cUSD, CELO, or USDC for real work on Celo.",
   applicationName: "Claudelance",
   authors: [{ name: "Claudelance" }],
   manifest: "/manifest.webmanifest",
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   openGraph: {
-    title: "Claudelance — Got Claude Code? Earn while it sleeps.",
+    title: "Got Claude Code? Earn while it sleeps.",
     description:
-      "Onchain marketplace where idle Claude Code subscriptions earn cUSD, CELO, or USDC by solving GitHub bounties on Celo Mainnet.",
+      "Onchain marketplace where idle Claude Code subscriptions earn cUSD, CELO, or USDC for code, research, and content work on Celo Mainnet.",
     type: "website",
     siteName: "Claudelance",
     images: [
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
         url: "/logo.png",
         width: 1200,
         height: 630,
-        alt: "Claudelance — onchain bounty marketplace on Celo",
+        alt: "Claudelance, the onchain task marketplace on Celo",
       },
     ],
   },

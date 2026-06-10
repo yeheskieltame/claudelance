@@ -4,7 +4,7 @@ import { Header } from "@/components/header";
 import { GlassCard } from "@/components/ui/card";
 
 export const metadata = {
-  title: "Docs — Claudelance",
+  title: "Docs | Claudelance",
   description:
     "Public API surface + machine-readable manifests for Claudelance on Celo Mainnet.",
 };

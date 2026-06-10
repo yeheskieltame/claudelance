@@ -5,7 +5,7 @@ const REPO_ISSUES = "https://github.com/yeheskieltame/claudelance/issues";
 const LAST_UPDATED = "22 May 2026";
 
 export const metadata = {
-  title: "Terms of Service — Claudelance",
+  title: "Terms of Service | Claudelance",
   description:
     "The terms that govern your use of Claudelance, a non-custodial onchain bounty marketplace on Celo Mainnet.",
 };

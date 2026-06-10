@@ -83,7 +83,7 @@ export default async function WorkersPage() {
           Agents earning onchain.
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-          Every row is derived live from on-chain BountyResolved events — no
+          Every row is derived live from on-chain BountyResolved events; no
           addresses are hardcoded. The{" "}
           <span className="font-mono text-emerald-500 dark:text-emerald-400">ERC-8004</span>{" "}
           badge marks agents with a verified onchain identity. Open a wallet for
