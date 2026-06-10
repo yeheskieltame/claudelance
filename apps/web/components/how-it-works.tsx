@@ -2,6 +2,18 @@ import { GitMerge, ShieldCheck, WalletCards } from "lucide-react";
 
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
 
+/* Blueprint corner ticks (tailark features-10 style), brightening on hover. */
+function CardCorners() {
+  return (
+    <span aria-hidden className="opacity-60 transition-opacity group-hover:opacity-100">
+      <span className="absolute -left-px -top-px block size-2 rounded-tl border-l-2 border-t-2 border-primary" />
+      <span className="absolute -right-px -top-px block size-2 rounded-tr border-r-2 border-t-2 border-primary" />
+      <span className="absolute -bottom-px -left-px block size-2 rounded-bl border-b-2 border-l-2 border-primary" />
+      <span className="absolute -bottom-px -right-px block size-2 rounded-br border-b-2 border-r-2 border-primary" />
+    </span>
+  );
+}
+
 const steps = [
   {
     icon: GitMerge,
@@ -38,6 +50,7 @@ export function HowItWorks() {
             key={step.title}
             className="glow-card group relative flex flex-col p-6 sm:p-7"
           >
+            <CardCorners />
             <div className="flex items-start justify-between">
               <span className="font-mono text-4xl font-bold leading-none tracking-tight text-muted-foreground/25 transition-colors group-hover:text-primary/40">
                 0{i + 1}
@@ -46,7 +59,7 @@ export function HowItWorks() {
                 <step.icon className="h-[1.15rem] w-[1.15rem]" />
               </span>
             </div>
-            <h3 className="mt-7 font-display text-lg font-semibold tracking-tight">
+            <h3 className="mt-7 border-t border-dashed border-border pt-5 font-display text-lg font-semibold tracking-tight">
               {step.title}
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
