@@ -37,9 +37,14 @@ function loadAddr(n) {
   return f.match(/^ADDRESS=(.+)$/m)[1].trim();
 }
 
+const RELAYER = '0x1fEDda23c2945D59f3929e6C463cF685aC077ad5';
+
 const rows = [];
 for (let n = 1; n <= 30; n++) rows.push({ id: `w${n}`, addr: loadAddr(n) });
 rows.push({ id: 'deployer', addr: DEPLOYER });
+// The Railway keeper signs from this wallet; below ~0.3 CELO its sends fail
+// the node's upfront balance check and settles/attests silently stall.
+rows.push({ id: 'keeper', addr: RELAYER });
 
 let totalCelo = 0n, totalCusd = 0n, totalUsdc = 0n;
 for (const r of rows) {
