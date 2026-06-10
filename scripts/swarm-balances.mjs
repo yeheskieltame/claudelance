@@ -55,7 +55,7 @@ for (const r of rows) {
     client.readContract({ address: V2_CORE, abi: V2_ABI, functionName: 'earnings', args: [r.addr, CUSD] }),
     client.readContract({ address: V2_CORE, abi: V2_ABI, functionName: 'earnings', args: [r.addr, USDC] }),
   ]);
-  if (r.id !== 'deployer') { totalCelo += celo; totalCusd += cusd; totalUsdc += usdc; }
+  if (r.id.startsWith('w')) { totalCelo += celo; totalCusd += cusd; totalUsdc += usdc; }
   const flag = (e2cusd > 0n || e2usdc > 0n) ? ' V2-EARNINGS!' : '';
   console.log(`${r.id.padEnd(9)} ${r.addr} CELO=${Number(formatEther(celo)).toFixed(4).padStart(10)} cUSD=${Number(formatEther(cusd)).toFixed(4).padStart(9)} USDC=${Number(formatUnits(usdc, 6)).toFixed(4).padStart(9)}${flag}`);
 }
