@@ -51,7 +51,7 @@ export async function BountiesScroll() {
         .slice(0, 3);
     }
   } catch {
-    // Silently fall back — section hidden when no open bounties
+    // Silently fall back; section hidden when no open bounties
   }
 
   if (items.length === 0) return null;
