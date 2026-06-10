@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
 import { Inter, Space_Grotesk } from "next/font/google";
 
+import { AmbientBackground } from "@/components/ambient-background";
 import { BottomNav } from "@/components/bottom-nav";
 import { InstallPrompt } from "@/components/install-prompt";
 import { StructuredData } from "@/components/structured-data";
@@ -90,6 +91,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${sans.variable} ${GeistMono.variable} ${display.variable}`}>
       <body className="mobile-shell safe-area-bottom min-h-svh font-sans md:pb-0">
+        <AmbientBackground />
         <Providers>
           {children}
           <BottomNav />

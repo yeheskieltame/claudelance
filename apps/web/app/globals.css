@@ -84,11 +84,8 @@
     overflow-x: clip;
   }
 
-  .dark body {
-    background-image:
-      radial-gradient(ellipse 60% 40% at 90% -5%, hsl(18 75% 55% / 0.05), transparent 55%);
-    background-attachment: fixed;
-  }
+  /* The static dark-mode hero glow moved into <AmbientBackground/>, which
+     animates the same hues in both themes. */
 }
 
 @layer utilities {
