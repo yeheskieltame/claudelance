@@ -51,7 +51,7 @@ export async function RecentActivityFeed() {
                 target="_blank"
                 rel="noreferrer"
                 className="group flex items-center justify-between gap-3 px-4 py-2.5 font-mono text-xs transition-colors hover:bg-accent/50"
-                aria-label={`Bounty ${row.bountyId.toString()} resolved — view on Celoscan`}
+                aria-label={`Bounty ${row.bountyId.toString()} resolved, view on Celoscan`}
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <span className="shrink-0 font-semibold text-primary">
