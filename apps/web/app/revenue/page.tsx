@@ -6,7 +6,7 @@ import { RevenueCard } from "@/components/revenue-card";
 import { Reveal } from "@/components/motion/reveal";
 
 export const metadata = {
-  title: "Treasury & Revenue — Claudelance",
+  title: "Treasury & Revenue | Claudelance",
   description:
     "Live on-chain revenue accrued at the Claudelance treasury. Every resolved bounty contributes a 2% protocol fee plus any forfeited stake.",
 };
