@@ -37,6 +37,9 @@ const ERC721_OWNER_OF_ABI = [
   },
 ] as const;
 
+/** Optional per-send overrides used by the keeper's pipelined tick. */
+export type SendOpts = { nonce?: number; gasPrice?: bigint };
+
 /** Decoded fields of a DeliverableSubmitted log passed to a findSubmission matcher. */
 export type DeliverableLog = {
   bountyId: bigint;
@@ -60,7 +63,9 @@ export class ChainClient {
   constructor(cfg: RelayerConfig) {
     const chain = chainForNetwork(cfg.network);
     const transport = http(cfg.rpcUrl);
-    this.publicClient = createPublicClient({ chain, transport });
+    // 1s polling matches Celo's block time; viem's 4s default adds dead air
+    // to every waitForTransactionReceipt.
+    this.publicClient = createPublicClient({ chain, transport, pollingInterval: 1_000 });
     this.core = cfg.deployment.core;
     this.identityRegistry = cfg.deployment.identityRegistry;
     if (cfg.relayerPrivateKey) {
@@ -112,6 +117,104 @@ export class ChainClient {
       functionName: 'getBounty',
       args: [bountyId],
     })) as Bounty;
+  }
+
+  /** True when the connected chain defines a Multicall3 deployment. */
+  private get hasMulticall(): boolean {
+    return Boolean(this.publicClient.chain?.contracts?.multicall3);
+  }
+
+  /**
+   * Read `count` consecutive bounties starting at `startId` in one Multicall3
+   * round trip (serial fallback on chains without it). Invalid ids come back
+   * as the contract's empty struct (poster == zero address), same as getBounty.
+   */
+  async getBountiesRange(startId: bigint, count: number): Promise<Bounty[]> {
+    const ids = Array.from({ length: count }, (_, i) => startId + BigInt(i));
+    if (!this.hasMulticall) return Promise.all(ids.map((id) => this.getBounty(id)));
+    const res = await this.publicClient.multicall({
+      contracts: ids.map((id) => ({
+        address: this.core,
+        abi: ABI,
+        functionName: 'getBounty' as const,
+        args: [id],
+      })),
+    });
+    return res.map((r, i) => {
+      if (r.status !== 'success') {
+        throw new Error(`[relayer] multicall getBounty(${ids[i]}) failed: ${String(r.error)}`);
+      }
+      return r.result as unknown as Bounty;
+    });
+  }
+
+  /** Claimer lists for many bounties in one Multicall3 round trip. */
+  async getClaimersBatch(bountyIds: bigint[]): Promise<(readonly Address[])[]> {
+    if (bountyIds.length === 0) return [];
+    if (!this.hasMulticall) return Promise.all(bountyIds.map((id) => this.getClaimers(id)));
+    const res = await this.publicClient.multicall({
+      contracts: bountyIds.map((id) => ({
+        address: this.core,
+        abi: ABI,
+        functionName: 'getClaimers' as const,
+        args: [id],
+      })),
+    });
+    return res.map((r, i) => {
+      if (r.status !== 'success') {
+        throw new Error(`[relayer] multicall getClaimers(${bountyIds[i]}) failed: ${String(r.error)}`);
+      }
+      return r.result as unknown as readonly Address[];
+    });
+  }
+
+  /** Submissions for many (bounty, worker) pairs in one Multicall3 round trip. */
+  async getSubmissionsBatch(
+    pairs: Array<{ bountyId: bigint; worker: Address }>,
+  ): Promise<Submission[]> {
+    if (pairs.length === 0) return [];
+    if (!this.hasMulticall) {
+      return Promise.all(pairs.map((p) => this.getSubmission(p.bountyId, p.worker)));
+    }
+    const res = await this.publicClient.multicall({
+      contracts: pairs.map((p) => ({
+        address: this.core,
+        abi: ABI,
+        functionName: 'getSubmission' as const,
+        args: [p.bountyId, p.worker],
+      })),
+    });
+    return res.map((r, i) => {
+      if (r.status !== 'success') {
+        const pair = pairs[i] ?? { bountyId: -1n, worker: '0x?' };
+        throw new Error(
+          `[relayer] multicall getSubmission(${pair.bountyId}, ${pair.worker}) failed: ${String(r.error)}`,
+        );
+      }
+      return r.result as unknown as Submission;
+    });
+  }
+
+  /** Reputation-attested flags for many bounties in one Multicall3 round trip. */
+  async isReputationAttestedBatch(bountyIds: bigint[]): Promise<boolean[]> {
+    if (bountyIds.length === 0) return [];
+    if (!this.hasMulticall) return Promise.all(bountyIds.map((id) => this.isReputationAttested(id)));
+    const res = await this.publicClient.multicall({
+      contracts: bountyIds.map((id) => ({
+        address: this.core,
+        abi: ABI,
+        functionName: 'isReputationAttested' as const,
+        args: [id],
+      })),
+    });
+    return res.map((r, i) => {
+      if (r.status !== 'success') {
+        throw new Error(
+          `[relayer] multicall isReputationAttested(${bountyIds[i]}) failed: ${String(r.error)}`,
+        );
+      }
+      return Boolean(r.result);
+    });
   }
 
   async getClaimers(bountyId: bigint): Promise<readonly Address[]> {
@@ -208,87 +311,71 @@ export class ChainClient {
 
   private static readonly GAS_LIMIT = 500_000n;
 
-  async attestCI(bountyId: bigint, worker: Address, passed: boolean): Promise<`0x${string}`> {
+  /**
+   * Per-send overrides for pipelined ticks: the keeper fetches the gas price
+   * and pending nonce once, then assigns sequential nonces so a batch of
+   * sends can broadcast back to back without waiting for receipts in between.
+   */
+  async gasPrice(): Promise<bigint> {
+    return this.publicClient.getGasPrice();
+  }
+
+  async pendingNonce(): Promise<number> {
     const wallet = this.requireWallet();
-    await this.publicClient.simulateContract({
-      address: this.core,
-      abi: ABI,
-      functionName: 'attestCI',
-      args: [bountyId, worker, passed],
-      account: wallet.account,
-    });
-    return wallet.writeContract({
-      address: this.core,
-      abi: ABI,
-      functionName: 'attestCI',
-      args: [bountyId, worker, passed],
-      account: wallet.account,
-      chain: wallet.chain,
-      gas: ChainClient.GAS_LIMIT,
-      gasPrice: await this.publicClient.getGasPrice(),
+    return this.publicClient.getTransactionCount({
+      address: wallet.account.address,
+      blockTag: 'pending',
     });
   }
 
-  async settleStake(bountyId: bigint, worker: Address): Promise<`0x${string}`> {
-    const wallet = this.requireWallet();
-    await this.publicClient.simulateContract({
-      address: this.core,
-      abi: ABI,
-      functionName: 'settleStake',
-      args: [bountyId, worker],
-      account: wallet.account,
-    });
-    return wallet.writeContract({
-      address: this.core,
-      abi: ABI,
-      functionName: 'settleStake',
-      args: [bountyId, worker],
-      account: wallet.account,
-      chain: wallet.chain,
-      gas: ChainClient.GAS_LIMIT,
-      gasPrice: await this.publicClient.getGasPrice(),
-    });
+  async attestCI(
+    bountyId: bigint,
+    worker: Address,
+    passed: boolean,
+    opts: SendOpts = {},
+  ): Promise<`0x${string}`> {
+    return this.simulateThenSend('attestCI', [bountyId, worker, passed], opts);
   }
 
-  async cancelExpired(bountyId: bigint): Promise<`0x${string}`> {
-    const wallet = this.requireWallet();
-    await this.publicClient.simulateContract({
-      address: this.core,
-      abi: ABI,
-      functionName: 'cancelExpired',
-      args: [bountyId],
-      account: wallet.account,
-    });
-    return wallet.writeContract({
-      address: this.core,
-      abi: ABI,
-      functionName: 'cancelExpired',
-      args: [bountyId],
-      account: wallet.account,
-      chain: wallet.chain,
-      gas: ChainClient.GAS_LIMIT,
-      gasPrice: await this.publicClient.getGasPrice(),
-    });
+  async settleStake(bountyId: bigint, worker: Address, opts: SendOpts = {}): Promise<`0x${string}`> {
+    return this.simulateThenSend('settleStake', [bountyId, worker], opts);
   }
 
-  async attestReputation(bountyId: bigint, agentId: bigint): Promise<`0x${string}`> {
+  async cancelExpired(bountyId: bigint, opts: SendOpts = {}): Promise<`0x${string}`> {
+    return this.simulateThenSend('cancelExpired', [bountyId], opts);
+  }
+
+  async attestReputation(
+    bountyId: bigint,
+    agentId: bigint,
+    opts: SendOpts = {},
+  ): Promise<`0x${string}`> {
+    return this.simulateThenSend('attestReputation', [bountyId, agentId], opts);
+  }
+
+  private async simulateThenSend(
+    functionName: 'attestCI' | 'settleStake' | 'cancelExpired' | 'attestReputation',
+    args: readonly unknown[],
+    opts: SendOpts,
+  ): Promise<`0x${string}`> {
     const wallet = this.requireWallet();
     await this.publicClient.simulateContract({
       address: this.core,
       abi: ABI,
-      functionName: 'attestReputation',
-      args: [bountyId, agentId],
+      functionName,
+      args: args as never,
       account: wallet.account,
     });
     return wallet.writeContract({
       address: this.core,
       abi: ABI,
-      functionName: 'attestReputation',
-      args: [bountyId, agentId],
+      functionName,
+      args: args as never,
       account: wallet.account,
       chain: wallet.chain,
       gas: ChainClient.GAS_LIMIT,
-      gasPrice: await this.publicClient.getGasPrice(),
+      gasPrice: opts.gasPrice ?? (await this.publicClient.getGasPrice()),
+      ...(opts.nonce !== undefined ? { nonce: opts.nonce } : {}),
     });
   }
 
