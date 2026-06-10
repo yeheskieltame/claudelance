@@ -360,6 +360,28 @@ export class ChainClient {
   }
 
   /**
+   * Watch the core for the events that create keeper work (a resolution needs
+   * settles + an attest; a cancellation needs settles) and call `onWork` for
+   * each batch of new logs. Returns an unwatch function. HTTP transport, so
+   * this polls getLogs every `pollMs` under the hood.
+   */
+  watchKeeperEvents(pollMs: number, onWork: (eventName: string) => void): () => void {
+    const stops = (['BountyResolved', 'BountyCancelled'] as const).map((eventName) =>
+      this.publicClient.watchContractEvent({
+        address: this.core,
+        abi: ABI,
+        eventName,
+        pollingInterval: pollMs,
+        onLogs: () => onWork(eventName),
+        onError: () => {
+          // Transient RPC failures are fine; the interval timer still covers us.
+        },
+      }),
+    );
+    return () => stops.forEach((stop) => stop());
+  }
+
+  /**
    * Find the most recent DeliverableSubmitted log satisfying `matches`. Scans
    * newest-first in fixed windows down to `fromBlock`, returning on the first
    * hit. forno times out on an unbounded eth_getLogs, so the range is chunked;
