@@ -1,0 +1,63 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useInView, useReducedMotion } from "framer-motion";
+
+type CountUpProps = {
+  /** Final value as a preformatted string, e.g. "$12.40" or "1,204". */
+  value: string;
+  /** Animation length in ms once the element scrolls into view. */
+  durationMs?: number;
+  className?: string;
+};
+
+/**
+ * Counts numeric content up from zero when scrolled into view, preserving any
+ * prefix/suffix and decimal places in the formatted string. Renders the final
+ * value immediately under prefers-reduced-motion or when nothing numeric is
+ * found.
+ */
+export function CountUp({ value, durationMs = 900, className }: CountUpProps) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const reduce = useReducedMotion();
+  const [shown, setShown] = useState<string>(value);
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    const match = value.match(/-?[\d,]+(?:\.\d+)?/);
+    if (reduce || !match || !inView || started) return;
+    setStarted(true);
+
+    const numeric = Number(match[0].replace(/,/g, ""));
+    if (!Number.isFinite(numeric)) return;
+    const decimals = (match[0].split(".")[1] ?? "").length;
+    const grouped = match[0].includes(",");
+    const render = (n: number) => {
+      const fixed = grouped
+        ? n.toLocaleString("en-US", {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+          })
+        : n.toFixed(decimals);
+      return value.replace(match[0], fixed);
+    };
+
+    let raf: number;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min((t - t0) / durationMs, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setShown(render(numeric * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [inView, reduce, value, durationMs, started]);
+
+  return (
+    <span ref={ref} className={className}>
+      {shown}
+    </span>
+  );
+}
