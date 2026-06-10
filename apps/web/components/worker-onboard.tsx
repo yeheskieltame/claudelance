@@ -86,9 +86,9 @@ export function WorkerOnboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-        <ol className="grid gap-px self-start overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-1">
+        <ol className="grid gap-3 self-start sm:grid-cols-2 lg:grid-cols-1">
           {STEPS.map((step) => (
-            <li key={step.n} className="flex gap-4 bg-card p-5">
+            <li key={step.n} className="glow-card flex gap-4 p-5">
               <span className="font-mono text-sm font-semibold text-muted-foreground/40">{step.n}</span>
               <div className="min-w-0">
                 <p className="font-display font-semibold">{step.title}</p>
@@ -98,7 +98,7 @@ export function WorkerOnboard() {
           ))}
         </ol>
 
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="glow-card overflow-hidden">
           <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
             <span className="font-mono text-xs text-muted-foreground">worker-brief.ts</span>
             <button
