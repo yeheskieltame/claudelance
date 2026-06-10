@@ -34,7 +34,9 @@ const gasPrice = (gasPriceLive * 15n) / 10n;
 const fee = 21000n * gasPrice;
 console.log(`gasPrice live=${gasPriceLive} using=${gasPrice} sweepFee=${formatEther(fee)} CELO`);
 
-const workers = Array.from({ length: 30 }, (_, i) => loadWorker(i + 1));
+const START = Number(process.env.START_IDX ?? 1);
+const END = Number(process.env.END_IDX ?? 30);
+const workers = Array.from({ length: END - START + 1 }, (_, i) => loadWorker(START + i));
 
 const results = await Promise.all(workers.map(async (w) => {
   try {

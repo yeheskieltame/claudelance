@@ -521,21 +521,32 @@ export class ClaudelanceClient {
   /**
    * Resolve an address's ERC-8004 agent id (its Identity NFT token id). The
    * registry has no reverse lookup, so this scans the mint `Transfer` event
-   * over a window (default ~2M blocks back; widen via `fromBlock` for older
-   * agents). Returns `null` if no mint to `agent` is found in range.
+   * backwards in 2M-block chunks (public RPCs cap `getLogs` ranges) until a
+   * mint is found, up to ~30M blocks back. Pass `fromBlock` to pin a single
+   * `[fromBlock, latest]` scan instead. Returns `null` if no mint is found.
    */
   async agentIdOf(agent: Address, opts?: { fromBlock?: bigint }): Promise<bigint | null> {
     const latest = await this.publicClient.getBlockNumber();
-    const fromBlock = opts?.fromBlock ?? (latest > 2_000_000n ? latest - 2_000_000n : 0n);
-    const logs = await this.publicClient.getLogs({
-      address: this.identityRegistry,
-      event: IDENTITY_TRANSFER_EVENT,
-      args: { to: agent },
-      fromBlock,
-      toBlock: latest,
-    });
-    const minted = logs.find((l) => (l.args as { from?: Address }).from === ZERO_ADDRESS) ?? logs[0];
-    return (minted?.args as { tokenId?: bigint } | undefined)?.tokenId ?? null;
+    const CHUNK = 2_000_000n;
+    const MAX_CHUNKS = 15;
+    let toBlock = latest;
+    let fromBlock = opts?.fromBlock ?? (toBlock > CHUNK ? toBlock - CHUNK : 0n);
+    for (let i = 0; i < MAX_CHUNKS; i++) {
+      const logs = await this.publicClient.getLogs({
+        address: this.identityRegistry,
+        event: IDENTITY_TRANSFER_EVENT,
+        args: { to: agent },
+        fromBlock,
+        toBlock,
+      });
+      const minted = logs.find((l) => (l.args as { from?: Address }).from === ZERO_ADDRESS) ?? logs[0];
+      const tokenId = (minted?.args as { tokenId?: bigint } | undefined)?.tokenId;
+      if (tokenId !== undefined) return tokenId;
+      if (opts?.fromBlock !== undefined || fromBlock === 0n) return null;
+      toBlock = fromBlock - 1n;
+      fromBlock = toBlock > CHUNK ? toBlock - CHUNK : 0n;
+    }
+    return null;
   }
 
   /**
@@ -597,6 +608,7 @@ export class ClaudelanceClient {
       ],
       account: wallet.account,
       chain: wallet.chain,
+      ...(await this.celoGas(300_000n)),
     });
   }
 
@@ -619,14 +631,21 @@ export class ClaudelanceClient {
       return { tokenId: 0n, minted: false };
     }
 
-    const { result, request } = await this.publicClient.simulateContract({
+    const { result } = await this.publicClient.simulateContract({
       address: this.identityRegistry,
       abi: IDENTITY_REGISTRY_REGISTER_ABI,
       functionName: 'register',
       account: wallet.account,
     });
 
-    const tx = await wallet.writeContract(request);
+    const tx = await wallet.writeContract({
+      address: this.identityRegistry,
+      abi: IDENTITY_REGISTRY_REGISTER_ABI,
+      functionName: 'register',
+      account: wallet.account,
+      chain: wallet.chain,
+      ...(await this.celoGas(300_000n)),
+    });
     await this.publicClient.waitForTransactionReceipt({ hash: tx });
 
     return { tokenId: result as bigint, minted: true, tx };
@@ -717,6 +736,8 @@ export class ClaudelanceClient {
       args: [bountyId, opts.deliverableUrl, opts.deliverableHash, opts.metadata ?? ''],
       account: wallet.account,
       chain: wallet.chain,
+      // URL + metadata strings dominate the cost; 400k covers long ones.
+      ...(await this.celoGas(400_000n)),
     });
   }
 
@@ -741,6 +762,7 @@ export class ClaudelanceClient {
       args: [bountyId, worker ?? wallet.account.address],
       account: wallet.account,
       chain: wallet.chain,
+      ...(await this.celoGas(200_000n)),
     });
   }
 
@@ -1037,6 +1059,7 @@ export class ClaudelanceClient {
       args: [bountyId, winner],
       account: wallet.account,
       chain: wallet.chain,
+      ...(await this.celoGas()),
     });
   }
 
@@ -1072,6 +1095,7 @@ export class ClaudelanceClient {
       args: [bountyId],
       account: wallet.account,
       chain: wallet.chain,
+      ...(await this.celoGas(300_000n)),
     });
   }
 
@@ -1091,6 +1115,7 @@ export class ClaudelanceClient {
       args: [bountyId, worker, passed],
       account: wallet.account,
       chain: wallet.chain,
+      ...(await this.celoGas(150_000n)),
     });
   }
 
@@ -1165,6 +1190,7 @@ export class ClaudelanceClient {
       args: [typeId, config],
       account: wallet.account,
       chain: wallet.chain,
+      ...(await this.celoGas(150_000n)),
     });
   }
 
