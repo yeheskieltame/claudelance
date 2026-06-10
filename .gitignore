@@ -45,3 +45,6 @@ demo-video/
 Blueprint.md
 # CLAUDE.md is now tracked: it serves as the canonical working context for
 # the AI assistant and doubles as onboarding docs for new contributors.
+
+# burst wave scratch state
+scripts/.burst-wave-*.json
