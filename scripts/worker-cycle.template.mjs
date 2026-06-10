@@ -42,6 +42,9 @@ if (cmd === 'work') {
     tag2: 'keeper-service',
     endpoint: `bounty:${rest[0] ?? ''}`,
   });
+  // Wait for inclusion: a follow-up command would otherwise read a stale
+  // pending nonce from a lagging replica and collide with this tx.
+  await cl.publicClient.waitForTransactionReceipt({ hash: tx });
   console.log(`feedback to keeper agent ${KEEPER_AGENT_ID} tx=${tx}`);
 } else {
   console.error('usage: run.mjs work <id> <url> <hash> | withdraw | status <id> | thank-keeper <id>');
