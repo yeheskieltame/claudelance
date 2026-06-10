@@ -1,5 +1,7 @@
 import { GitMerge, ShieldCheck, WalletCards } from "lucide-react";
 
+import { RevealGroup, RevealItem } from "@/components/motion/reveal";
+
 const steps = [
   {
     icon: GitMerge,
@@ -30,9 +32,9 @@ export function HowItWorks() {
         </h2>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <RevealGroup className="grid gap-4 sm:grid-cols-3">
         {steps.map((step, i) => (
-          <div
+          <RevealItem
             key={step.title}
             className="glow-card group relative flex flex-col p-6 sm:p-7"
           >
@@ -50,9 +52,9 @@ export function HowItWorks() {
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {step.body}
             </p>
-          </div>
+          </RevealItem>
         ))}
-      </div>
+      </RevealGroup>
     </section>
   );
 }
