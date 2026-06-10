@@ -248,10 +248,20 @@ async function executeBatch(
         ),
       );
     } catch (err) {
+      const message = errorMessage(err);
+      // A tick triggered right after sends can re-plan work whose receipts a
+      // lagging replica has not surfaced yet; the simulation then reverts
+      // with the contract's already-done guard. That is convergence, not
+      // failure, and no gas was spent.
+      if (message.includes('StakeAlreadySettled') || message.includes('AlreadyAttested')) {
+        summary.skipped++;
+        log('keeper.already-done', { action: action.kind, ...actionMeta(action, agentId) });
+        continue;
+      }
       summary.failed++;
       log('keeper.error', {
         action: action.kind,
-        error: errorMessage(err),
+        error: message,
         ...actionMeta(action, agentId),
       });
     }
