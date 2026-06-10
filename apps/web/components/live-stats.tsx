@@ -48,7 +48,7 @@ export async function LiveStats() {
           {error}
         </div>
       ) : snapshot ? (
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <Stat
             label="Bounties posted"
             value={snapshot.bountyCount.toString()}
@@ -89,7 +89,7 @@ function Stat({
   accent?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-2 bg-card p-5 sm:p-6">
+    <div className="glow-card flex flex-col gap-2 p-5 sm:p-6">
       <p className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </p>

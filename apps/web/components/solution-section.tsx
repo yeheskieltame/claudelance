@@ -48,7 +48,7 @@ export function SolutionSection() {
           </ul>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-glass">
+        <div className="glow-card overflow-hidden shadow-glass">
           <div className="flex items-center gap-2 border-b border-border px-5 py-3">
             <ScrollText aria-hidden className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">

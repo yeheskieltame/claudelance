@@ -46,11 +46,11 @@ export function Advantages() {
         </h2>
       </div>
 
-      <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {EDGE.map((item, i) => (
           <div
             key={item.title}
-            className="group relative flex flex-col bg-card p-6 transition-colors hover:bg-accent/40 sm:p-7"
+            className="glow-card group relative flex flex-col p-6 sm:p-7"
           >
             <div className="flex items-start justify-between">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-primary transition-colors group-hover:border-primary/40">

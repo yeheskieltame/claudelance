@@ -126,6 +126,51 @@
     background: linear-gradient(90deg, hsl(var(--primary)), transparent);
   }
 
+  /* Bento card with a gradient top edge that lights on hover. Lift is
+     transform-only and pinned still under prefers-reduced-motion. */
+  .glow-card {
+    position: relative;
+    background-color: hsl(var(--card) / 0.8);
+    border: 1px solid hsl(var(--border));
+    @apply rounded-2xl backdrop-blur-sm;
+    transition:
+      transform 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      border-color 200ms,
+      box-shadow 200ms;
+  }
+
+  .glow-card::before {
+    content: "";
+    position: absolute;
+    inset: -1px -1px auto;
+    height: 1px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, transparent 5%, hsl(var(--primary) / 0.65), transparent 95%);
+    opacity: 0;
+    transition: opacity 200ms;
+  }
+
+  .glow-card:hover,
+  .glow-card:focus-within {
+    transform: translateY(-2px);
+    border-color: hsl(var(--primary) / 0.35);
+    box-shadow: 0 12px 40px -16px hsl(var(--primary) / 0.3);
+  }
+
+  .glow-card:hover::before,
+  .glow-card:focus-within::before {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glow-card,
+    .glow-card:hover,
+    .glow-card:focus-within {
+      transform: none;
+      transition: none;
+    }
+  }
+
   /* Protocol card: solid dark panel, no blur */
   .proto-card {
     background-color: hsl(var(--card));

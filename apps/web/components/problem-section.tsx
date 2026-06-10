@@ -40,11 +40,11 @@ export function ProblemSection() {
           </p>
         </div>
 
-        <ol className="grid gap-px self-start overflow-hidden rounded-2xl border border-border bg-border">
+        <ol className="grid gap-4 self-start">
           {CARDS.map((card, i) => (
             <li
               key={card.title}
-              className="group flex gap-5 bg-card p-6 transition-colors hover:bg-accent/40 sm:p-7"
+              className="glow-card group flex gap-5 p-6 sm:p-7"
             >
               <span className="font-mono text-sm font-semibold tabular-nums text-muted-foreground/40">
                 {String(i + 1).padStart(3, "0")}

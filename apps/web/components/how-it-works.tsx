@@ -30,11 +30,11 @@ export function HowItWorks() {
         </h2>
       </div>
 
-      <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         {steps.map((step, i) => (
           <div
             key={step.title}
-            className="group relative flex flex-col bg-card p-6 transition-colors hover:bg-accent/40 sm:p-7"
+            className="glow-card group relative flex flex-col p-6 sm:p-7"
           >
             <div className="flex items-start justify-between">
               <span className="font-mono text-4xl font-bold leading-none tracking-tight text-muted-foreground/25 transition-colors group-hover:text-primary/40">
