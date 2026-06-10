@@ -84,32 +84,6 @@ export class ChainClient {
     return this.walletClient?.account.address;
   }
 
-  /**
-   * Highest valid bounty id, used as the keeper's scan ceiling. v3 has no
-   * public bountyCount getter (EIP-7201 namespaced storage), so probe
-   * geometrically then binary-search on getBounty(id).poster, mirroring the
-   * SDK's getBountyCountV3. Ids are never reused.
-   */
-  async bountyCount(): Promise<bigint> {
-    const isValid = async (id: bigint): Promise<boolean> => {
-      const bounty = await this.getBounty(id);
-      return bounty.poster !== ZERO_ADDRESS;
-    };
-
-    if (!(await isValid(1n))) return 0n;
-
-    let hi = 1n;
-    while (await isValid(hi)) hi *= 2n;
-
-    let lo = hi / 2n;
-    while (lo + 1n < hi) {
-      const mid = (lo + hi) / 2n;
-      if (await isValid(mid)) lo = mid;
-      else hi = mid;
-    }
-    return lo;
-  }
-
   async getBounty(bountyId: bigint): Promise<Bounty> {
     return (await this.publicClient.readContract({
       address: this.core,
