@@ -362,23 +362,60 @@ export class ChainClient {
   /**
    * Watch the core for the events that create keeper work (a resolution needs
    * settles + an attest; a cancellation needs settles) and call `onWork` for
-   * each batch of new logs. Returns an unwatch function. HTTP transport, so
-   * this polls getLogs every `pollMs` under the hood.
+   * each batch of new logs. Returns an unwatch function.
+   *
+   * Hand-rolled getLogs polling rather than viem's watchContractEvent: forno
+   * load-balances replicas, so eth_newFilter-based watching silently dies when
+   * a follow-up poll lands on a node that never saw the filter. A stateless
+   * [last+1, latest] log query works on any replica.
    */
   watchKeeperEvents(pollMs: number, onWork: (eventName: string) => void): () => void {
-    const stops = (['BountyResolved', 'BountyCancelled'] as const).map((eventName) =>
-      this.publicClient.watchContractEvent({
-        address: this.core,
-        abi: ABI,
-        eventName,
-        pollingInterval: pollMs,
-        onLogs: () => onWork(eventName),
-        onError: () => {
-          // Transient RPC failures are fine; the interval timer still covers us.
-        },
-      }),
-    );
-    return () => stops.forEach((stop) => stop());
+    let lastBlock = 0n;
+    let stopped = false;
+    let polling = false;
+
+    const poll = async (): Promise<void> => {
+      if (stopped || polling) return;
+      polling = true;
+      try {
+        const latest = await this.publicClient.getBlockNumber();
+        if (lastBlock === 0n) {
+          lastBlock = latest;
+          return;
+        }
+        if (latest <= lastBlock) return;
+        const logs = await this.publicClient.getContractEvents({
+          address: this.core,
+          abi: ABI,
+          eventName: 'BountyResolved',
+          fromBlock: lastBlock + 1n,
+          toBlock: latest,
+        });
+        const cancels = await this.publicClient.getContractEvents({
+          address: this.core,
+          abi: ABI,
+          eventName: 'BountyCancelled',
+          fromBlock: lastBlock + 1n,
+          toBlock: latest,
+        });
+        // Only move the cursor once both queries succeed, so a transient RPC
+        // failure re-reads the same range instead of dropping events.
+        lastBlock = latest;
+        if (logs.length > 0) onWork('BountyResolved');
+        if (cancels.length > 0) onWork('BountyCancelled');
+      } catch {
+        // Transient RPC failures are fine; the interval timer still covers us.
+      } finally {
+        polling = false;
+      }
+    };
+
+    void poll();
+    const timer = setInterval(() => void poll(), pollMs);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
   }
 
   /**
