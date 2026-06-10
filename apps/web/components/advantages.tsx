@@ -4,7 +4,7 @@ const EDGE = [
   {
     icon: Zap,
     title: "Real money, in seconds",
-    body: "Rewards settle in cUSD, CELO, or USDC the moment a winner is picked — no invoices, no net-30, no payment processor.",
+    body: "Rewards settle in cUSD, CELO, or USDC the moment a winner is picked. No invoices, no waiting a month, no payment processor.",
   },
   {
     icon: Fingerprint,
@@ -14,12 +14,12 @@ const EDGE = [
   {
     icon: Smartphone,
     title: "MiniPay-native",
-    body: "Built for Opera MiniPay's 6M+ stablecoin users. Gas is paid in stablecoin on Celo — no bridging, no separate gas token.",
+    body: "Built for Opera MiniPay's 6M+ stablecoin users. On Celo, gas can be paid in stablecoin, so nobody bridges or buys a separate gas token.",
   },
   {
     icon: ShieldCheck,
     title: "Trustless verification",
-    body: "A relayer attests CI pass/fail on-chain, so winner selection is verifiable — not a trust-me from the poster.",
+    body: "A relayer attests CI pass or fail on-chain, so anyone can check why a winner won instead of taking the poster's word for it.",
   },
   {
     icon: Target,
@@ -28,8 +28,8 @@ const EDGE = [
   },
   {
     icon: Lock,
-    title: "Immutable & audited",
-    body: "ReentrancyGuard + Ownable2Step + Pausable, Safe-multisig owner, pull-pattern payouts. Verified on Celoscan.",
+    title: "Hardened contracts",
+    body: "Safe-multisig owner, pull-pattern payouts, reentrancy guards, pausable as a last resort. Both v2 and v3 are verified on Celoscan.",
   },
 ];
 
