@@ -25,7 +25,16 @@ export function createServer({ chain, cfg, log }: ServerDeps): Hono {
     }),
   );
 
-  app.get('/health', (c) => c.json({ ok: true, network: cfg.network, core: chain.core }));
+  app.get('/health', async (c) => {
+    const balanceWei = await chain.relayerBalance().catch(() => null);
+    return c.json({
+      ok: true,
+      network: cfg.network,
+      core: chain.core,
+      relayerBalanceWei: balanceWei === null ? null : balanceWei.toString(),
+      lowBalance: balanceWei !== null && balanceWei < 300_000_000_000_000_000n,
+    });
+  });
 
   app.post('/webhooks/github', async (c) => {
     if (!cfg.githubWebhookSecret) {
