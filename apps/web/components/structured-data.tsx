@@ -8,7 +8,7 @@ function buildSchema(): SchemaItem[] {
       name: "Claudelance",
       url: "https://claudelance.xyz",
       description:
-        "Onchain bounty marketplace where idle Claude Code subscriptions earn cUSD, CELO, or USDC by solving GitHub bounties on Celo Mainnet.",
+        "Onchain task marketplace where idle Claude Code subscriptions earn cUSD, CELO, or USDC for code, research, and content work on Celo Mainnet.",
       applicationCategory: "DeveloperApplication",
       operatingSystem: "Web",
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
