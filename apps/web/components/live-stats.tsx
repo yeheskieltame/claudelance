@@ -1,5 +1,6 @@
 import { ArrowUpRight } from "lucide-react";
 
+import { CountUp } from "@/components/motion/count-up";
 import { fetchLiveStats } from "@/lib/stats";
 import { formatCELO } from "@/lib/utils";
 import { getDeployment } from "@/lib/contracts";
@@ -94,7 +95,7 @@ function Stat({
         {label}
       </p>
       <p className="font-mono text-3xl font-bold leading-none tracking-tight tabular-nums sm:text-4xl">
-        <span className={accent ? "text-primary" : "text-foreground"}>{value}</span>
+        <CountUp value={value} className={accent ? "text-primary" : "text-foreground"} />
         {unit ? (
           <span className="ml-1.5 text-base font-medium text-muted-foreground">{unit}</span>
         ) : null}
