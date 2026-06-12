@@ -254,6 +254,7 @@ export function BountyDetailClient({ bounty }: { bounty: BountyJson }) {
               Winner: {shortAddress(bounty.winner)}
             </p>
           )}
+          <ReputationAttestedLine bountyId={bounty.id} />
         </GlassCard>
       )}
 
@@ -456,6 +457,40 @@ function CancelExpiredCard({
         </div>
       </div>
     </GlassCard>
+  );
+}
+
+/**
+ * v3.1 reputation tail status for a resolved bounty: whether attestReputation
+ * has written the winner's +1 ERC-8004 feedback yet. Read-only; the keeper
+ * (or anyone, the call is permissionless) closes it within minutes.
+ */
+function ReputationAttestedLine({ bountyId }: { bountyId: string }) {
+  const chainId = useChainId();
+  const core = deploymentByChainId(chainId || DEFAULT_CHAIN_ID)!.core as Address;
+  const { data: attested } = useReadContract({
+    address: core,
+    abi: CLAUDELANCE_CORE_V3_ABI,
+    functionName: "isReputationAttested",
+    args: [BigInt(bountyId)],
+  });
+
+  if (attested === undefined) return null;
+
+  if (attested) {
+    return (
+      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+        <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+        Reputation attested on the ERC-8004 registry
+      </span>
+    );
+  }
+
+  return (
+    <p className="mt-2 text-xs text-muted-foreground">
+      Winner reputation not written to the registry yet. The keeper attests it
+      shortly after resolution; the call is permissionless.
+    </p>
   );
 }
 
