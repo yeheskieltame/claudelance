@@ -320,6 +320,22 @@ function PostBountyForm() {
     typeof targetIdentityBal === "bigint" ? targetIdentityBal > 0n : undefined;
   const targetAgentId = targetValid ? agentIdFor(targetTrimmed) : undefined;
 
+  // The picker is built from static package constants, but enablement lives
+  // on-chain (configureTaskType, owner-only): posting a disabled type reverts
+  // TaskTypeNotEnabled after the user already approved escrow. Read the live
+  // config so the form blocks before any wallet prompt.
+  const { data: taskTypeConfig } = useReadContract({
+    address: deployment.core as Address,
+    abi: CLAUDELANCE_CORE_V3_ABI,
+    functionName: "getTaskTypeConfig",
+    args: [values.bountyType],
+    chainId: writeChainId,
+  });
+  const taskTypeEnabled =
+    taskTypeConfig === undefined
+      ? undefined
+      : (taskTypeConfig as { enabled: boolean }).enabled;
+
   // The poster escrows only the reward `amount` (the worker stake is pulled
   // from workers on claim), so allowance + balance are checked against `amount`.
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
@@ -623,6 +639,7 @@ function PostBountyForm() {
               postHash={postHash}
               isDirect={isDirect}
               canPost={!isDirect || targetValid}
+              taskTypeEnabled={taskTypeEnabled}
               targetHasIdentity={targetHasIdentity}
               targetAgentId={targetAgentId}
               onApprove={approveToken}
@@ -1099,6 +1116,7 @@ function ReviewStep({
   postHash,
   isDirect,
   canPost,
+  taskTypeEnabled,
   targetHasIdentity,
   targetAgentId,
   onApprove,
@@ -1119,6 +1137,8 @@ function ReviewStep({
   postHash: Hash | null;
   isDirect: boolean;
   canPost: boolean;
+  /** Live on-chain enablement of the selected task type; undefined while loading. */
+  taskTypeEnabled?: boolean;
   targetHasIdentity?: boolean;
   targetAgentId?: bigint;
   onApprove: () => Promise<void>;
@@ -1251,7 +1271,11 @@ function ReviewStep({
                 description="Escrows the reward and opens the bounty to workers."
                 done={false}
               >
-                <Button type="button" onClick={onPost} disabled={isPosting || needsApproval || !hasBalance || !canPost}>
+                <Button
+                  type="button"
+                  onClick={onPost}
+                  disabled={isPosting || needsApproval || !hasBalance || !canPost || taskTypeEnabled === false}
+                >
                   {isPosting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ClipboardCheck className="h-4 w-4" aria-hidden />}
                   {isPosting ? "Posting" : isDirect ? "Hire worker" : "Post bounty"}
                 </Button>
@@ -1260,6 +1284,12 @@ function ReviewStep({
 
             {needsApproval && allowanceKnown ? (
               <p className="mt-3 text-xs text-muted-foreground">Post unlocks once the approval is confirmed onchain.</p>
+            ) : null}
+            {taskTypeEnabled === false ? (
+              <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">
+                This task type is currently disabled on-chain, so posting would
+                revert. Pick a different task type.
+              </p>
             ) : null}
             {isDirect && !canPost ? (
               <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">
