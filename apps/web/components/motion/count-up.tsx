@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useInView, useReducedMotion } from "framer-motion";
 
 type CountUpProps = {
@@ -15,19 +15,20 @@ type CountUpProps = {
  * Counts numeric content up from zero when scrolled into view, preserving any
  * prefix/suffix and decimal places in the formatted string. Renders the final
  * value immediately under prefers-reduced-motion or when nothing numeric is
- * found.
+ * found. Frames write to the DOM node directly so the animation never
+ * re-renders the React tree.
  */
 export function CountUp({ value, durationMs = 900, className }: CountUpProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
   const reduce = useReducedMotion();
-  const [shown, setShown] = useState<string>(value);
-  const [started, setStarted] = useState(false);
+  const started = useRef(false);
 
   useEffect(() => {
+    const el = ref.current;
     const match = value.match(/-?[\d,]+(?:\.\d+)?/);
-    if (reduce || !match || !inView || started) return;
-    setStarted(true);
+    if (reduce || !match || !inView || started.current || !el) return;
+    started.current = true;
 
     const numeric = Number(match[0].replace(/,/g, ""));
     if (!Number.isFinite(numeric)) return;
@@ -48,16 +49,16 @@ export function CountUp({ value, durationMs = 900, className }: CountUpProps) {
     const tick = (t: number) => {
       const p = Math.min((t - t0) / durationMs, 1);
       const eased = 1 - Math.pow(1 - p, 3);
-      setShown(render(numeric * eased));
+      el.textContent = render(numeric * eased);
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [inView, reduce, value, durationMs, started]);
+  }, [inView, reduce, value, durationMs]);
 
   return (
     <span ref={ref} className={className}>
-      {shown}
+      {value}
     </span>
   );
 }
