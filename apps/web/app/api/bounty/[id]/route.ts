@@ -74,7 +74,9 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
-  "Cache-Control": "public, max-age=30, s-maxage=30",
+  // max-age=0: MiniPay's webview must not hold a pre-submission snapshot in
+  // the browser cache; the short s-maxage keeps RPC load off the origin.
+  "Cache-Control": "public, max-age=0, s-maxage=5",
 };
 
 type Params = Promise<{ id: string }>;
