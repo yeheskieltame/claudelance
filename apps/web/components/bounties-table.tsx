@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   ChevronLeft,
@@ -133,52 +134,25 @@ export function BountiesTable() {
   const [query, setQuery] = React.useState("");
   const [page, setPage] = React.useState(1);
 
-  const [items, setItems] = React.useState<ApiBounty[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = React.useState(0);
-  const lastStatus = React.useRef<StatusFilter | null>(null);
+  // Server-side status filter is the cache key; token + search are applied
+  // client-side over the loaded set. refetchOnWindowFocus: "always" covers a
+  // poster coming back from a wallet confirmation, who expects current bounty
+  // states, not the snapshot from when the list first loaded.
+  const {
+    data: items = [],
+    isPending,
+    isError,
+  } = useQuery({
+    queryKey: ["bounties", status],
+    queryFn: ({ signal }) => fetchBounties(status, signal),
+    refetchOnWindowFocus: "always",
+    staleTime: 5_000,
+  });
 
-  // Refetch when the tab regains focus: a poster coming back from a wallet
-  // confirmation expects current bounty states, not the snapshot from when
-  // the list first loaded.
-  React.useEffect(() => {
-    const bump = () => {
-      if (document.visibilityState === "visible") setRefreshKey((k) => k + 1);
-    };
-    window.addEventListener("focus", bump);
-    document.addEventListener("visibilitychange", bump);
-    return () => {
-      window.removeEventListener("focus", bump);
-      document.removeEventListener("visibilitychange", bump);
-    };
-  }, []);
-
-  // Refetch when the server-side status filter changes (with the loading
-  // state) or on a focus refresh (silently, keeping the current rows on
-  // screen); token + search are applied client-side over the loaded set.
-  React.useEffect(() => {
-    const controller = new AbortController();
-    const statusChanged = lastStatus.current !== status;
-    lastStatus.current = status;
-    if (statusChanged) setIsLoading(true);
-    setError(null);
-
-    fetchBounties(status, controller.signal)
-      .then((rows) => {
-        setItems(rows);
-        setIsLoading(false);
-      })
-      .catch((err: unknown) => {
-        if (controller.signal.aborted) return;
-        setItems([]);
-        setError("Bounties are not available right now. Try again in a moment.");
-        setIsLoading(false);
-        void err;
-      });
-
-    return () => controller.abort();
-  }, [status, refreshKey]);
+  const isLoading = isPending;
+  const error = isError
+    ? "Bounties are not available right now. Try again in a moment."
+    : null;
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
