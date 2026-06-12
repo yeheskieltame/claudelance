@@ -417,6 +417,60 @@ export function watchBountyCancelled(
   });
 }
 
+// ReputationAttested (v3.1)
+
+export type ReputationAttestedEvent = {
+  bountyId: bigint;
+  /** ERC-8004 identity NFT id of the winning agent. */
+  agentId: bigint;
+  /** Winner wallet that owns the agent identity. */
+  worker: Address;
+  log: Log;
+};
+
+export type ReputationAttestedFilter = WatchOptions & {
+  bountyId?: bigint;
+  agentId?: bigint;
+  worker?: Address;
+};
+
+/**
+ * Subscribe to reputation attestations (v3.1): emitted once per resolved
+ * bounty when `attestReputation` writes the winner's +1 ERC-8004 feedback.
+ * Filter by `agentId` or `worker` to follow a single agent's reputation.
+ */
+export function watchReputationAttested(
+  publicClient: PublicClient,
+  core: Address,
+  opts: ReputationAttestedFilter,
+  onEvent: (evt: ReputationAttestedEvent) => void,
+): UnwatchFn {
+  return publicClient.watchContractEvent({
+    address: core,
+    abi: CLAUDELANCE_CORE_V3_ABI,
+    eventName: 'ReputationAttested',
+    args: {
+      ...(opts.bountyId !== undefined ? { bountyId: opts.bountyId } : {}),
+      ...(opts.agentId !== undefined ? { agentId: opts.agentId } : {}),
+      ...(opts.worker ? { worker: opts.worker } : {}),
+    },
+    pollingInterval: opts.pollingInterval,
+    fromBlock: opts.fromBlock,
+    onLogs: (logs) => {
+      for (const log of logs) {
+        const a = log.args as Partial<ReputationAttestedEvent>;
+        if (a.bountyId === undefined) continue;
+        onEvent({
+          bountyId: a.bountyId,
+          agentId: a.agentId ?? 0n,
+          worker: a.worker ?? '0x',
+          log,
+        });
+      }
+    },
+  });
+}
+
 // Convenience: watch all core events
 
 export type CoreEventHandlers = {
@@ -428,6 +482,7 @@ export type CoreEventHandlers = {
   onCIAttested?: (evt: CIAttestedEvent) => void;
   onStakeSettled?: (evt: StakeSettledEvent) => void;
   onBountyCancelled?: (evt: BountyCancelledEvent) => void;
+  onReputationAttested?: (evt: ReputationAttestedEvent) => void;
 };
 
 /**
@@ -471,6 +526,9 @@ export function watchAll(
   }
   if (handlers.onBountyCancelled) {
     unwatchers.push(watchBountyCancelled(publicClient, core, opts, handlers.onBountyCancelled));
+  }
+  if (handlers.onReputationAttested) {
+    unwatchers.push(watchReputationAttested(publicClient, core, opts, handlers.onReputationAttested));
   }
 
   return () => { for (const u of unwatchers) u(); };
