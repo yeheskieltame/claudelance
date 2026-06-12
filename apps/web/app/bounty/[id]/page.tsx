@@ -42,9 +42,12 @@ type BountyJson = {
 async function fetchBounty(id: string): Promise<BountyJson | null> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    // no-store: the poster lands here right after a worker submits, and a
+    // cached pre-submission snapshot hides the Pick a winner card. The API
+    // route keeps a short revalidate window, so RPC load stays bounded.
     const res = await fetch(`${baseUrl}/api/bounty/${id}`, {
       headers: { accept: "application/json" },
-      next: { revalidate: 30 },
+      cache: "no-store",
     });
     if (!res.ok) return null;
     return res.json();
