@@ -30,7 +30,7 @@
 | Protocol fee | 2% on resolved bounties, per-token accounting |
 | Submission method | Unified: GitHub PR (all bounty types) |
 | Off-chain config | `claudelance/bounties-registry` (JSON), keccak256 hash onchain |
-| Phase 1 UI bounty types | Code only (live); v3 adds types 1–10 |
+| Phase 1 UI bounty types | All v3 types 0–10 live in the web post form (type picker, per-type deliverable hints, disclaimer notice for 8/9); CI checkbox only for types 0/5 |
 | Smart contract bounty types | 0-255 (future-proof); v3 defines canonical types 0–10 |
 | v3 contract pattern | UUPS upgradeable (EIP-1822) via OZ upgradeable contracts; `_authorizeUpgrade` gated to Safe multisig; EIP-7201 namespaced storage |
 | v3 submission method | `submitDeliverable(url, contentHash)` — GitHub PR for code, Gist/IPFS/Arweave for all other types |
@@ -55,12 +55,12 @@
 | `contracts/src/v3/` | **v3 LIVE mainnet + Sepolia** | UUPS proxy, task types 0–10, EIP-7201 storage, 144 tests |
 | `apps/web/` | v2 LIVE | Next.js 15 MiniPay app wired to mainnet (post / feed / detail / worker / revenue + MiniPay + Privy) |
 | `apps/relayer/` | **LIVE on Railway (2026-06-10)** | Always-on keeper for the ERC-8004 agent (#465, #468): `settleStake`/`cancelExpired`/`attestReputation` every 5 min on mainnet v3, plus the signed GitHub CI webhook (dormant under direct-hire). Railway project `claudelance-relayer`, Docker build, no public domain (no ingress; healthcheck internal). Key only in Railway service variables. Simulate-first writes, live gas price, agentId cache. Rollout was dry-run-first. |
-| `packages/worker/` | planned (Day 4) | `@yeheskieltame/claudelance-worker` Claude Code CLI |
+| `packages/worker/` | not started (empty dir; post-hackathon backlog) | `@yeheskieltame/claudelance-worker` Claude Code CLI |
 | `packages/types/` | v0.6.0 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-types` shared ABI + types; V3 ABI mirrors the deployed proxy exactly (UUPS/Pausable/Ownable2Step + OZ errors) |
 | `packages/sdk/` | v0.6.0 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-sdk` agent client; live Celo gas-price read, `isPaused()`/`getImplementation()`, lifecycle watchers, typed errors |
-| `packages/contracts/` | planned (Day 9) | `@yeheskieltame/claudelance-contracts` ABI artifacts |
-| `packages/react/` | planned (Day 13) | `claudelance-react` hooks |
-| `packages/cli/` | planned (Day 15) | `@yeheskieltame/claudelance-cli` (binaries `claudelance` and `cln`) |
+| `packages/contracts/` | not started (post-hackathon backlog) | `@yeheskieltame/claudelance-contracts` ABI artifacts |
+| `packages/react/` | not started (post-hackathon backlog) | `claudelance-react` hooks |
+| `packages/cli/` | not started (post-hackathon backlog) | `@yeheskieltame/claudelance-cli` (binaries `claudelance` and `cln`) |
 | `docs/v3-task-catalog.md` | DONE | 10 task type specs, pricing, verification matrix |
 | `docs/v3-contract-architecture.md` | DONE | UUPS design, storage layout, upgrade plan |
 
@@ -248,4 +248,5 @@ Owner-only mainnet actions must go through the Safe at <https://app.safe.global/
 - Day 7 (2026-05-21): submission deadline — KarmaGAP + 15 seed bounties + 4-min demo video + pitch deck + Talent Protocol submit
 - Day 8-15: sustained activity, onboard workers, publish remaining 4 npm packages
 - **2026-06-04:** v3 expansion — ClaudelanceCoreV3 deployed to Sepolia + Mainnet (UUPS proxy, 10 task types, EIP-7201 storage, 144 tests, security review cleared); cUSD/CELO/USDC whitelisted via Safe multisig; fork tests against live Sepolia (38/38 pass)
+- **2026-06-12:** first MiniPay-poster lifecycles — operator posts direct-hire bounties from a MiniPay wallet (`0x23E81d…e298`) through the live web form instead of the deployer CLI; bounty #57 onward. Validates the full poster UX on mainnet (approve + post + pickWinner in MiniPay) including one accidental open-mode + CI-gated round (#58) closed via relayer attestCI. Still operator dogfood: the poster wallet is operator-controlled.
 - Day 29 (2026-05-29): hackathon ends
