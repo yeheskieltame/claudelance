@@ -4,7 +4,9 @@ import { MAINNET_V3, type Deployment } from "@yeheskieltame/claudelance-types";
 
 import { celoMainnet } from "@/lib/chain";
 
-export const revalidate = 30;
+// Short window: the detail page reads through with no-store, so this is the
+// only cache layer between a fresh submission and the poster's screen.
+export const revalidate = 5;
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -72,7 +74,9 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
-  "Cache-Control": "public, max-age=30, s-maxage=30",
+  // max-age=0: MiniPay's webview must not hold a pre-submission snapshot in
+  // the browser cache; the short s-maxage keeps RPC load off the origin.
+  "Cache-Control": "public, max-age=0, s-maxage=5",
 };
 
 type Params = Promise<{ id: string }>;
