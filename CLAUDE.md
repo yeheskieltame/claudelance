@@ -53,7 +53,7 @@
 |------|--------|-------|
 | `contracts/` | v2 LIVE mainnet + Sepolia | Foundry, Solidity 0.8.24, OZ v5 |
 | `contracts/src/v3/` | **v3 LIVE mainnet + Sepolia** | UUPS proxy, task types 0–10, EIP-7201 storage, 144 tests |
-| `apps/web/` | v2 LIVE | Next.js 15 MiniPay app wired to mainnet (post / feed / detail / worker / revenue + MiniPay + Privy) |
+| `apps/web/` | LIVE at claudelance.xyz, targets mainnet v3 | Next.js 15 MiniPay app on the v3 proxy (post all task types 0–10 / feed / detail / worker / revenue + MiniPay + Privy); deploy = manual `vercel --prod` from repo root |
 | `apps/relayer/` | **LIVE on Railway (2026-06-10)** | Always-on keeper for the ERC-8004 agent (#465, #468): `settleStake`/`cancelExpired`/`attestReputation` every 5 min on mainnet v3, plus the signed GitHub CI webhook (dormant under direct-hire). Railway project `claudelance-relayer`, Docker build, no public domain (no ingress; healthcheck internal). Key only in Railway service variables. Simulate-first writes, live gas price, agentId cache. Rollout was dry-run-first. |
 | `packages/worker/` | not started (empty dir; post-hackathon backlog) | `@yeheskieltame/claudelance-worker` Claude Code CLI |
 | `packages/types/` | v0.6.6 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-types` shared ABI + types; V3 ABI mirrors the deployed proxy exactly (UUPS/Pausable/Ownable2Step + OZ errors) |
