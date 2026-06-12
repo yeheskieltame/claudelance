@@ -122,6 +122,7 @@ export {
   watchCIAttested,
   watchStakeSettled,
   watchBountyCancelled,
+  watchReputationAttested,
   watchAll,
   type BountyPostedEvent,
   type DeliverableSubmittedEvent,
@@ -131,6 +132,7 @@ export {
   type CIAttestedEvent,
   type StakeSettledEvent,
   type BountyCancelledEvent,
+  type ReputationAttestedEvent,
   type CoreEventHandlers,
   type WatchOptions,
   type UnwatchFn,
@@ -142,6 +144,7 @@ export {
   type CIAttestedFilter,
   type StakeSettledFilter,
   type BountyCancelledFilter,
+  type ReputationAttestedFilter,
 } from './watchers.js';
 
 // Treasury revenue helpers.
