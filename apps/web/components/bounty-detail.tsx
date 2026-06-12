@@ -9,7 +9,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import Link from "next/link";
-import { CheckCircle2, ExternalLink, Loader2, Lock, ShieldCheck, Upload } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, Lock, ShieldCheck, Timer, Undo2, Upload } from "lucide-react";
 import {
   CLAUDELANCE_CORE_V3_ABI,
   TASK_TYPE_NAMES,
@@ -228,12 +228,11 @@ export function BountyDetailClient({ bounty }: { bounty: BountyJson }) {
 
       {/* Past-deadline state (not yet cancelled/resolved) */}
       {bounty.status === 0 && isPastDeadline && (
-        <GlassCard className="!p-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            This bounty has passed its deadline. The poster can call{" "}
-            <code className="text-xs">cancelExpired</code> to recover the escrowed funds.
-          </p>
-        </GlassCard>
+        <CancelExpiredCard
+          bountyId={bounty.id}
+          deadline={Number(bounty.deadline)}
+          isPoster={isPoster}
+        />
       )}
 
       {/* Cancelled state */}
@@ -356,6 +355,102 @@ function PickWinnerCard({
               </>
             ) : (
               "Pick winner"
+            )}
+          </Button>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+// Mirrors RESOLUTION_GRACE_PERIOD in ClaudelanceCoreV3: cancelExpired reverts
+// GracePeriodActive until deadline + 3 days, leaving the poster room to pick
+// a late winner first.
+const RESOLUTION_GRACE_PERIOD_SECONDS = 3 * 86_400;
+
+function formatGraceRemaining(seconds: number): string {
+  if (seconds >= 86_400) {
+    const days = Math.ceil(seconds / 86_400);
+    return days === 1 ? "about 1 day" : `about ${days} days`;
+  }
+  const hours = Math.max(1, Math.ceil(seconds / 3_600));
+  return hours === 1 ? "about 1 hour" : `about ${hours} hours`;
+}
+
+function CancelExpiredCard({
+  bountyId,
+  deadline,
+  isPoster,
+}: {
+  bountyId: string;
+  deadline: number;
+  isPoster: boolean;
+}) {
+  const chainId = useChainId();
+  const { writeContractAsync, isPending } = useWriteContract();
+  const [txHash, setTxHash] = React.useState<Hash | null>(null);
+  useTransactionToast(txHash, {
+    pendingMessage: "Cancelling bounty",
+    confirmedMessage: "Bounty cancelled, escrow refunded to the poster",
+    failedMessage: "Cancel failed",
+  });
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const graceEndsAt = deadline + RESOLUTION_GRACE_PERIOD_SECONDS;
+  const graceRemaining = graceEndsAt - nowSeconds;
+
+  const core = deploymentByChainId(chainId || DEFAULT_CHAIN_ID)!.core as Address;
+
+  const cancel = async () => {
+    try {
+      const hash = (await writeContractAsync({
+        address: core,
+        abi: CLAUDELANCE_CORE_V3_ABI,
+        functionName: "cancelExpired",
+        args: [BigInt(bountyId)],
+        feeCurrency: miniPayFeeCurrency(),
+      })) as Hash;
+      setTxHash(hash);
+    } catch {
+      // User rejected
+    }
+  };
+
+  if (graceRemaining > 0) {
+    return (
+      <GlassCard className="!p-6 text-center">
+        <Timer className="mx-auto h-8 w-8 text-muted-foreground" />
+        <p className="mt-3 text-sm font-medium">Deadline passed, grace window running</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The poster can still pick a winner. Cancelling unlocks in{" "}
+          {formatGraceRemaining(graceRemaining)}, then anyone can cancel and the
+          escrow goes back to the poster.
+        </p>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <GlassCard className="!p-6">
+      <div className="flex items-start gap-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+          <Undo2 className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold">Cancel this expired bounty</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isPoster
+              ? "No winner was picked within the grace window. Cancel to pull your escrowed reward back to your wallet."
+              : "The deadline and grace window have passed without a winner. The call is permissionless and refunds the escrow to the poster."}
+          </p>
+          <Button size="sm" className="mt-4" onClick={cancel} disabled={isPending}>
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Cancelling
+              </>
+            ) : (
+              "Cancel and refund poster"
             )}
           </Button>
         </div>
