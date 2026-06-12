@@ -4,7 +4,9 @@ import { MAINNET_V3, type Deployment } from "@yeheskieltame/claudelance-types";
 
 import { celoMainnet } from "@/lib/chain";
 
-export const revalidate = 30;
+// Short window: the detail page reads through with no-store, so this is the
+// only cache layer between a fresh submission and the poster's screen.
+export const revalidate = 5;
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
