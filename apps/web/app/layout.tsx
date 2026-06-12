@@ -5,6 +5,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import { AmbientBackground } from "@/components/ambient-background";
 import { BottomNav } from "@/components/bottom-nav";
 import { InstallPrompt } from "@/components/install-prompt";
+import { PausedBanner } from "@/components/paused-banner";
 import { StructuredData } from "@/components/structured-data";
 
 import { Providers } from "./providers";
@@ -93,6 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="mobile-shell safe-area-bottom min-h-svh font-sans md:pb-0">
         <AmbientBackground />
         <Providers>
+          <PausedBanner />
           {children}
           <BottomNav />
           <InstallPrompt />
