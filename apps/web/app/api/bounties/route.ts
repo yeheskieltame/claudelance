@@ -4,7 +4,9 @@ import { BountyStatus, MAINNET_V3, type Deployment } from "@yeheskieltame/claude
 
 import { celoMainnet } from "@/lib/chain";
 
-export const revalidate = 30;
+// Short window, mirroring the bounty detail fix: the list is the first place
+// a poster looks after resolving, and a 30s window kept showing Open.
+export const revalidate = 5;
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -50,7 +52,9 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
-  "Cache-Control": "public, max-age=30, s-maxage=30",
+  // max-age=0: the focus-refetch in the bounties table must reach the origin,
+  // not a 30s browser cache; the short s-maxage keeps RPC load bounded.
+  "Cache-Control": "public, max-age=0, s-maxage=5",
 };
 
 type StatusFilter = "open" | "resolved" | "cancelled" | "expired";
