@@ -3,7 +3,8 @@
 import * as React from "react";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { toast, Toaster } from "sonner";
-import { createPublicClient, http, type Hash, type TransactionReceipt } from "viem";
+import type { Hash, TransactionReceipt } from "viem";
+import { usePublicClient } from "wagmi";
 
 import { chainById, DEFAULT_CHAIN_ID } from "@/lib/chain";
 
@@ -34,13 +35,9 @@ export function useTransactionToast(hash: Hash | null | undefined, options: Tran
   } = options;
 
   const chain = chainById(chainId) ?? chainById(DEFAULT_CHAIN_ID);
-  const client = React.useMemo(() => {
-    if (!chain) return null;
-    return createPublicClient({
-      chain,
-      transport: http(),
-    });
-  }, [chain]);
+  // The session-wide wagmi client carries the NEXT_PUBLIC_CELO_MAINNET_RPC
+  // override; a locally built viem client silently fell back to default forno.
+  const client = usePublicClient({ chainId: chain?.id });
 
   React.useEffect(() => {
     if (!hash || !chain || !client) return;

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   CLAUDELANCE_CORE_V3_ABI,
   MAINNET_V3,
@@ -37,16 +36,12 @@ import {
 import type { Address, Hash } from "viem";
 import { getAddress, isAddress, keccak256, parseUnits, toBytes } from "viem";
 import {
-  createConfig,
-  http,
-  injected,
   useAccount,
   useConnect,
   useDisconnect,
   useReadContract,
   useWaitForTransactionReceipt,
   useWriteContract,
-  WagmiProvider,
 } from "wagmi";
 import { z } from "zod";
 
@@ -54,8 +49,8 @@ import { Button } from "@/components/ui/button";
 import { MiniPayBadge } from "@/components/minipay-badge";
 import { MiniPayBalanceCard } from "@/components/minipay-balance-card";
 import { useTransactionToast } from "@/components/transaction-toast";
-import { celoMainnet, supportedChains } from "@/lib/chain";
-import { isMiniPay } from "@/lib/wallet/config";
+import { celoMainnet } from "@/lib/chain";
+import { isMiniPay, pickInjectedConnector } from "@/lib/wallet/config";
 import { miniPayFeeCurrency } from "@/lib/wallet/fee-currency";
 import { agentIdFor } from "@/lib/agent-ids";
 import { cn } from "@/lib/utils";
@@ -129,17 +124,6 @@ type FormState = {
   deadline: string;
   ciRequired: boolean;
 };
-
-const queryClient = new QueryClient();
-
-const wagmiConfig = createConfig({
-  chains: supportedChains,
-  connectors: [injected({ shimDisconnect: true })],
-  ssr: true,
-  transports: {
-    [celoMainnet.id]: http(process.env.NEXT_PUBLIC_CELO_MAINNET_RPC),
-  },
-});
 
 const erc20Abi = [
   {
@@ -250,14 +234,11 @@ const initialState: FormState = {
   ciRequired: true,
 };
 
+// The form runs on the session-wide wagmi config from app/providers.tsx; a
+// second WagmiProvider here used to fight the global one over the shared
+// wagmi.store persistence key.
 export function PostBountyPage() {
-  return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <PostBountyForm />
-      </QueryClientProvider>
-    </WagmiProvider>
-  );
+  return <PostBountyForm />;
 }
 
 function PostBountyForm() {
@@ -270,17 +251,13 @@ function PostBountyForm() {
   const [miniPayActive, setMiniPayActive] = React.useState(false);
   const [step, setStep] = React.useState(0);
 
-  // MiniPay auto-connects: detect the in-app browser, connect eagerly, and hide
-  // the manual connect affordance.
+  // MiniPay connects eagerly through the session-wide MiniPayAutoConnect in
+  // app/providers.tsx; here we only detect the webview to hide the manual
+  // connect affordance.
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    const active = isMiniPay(window.ethereum);
-    setMiniPayActive(active);
-    if (active && !isConnected) {
-      const connector = connectors[0];
-      if (connector) connect({ connector });
-    }
-  }, [connect, connectors, isConnected]);
+    setMiniPayActive(isMiniPay(window.ethereum));
+  }, []);
   const [values, setValues] = React.useState<FormState>(initialState);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [approveHash, setApproveHash] = React.useState<Hash | null>(null);
@@ -398,7 +375,7 @@ function PostBountyForm() {
   });
 
   const connectInjected = () => {
-    const connector = connectors[0];
+    const connector = pickInjectedConnector(connectors);
     if (connector) connect({ connector });
   };
 

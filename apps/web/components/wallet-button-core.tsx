@@ -6,7 +6,7 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 
 import { Button } from "@/components/ui/button";
 import { DEFAULT_CHAIN_ID, chainById } from "@/lib/chain";
-import { isMiniPay } from "@/lib/wallet/config";
+import { isMiniPay, pickInjectedConnector } from "@/lib/wallet/config";
 import { cn, shortAddress } from "@/lib/utils";
 
 type WalletButtonCoreProps = {
@@ -65,7 +65,8 @@ export function WalletButtonCore({
       return;
     }
 
-    const injectedConnector = connectors.find((item) => item.id === "privy") ?? connectors[0];
+    const injectedConnector =
+      connectors.find((item) => item.id === "privy") ?? pickInjectedConnector(connectors);
     if (injectedConnector) {
       await connectAsync({ connector: injectedConnector, chainId: DEFAULT_CHAIN_ID });
     }
