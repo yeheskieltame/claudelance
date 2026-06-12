@@ -41,9 +41,10 @@ await cl.publicClient.waitForTransactionReceipt({ hash: tx });
 console.log(`pickWinner tx=${tx} (worker agentId=${agentId ?? 'none'} feedback=${repBefore?.feedbackCount ?? '-'})`);
 
 const deadline = Date.now() + Number(args['watch-min'] ?? 7) * 60_000;
+const pollMs = Number(args['poll-sec'] ?? 20) * 1000;
 let settled = false, attested = false;
 while (Date.now() < deadline && !(settled && attested)) {
-  await new Promise((r) => setTimeout(r, 20_000));
+  await new Promise((r) => setTimeout(r, pollMs));
   if (!settled) {
     const sub = await cl.getSubmission(bountyId, workerAddr);
     if (sub.stakeSettled) {
