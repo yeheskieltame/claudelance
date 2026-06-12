@@ -6,8 +6,6 @@ import { formatCELO } from "@/lib/utils";
 import { getDeployment } from "@/lib/contracts";
 import { DEFAULT_CHAIN_ID, chainById } from "@/lib/chain";
 
-export const revalidate = 60;
-
 export async function LiveStats() {
   let snapshot: Awaited<ReturnType<typeof fetchLiveStats>> | null = null;
   let error: string | null = null;

@@ -7,50 +7,28 @@ import { MAINNET_V3 } from "@yeheskieltame/claudelance-types";
 import { Header } from "@/components/header";
 import { BountyDetailClient } from "@/components/bounty-detail";
 import { GlassCard } from "@/components/ui/card";
+import { readBountyDetail, type BountyDetailJson } from "@/lib/bounty-reads";
 import { formatTokenAmount } from "@/lib/format-token";
 import { shortAddress } from "@/lib/utils";
-import { txUrl } from "@/lib/celoscan";
 
 type Params = Promise<{ id: string }>;
 
-type BountyJson = {
-  id: string;
-  poster: string;
-  amount: string;
-  winner: string;
-  stakeRequired: string;
-  token: string;
-  deadline: string;
-  maxSlots: number;
-  claimedSlots: number;
-  bountyType: number;
-  ciRequired: boolean;
-  targetWorker: string;
-  status: number;
-  targetRepoUrl: string;
-  instructionUrl: string;
-  requirementsHash: string;
-  claimers: string[];
-  submissions: Array<{
-    worker: string;
-    deliverableUrl: string;
-    ciPassed: boolean;
-    deliverableHash: string;
-  }>;
-};
+type BountyJson = BountyDetailJson;
 
+// Direct chain read instead of a self-fetch through /api/bounty/[id]: the
+// page is dynamic, so every request sees the freshest state (the poster lands
+// here right after a worker submits) without an extra HTTP hop per view.
 async function fetchBounty(id: string): Promise<BountyJson | null> {
+  let bountyId: bigint;
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    // no-store: the poster lands here right after a worker submits, and a
-    // cached pre-submission snapshot hides the Pick a winner card. The API
-    // route keeps a short revalidate window, so RPC load stays bounded.
-    const res = await fetch(`${baseUrl}/api/bounty/${id}`, {
-      headers: { accept: "application/json" },
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    return res.json();
+    bountyId = BigInt(id);
+  } catch {
+    return null;
+  }
+  if (bountyId < 1n) return null;
+
+  try {
+    return await readBountyDetail(bountyId);
   } catch {
     return null;
   }
@@ -306,17 +284,6 @@ function formatToken(raw: string, tokenAddress: string): string {
   } catch {
     return "0";
   }
-}
-
-function formatDeadline(deadline: string) {
-  const d = Number(deadline);
-  const date = new Date(d < 10_000_000_000 ? d * 1000 : d);
-  if (Number.isNaN(date.getTime())) return "—";
-  const diff = date.getTime() - Date.now();
-  const days = Math.ceil(diff / 86_400_000);
-  if (days <= 0) return "Expired";
-  if (days === 1) return "1 day left";
-  return `${days} days left`;
 }
 
 function formatDeadlineFull(deadline: string) {

@@ -1,5 +1,9 @@
 import { Suspense } from "react";
 
+// Keeps the landing static with a 30s ISR window now that the open-bounties
+// rail reads the chain directly instead of fetching /api/bounties.
+export const revalidate = 30;
+
 import { Header } from "@/components/header";
 import { Hero } from "@/components/hero";
 import { LiveStats } from "@/components/live-stats";
