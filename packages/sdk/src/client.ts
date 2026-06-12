@@ -1278,6 +1278,22 @@ export class ClaudelanceClient {
   }
 
   /**
+   * Semantic version of the implementation behind the v3 proxy, e.g. "3.1.0"
+   * on mainnet since the attestReputation upgrade (2026-06-10). Where
+   * {@link getImplementation} answers which address is live, this answers
+   * which surface semantics - the cheap check for a long-running agent to
+   * notice an upgrade changed behaviour. Reverts on v2 deployments, which
+   * predate the function.
+   */
+  async version(): Promise<string> {
+    return (await this.publicClient.readContract({
+      address: this.core,
+      abi: CLAUDELANCE_CORE_V3_ABI,
+      functionName: 'version',
+    })) as string;
+  }
+
+  /**
    * Current implementation address behind the v3 UUPS proxy, read straight
    * from the EIP-1967 implementation slot. Returns the zero address for a
    * non-proxy (v2) deployment. Watch `Upgraded(address)` to detect changes.
