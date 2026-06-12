@@ -1,7 +1,9 @@
+import { unstable_cache } from "next/cache";
 import { ArrowRight, CalendarClock, Coins } from "lucide-react";
 import Link from "next/link";
 import { MAINNET, ZERO_ADDRESS } from "@yeheskieltame/claudelance-types";
 
+import { readBountyPage } from "@/lib/bounty-reads";
 import { formatTokenAmount } from "@/lib/format-token";
 import { Reveal } from "@/components/motion/reveal";
 
@@ -27,29 +29,24 @@ type ApiBounty = {
   targetWorker?: string;
 };
 
-type BountiesResponse = {
-  items?: ApiBounty[];
-  nextCursor?: string | null;
-  total?: number;
-};
+// Direct chain read instead of a self-fetch through /api/bounties; the
+// unstable_cache window keeps the landing page ISR-fresh without an RPC scan
+// per regeneration burst.
+const readOpenBounties = unstable_cache(
+  () => readBountyPage({ status: "open", limit: 12 }),
+  ["home-open-bounties"],
+  { revalidate: 30 },
+);
 
 export async function BountiesScroll() {
   let items: ApiBounty[] = [];
 
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const url = `${baseUrl}/api/bounties?status=open&limit=12`;
-    const res = await fetch(url, {
-      headers: { accept: "application/json" },
-      next: { revalidate: 30 },
-    });
-    if (res.ok) {
-      const data: BountiesResponse = await res.json();
-      // Landing shows only open-marketplace bounties (skip direct hires), max 3.
-      items = (data.items ?? [])
-        .filter((b) => !b.targetWorker || b.targetWorker === ZERO_ADDRESS)
-        .slice(0, 3);
-    }
+    const { items: open } = await readOpenBounties();
+    // Landing shows only open-marketplace bounties (skip direct hires), max 3.
+    items = open
+      .filter((b) => !b.targetWorker || b.targetWorker === ZERO_ADDRESS)
+      .slice(0, 3);
   } catch {
     // Silently fall back; section hidden when no open bounties
   }
