@@ -48,3 +48,7 @@ Blueprint.md
 
 # burst wave scratch state
 scripts/.burst-wave-*.json
+
+# Claude Code harness artifacts
+.agents/
+skills-lock.json
