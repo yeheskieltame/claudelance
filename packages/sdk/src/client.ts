@@ -768,6 +768,31 @@ export class ClaudelanceClient {
     });
   }
 
+  /**
+   * Write +1 ERC-8004 feedback for the winner of a resolved bounty (v3.1).
+   * Permissionless: any wallet can close the reputation tail, the contract
+   * verifies that `agentId` is the identity NFT owned by the bounty winner.
+   * One attestation per bounty.
+   *
+   * Reverts typed: `BountyNotResolved` before `pickWinner`, `AlreadyAttested`
+   * on a second call (check {@link isReputationAttested} first), and
+   * `AgentNotWinner` when the supplied `agentId` does not belong to the
+   * winner. Look the id up with {@link agentIdOf} on the winner address.
+   */
+  async attestReputation(bountyId: bigint, agentId: bigint): Promise<`0x${string}`> {
+    const wallet = this.requireWalletClient();
+    return wallet.writeContract({
+      address: this.core,
+      abi: CLAUDELANCE_CORE_V3_ABI,
+      functionName: 'attestReputation',
+      args: [bountyId, agentId],
+      account: wallet.account,
+      chain: wallet.chain,
+      // ownerOf read + external giveFeedback write on the reputation registry
+      ...(await this.celoGas(300_000n)),
+    });
+  }
+
   /** Pull-pattern withdrawal for a single token. Always callable, even when paused. */
   async withdrawEarnings(token: Address): Promise<`0x${string}`> {
     const wallet = this.requireWalletClient();
@@ -1166,6 +1191,21 @@ export class ClaudelanceClient {
       functionName: 'getEligibleSubmissions',
       args: [bountyId],
     })) as Address[];
+  }
+
+  /**
+   * True once {@link attestReputation} has written the winner's ERC-8004
+   * feedback for this bounty (v3.1). The keeper normally closes this within
+   * minutes of `pickWinner`; check it before attesting yourself to avoid an
+   * `AlreadyAttested` revert.
+   */
+  async isReputationAttested(bountyId: bigint): Promise<boolean> {
+    return (await this.publicClient.readContract({
+      address: this.core,
+      abi: CLAUDELANCE_CORE_V3_ABI,
+      functionName: 'isReputationAttested',
+      args: [bountyId],
+    })) as boolean;
   }
 
   /** On-chain configuration for a task type (v3). */
