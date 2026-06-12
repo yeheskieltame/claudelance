@@ -370,7 +370,14 @@ function PostBountyForm() {
     if (isApproveConfirmed) void refetchAllowance();
   }, [isApproveConfirmed, refetchAllowance]);
 
-  const needsApproval = parsed && allowance !== undefined ? allowance < parsed.amount : true;
+  // The approve receipt outranks the allowance read: forno replicas can lag a
+  // fresh write, and a stale read here re-enabled Approve after a confirmed
+  // approval, making posters approve twice for one bounty.
+  const needsApproval = isApproveConfirmed
+    ? false
+    : parsed && allowance !== undefined
+      ? allowance < parsed.amount
+      : true;
   const hasBalance = parsed && balance !== undefined ? balance >= parsed.amount : true;
   const isApproving = pendingAction === "approve" && (isWriting || isApproveConfirming);
   const isPosting = pendingAction === "post" && (isWriting || isPostConfirming);
@@ -1201,7 +1208,7 @@ function ReviewStep({
     ["Deadline", formatDateTime(values.deadline)],
     ["Token", `${values.token} · ${tokenAddress}`],
   ];
-  const approved = allowanceKnown && !needsApproval;
+  const approved = !needsApproval;
 
   return (
     <div>
@@ -1236,6 +1243,12 @@ function ReviewStep({
             {values.amount} {values.token}
           </span>{" "}
           when you post; that is how every onchain escrow works. You keep custody of the tokens until the post transaction.
+          {values.token === "CELO" ? (
+            <>
+              {" "}CELO needs this too: on Celo it doubles as an ERC-20, and the
+              escrow pulls it through that contract rather than as a native transfer.
+            </>
+          ) : null}
         </p>
 
         {!isConnected ? (
@@ -1259,7 +1272,7 @@ function ReviewStep({
                 done={approved}
                 doneLabel="Approved"
               >
-                <Button type="button" variant="outline" onClick={onApprove} disabled={isApproving}>
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onApprove} disabled={isApproving}>
                   {isApproving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ShieldCheck className="h-4 w-4" aria-hidden />}
                   {isApproving ? "Approving" : "Approve"}
                 </Button>
@@ -1273,6 +1286,7 @@ function ReviewStep({
               >
                 <Button
                   type="button"
+                  className="w-full sm:w-auto"
                   onClick={onPost}
                   disabled={isPosting || needsApproval || !hasBalance || !canPost || taskTypeEnabled === false}
                 >
@@ -1331,7 +1345,7 @@ function FundStep({
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3">
+    <li className="flex flex-col gap-3 rounded-xl border bg-card px-4 py-3 sm:flex-row sm:items-center">
       <span
         className={cn(
           "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
