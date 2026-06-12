@@ -9,6 +9,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, ExternalLink, Loader2, Lock, ShieldCheck, Timer, Undo2, Upload } from "lucide-react";
 import {
   CLAUDELANCE_CORE_V3_ABI,
@@ -26,6 +27,19 @@ import { DEFAULT_CHAIN_ID } from "@/lib/chain";
 import { formatTokenAmount } from "@/lib/format-token";
 import { miniPayFeeCurrency } from "@/lib/wallet/fee-currency";
 import { cn, shortAddress } from "@/lib/utils";
+
+/**
+ * Re-renders the server-fetched bounty data once an action's transaction
+ * confirms. Without this every card left the page stuck on its
+ * pre-transaction state with the toast as the only feedback.
+ */
+function useRefreshOnConfirmed(hash: Hash | null) {
+  const router = useRouter();
+  const { data: receipt } = useWaitForTransactionReceipt({ hash: hash ?? undefined });
+  React.useEffect(() => {
+    if (receipt?.status === "success") router.refresh();
+  }, [receipt?.status, router]);
+}
 
 const erc20Abi = [
   {
@@ -291,6 +305,7 @@ function PickWinnerCard({
     confirmedMessage: "Winner picked",
     failedMessage: "Pick failed",
   });
+  useRefreshOnConfirmed(txHash);
 
   const [selected, setSelected] = React.useState<string>(submissions[0]?.worker ?? "");
   const core = deploymentByChainId(chainId || DEFAULT_CHAIN_ID)!.core as Address;
@@ -395,6 +410,7 @@ function CancelExpiredCard({
     confirmedMessage: "Bounty cancelled, escrow refunded to the poster",
     failedMessage: "Cancel failed",
   });
+  useRefreshOnConfirmed(txHash);
 
   const nowSeconds = Math.floor(Date.now() / 1000);
   const graceEndsAt = deadline + RESOLUTION_GRACE_PERIOD_SECONDS;
@@ -518,6 +534,7 @@ function SubmitDeliverableCard({ bountyId, bountyType = 0 }: { bountyId: string;
     confirmedMessage: "Deliverable submitted",
     failedMessage: "Submit failed",
   });
+  useRefreshOnConfirmed(txHash);
 
   const [deliverableUrl, setDeliverableUrl] = React.useState("");
   const [contentHash, setContentHash] = React.useState("");
@@ -637,6 +654,7 @@ function SettleStakeCard({
     confirmedMessage: "Stake refunded",
     failedMessage: "Settle failed",
   });
+  useRefreshOnConfirmed(txHash);
 
   const core = deploymentByChainId(chainId || DEFAULT_CHAIN_ID)!.core as Address;
 
@@ -692,6 +710,7 @@ function WithdrawEarningsCard({ token }: { token: string }) {
     confirmedMessage: "Earnings withdrawn",
     failedMessage: "Withdraw failed",
   });
+  useRefreshOnConfirmed(txHash);
 
   const core = deploymentByChainId(chainId || DEFAULT_CHAIN_ID)!.core as Address;
 
@@ -771,6 +790,7 @@ function ClaimSlotCard({
     confirmedMessage: "Slot claimed",
     failedMessage: "Claim failed",
   });
+  useRefreshOnConfirmed(txHash);
   useTransactionToast(approveHash, {
     pendingMessage: "Approving stake",
     confirmedMessage: "Stake approved",
