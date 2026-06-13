@@ -10,7 +10,8 @@ import { PROTOCOL_FEE_BPS, BPS_DENOMINATOR } from './constants.js';
  */
 export function estimatePayout(amount: bigint): { net: bigint; fee: bigint } {
   if (amount < 0n) throw new Error(`[estimatePayout] amount must be non-negative, got ${amount}`);
-  const fee = (amount * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
+  // PROTOCOL_FEE_BPS / BPS_DENOMINATOR are numbers; widen to bigint for the calc.
+  const fee = (amount * BigInt(PROTOCOL_FEE_BPS)) / BigInt(BPS_DENOMINATOR);
   return { net: amount - fee, fee };
 }
 
