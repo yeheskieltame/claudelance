@@ -11,5 +11,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/workers`, lastModified: now, priority: 0.7 },
     { url: `${BASE}/revenue`, lastModified: now, priority: 0.6 },
     { url: `${BASE}/about`, lastModified: now, priority: 0.5 },
+    { url: `${BASE}/docs`, lastModified: now, priority: 0.5 },
+    { url: `${BASE}/terms`, lastModified: now, priority: 0.3 },
+    { url: `${BASE}/privacy`, lastModified: now, priority: 0.3 },
   ];
 }
