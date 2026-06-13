@@ -27,10 +27,18 @@ for pair in "$@"; do
   fi
 
   HASH=$(cd "claudelance worker/worker $W" && node -e "const {keccak256,toBytes}=require('viem');console.log(keccak256(toBytes(process.argv[1])))" "$ISSUE")
-  WORK_OUT=$(cd "claudelance worker/worker $W" && node run.mjs work "$BID" "$ISSUE" "$HASH" 2>&1)
-  echo "$WORK_OUT" | tail -2
-  if ! echo "$WORK_OUT" | grep -q '"submitTx"'; then
-    echo "w$W bounty$BID: WORK FAILED"
+  # Forno replicas lag a freshly-posted bounty; the worker loop crashes if it
+  # claims before the bounty is visible. Retry the work step a few times.
+  WORK_OK=""
+  for attempt in 1 2 3 4; do
+    sleep 8
+    WORK_OUT=$(cd "claudelance worker/worker $W" && node run.mjs work "$BID" "$ISSUE" "$HASH" 2>&1)
+    if echo "$WORK_OUT" | grep -q '"submitTx"'; then WORK_OK=1; break; fi
+    echo "w$W bounty$BID: work attempt $attempt failed, retrying"
+  done
+  echo "$WORK_OUT" | tail -1
+  if [ -z "$WORK_OK" ]; then
+    echo "w$W bounty$BID: WORK FAILED after retries"
     SUMMARY="$SUMMARY\nPR#$PR bounty$BID w$W: WORK FAILED"
     continue
   fi
