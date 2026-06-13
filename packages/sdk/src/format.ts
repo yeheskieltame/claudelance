@@ -1,5 +1,19 @@
 import { TASK_TYPE_NAMES, type Bounty } from '@yeheskieltame/claudelance-types';
 
+import { PROTOCOL_FEE_BPS, BPS_DENOMINATOR } from './constants.js';
+
+/**
+ * Split a gross bounty reward into the winner's net payout and the 2% protocol
+ * fee, matching the contract's integer math exactly (fee floored, net is the
+ * remainder). Lets a poster preview a worker's take, or an agent decide if a
+ * bounty clears its threshold, without guessing the fee.
+ */
+export function estimatePayout(amount: bigint): { net: bigint; fee: bigint } {
+  if (amount < 0n) throw new Error(`[estimatePayout] amount must be non-negative, got ${amount}`);
+  const fee = (amount * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
+  return { net: amount - fee, fee };
+}
+
 /**
  * Convert a token wei amount (bigint) to a plain number for UI / log lines.
  * Precision is lossy beyond ~15 decimal digits: fine for human display,
