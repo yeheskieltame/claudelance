@@ -1,4 +1,4 @@
-import { Home, Target, SquarePen, Users, Landmark, HandCoins } from "lucide-react";
+import { Home, Target, SquarePen, Users, Landmark, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
@@ -33,10 +33,11 @@ export const PRIMARY_NAV: NavItem[] = [
     match: (p) => p.startsWith("/workers") || p.startsWith("/worker/"),
   },
   {
-    href: "/claim",
-    label: "Claim",
-    icon: HandCoins,
-    match: (p) => p === "/claim" || p.startsWith("/claim/"),
+    href: "/profile",
+    label: "Profile",
+    icon: UserRound,
+    // /claim now redirects into the profile hub, so keep it active there too.
+    match: (p) => p === "/profile" || p.startsWith("/profile/") || p === "/claim",
   },
   {
     href: "/revenue",
