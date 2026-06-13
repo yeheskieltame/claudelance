@@ -546,6 +546,29 @@ export class ClaudelanceClient {
     return this.getEarnings(this.requireAccount(), token);
   }
 
+  /**
+   * Native-token-style balances for the three marketplace tokens in a single
+   * multicall. Defaults to the connected account; pass an address to inspect
+   * any wallet. Handy for a worker checking it can cover a stake, or an agent
+   * surfacing balances without three round-trips.
+   */
+  async getBalances(account?: Address): Promise<{ cUSD: bigint; CELO: bigint; USDC: bigint }> {
+    const owner = account ?? this.requireAccount();
+    const tokens = [this.tokens.cUSD, this.tokens.CELO, this.tokens.USDC] as const;
+    const results = await this.publicClient.multicall({
+      allowFailure: true,
+      contracts: tokens.map((address) => ({
+        address,
+        abi: ERC721_BALANCE_OF_ABI,
+        functionName: 'balanceOf' as const,
+        args: [owner] as const,
+      })),
+    });
+    const at = (i: number): bigint =>
+      results[i]?.status === 'success' ? (results[i].result as bigint) : 0n;
+    return { cUSD: at(0), CELO: at(1), USDC: at(2) };
+  }
+
   /** True iff `agent` holds at least one ERC-8004 Identity NFT. */
   async hasAgentIdentity(agent: Address): Promise<boolean> {
     const balance = (await this.publicClient.readContract({
