@@ -68,6 +68,7 @@ export type {
   WorkerProgressFn,
 } from './client.js';
 export { celoMainnet, celoSepolia, chainForNetwork, type NetworkKey } from './chain.js';
+export { buildTransport, type RpcInput } from './transport.js';
 
 // Typed error classes: catch ClaudelanceError or specific subclasses.
 export {
