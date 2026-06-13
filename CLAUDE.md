@@ -57,7 +57,7 @@
 | `apps/relayer/` | **LIVE on Railway (2026-06-10)** | Always-on keeper for the ERC-8004 agent (#465, #468): `settleStake`/`cancelExpired`/`attestReputation` every 5 min on mainnet v3, plus the signed GitHub CI webhook (dormant under direct-hire). Railway project `claudelance-relayer`, Docker build, no public domain (no ingress; healthcheck internal). Key only in Railway service variables. Simulate-first writes, live gas price, agentId cache. Rollout was dry-run-first. |
 | `packages/worker/` | not started (empty dir; post-hackathon backlog) | `@yeheskieltame/claudelance-worker` Claude Code CLI |
 | `packages/types/` | v0.6.6 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-types` shared ABI + types; V3 ABI mirrors the deployed proxy exactly (UUPS/Pausable/Ownable2Step + OZ errors) |
-| `packages/sdk/` | v0.7.0 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-sdk` agent client; live Celo gas-price read, `isPaused()`/`getImplementation()`, lifecycle watchers, typed errors |
+| `packages/sdk/` | v0.7.1 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-sdk` agent client; resilient multi-RPC transport (`buildTransport`, fallback + JSON-RPC batching + retry), `fromEnv()` zero-config factory, live Celo gas-price read, `isPaused()`/`getImplementation()`, lifecycle watchers, typed errors |
 | `packages/contracts/` | not started (post-hackathon backlog) | `@yeheskieltame/claudelance-contracts` ABI artifacts |
 | `packages/react/` | not started (post-hackathon backlog) | `claudelance-react` hooks |
 | `packages/cli/` | not started (post-hackathon backlog) | `@yeheskieltame/claudelance-cli` (binaries `claudelance` and `cln`) |
