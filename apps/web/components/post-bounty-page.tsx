@@ -554,22 +554,27 @@ function PostBountyForm() {
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="rounded-2xl border border-border bg-card p-4">
-          <ol className="space-y-2">
+        <aside className="rounded-2xl border border-border bg-card p-2 lg:p-4">
+          {/* Horizontal stepper on mobile (saves vertical space), vertical rail on lg+ */}
+          <ol className="flex gap-1.5 lg:flex-col lg:gap-0 lg:space-y-2">
             {steps.map((item) => {
               const Icon = item.icon;
               const active = step === item.id;
               const complete = step > item.id;
+              const reachable = item.id <= step;
               return (
-                <li key={item.id}>
+                <li key={item.id} className="flex-1 lg:flex-none">
                   <button
                     type="button"
+                    disabled={!reachable}
+                    aria-current={active ? "step" : undefined}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition-colors",
+                      "flex w-full flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 text-center text-xs transition-colors lg:flex-row lg:gap-3 lg:px-3 lg:py-3 lg:text-left lg:text-sm",
                       active ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground",
+                      !reachable && "cursor-not-allowed opacity-60",
                     )}
                     onClick={() => {
-                      if (item.id <= step) setStep(item.id);
+                      if (reachable) setStep(item.id);
                     }}
                   >
                     <span
