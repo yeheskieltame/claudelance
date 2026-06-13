@@ -1368,6 +1368,27 @@ export class ClaudelanceClient {
     return getAddress('0x' + raw.slice(-40));
   }
 
+  /**
+   * One-call health snapshot for monitoring and long-running agents: chain id,
+   * latest block, live gas price, and whether the protocol is paused. Lets a
+   * keeper or skill gate its tick (skip writes while paused, watch gas) without
+   * wiring several reads. `paused` is null if the read fails (e.g. v2 core).
+   */
+  async health(): Promise<{
+    chainId: number;
+    blockNumber: bigint;
+    gasPrice: bigint;
+    paused: boolean | null;
+  }> {
+    const [chainId, blockNumber, gasPrice, paused] = await Promise.all([
+      this.publicClient.getChainId(),
+      this.publicClient.getBlockNumber(),
+      this.publicClient.getGasPrice(),
+      this.isPaused().catch(() => null),
+    ]);
+    return { chainId, blockNumber, gasPrice, paused };
+  }
+
   // Internal helpers
 
   /**
