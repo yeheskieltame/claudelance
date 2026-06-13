@@ -19,15 +19,15 @@ export function BottomNav() {
         className="mx-auto grid max-w-md"
         style={{ gridTemplateColumns: `repeat(${PRIMARY_NAV.length}, minmax(0, 1fr))` }}
       >
-        {PRIMARY_NAV.map(({ href, label, icon: Icon, match }) => {
+        {PRIMARY_NAV.map(({ href, label, shortLabel, icon: Icon, match }) => {
           const active = match(pathname);
           return (
-            <li key={href}>
+            <li key={href} className="min-w-0">
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group relative flex h-16 flex-col items-center justify-center gap-1 text-[0.6rem] font-medium uppercase tracking-wide transition-colors",
+                  "group relative flex h-16 flex-col items-center justify-center gap-1 px-0.5 text-[0.625rem] font-medium leading-none tracking-tight transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
@@ -40,7 +40,7 @@ export function BottomNav() {
                   )}
                 />
                 <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 2} aria-hidden />
-                <span>{label}</span>
+                <span className="max-w-full truncate">{shortLabel ?? label}</span>
               </Link>
             </li>
           );
