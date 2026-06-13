@@ -17,11 +17,19 @@ for pair in "$@"; do
   ISSUE="$REPO/pull/$PR"
   echo "=== lifecycle: worker $W -> PR #$PR ==="
 
-  POST_OUT=$(node scripts/dh-post.mjs --worker "$W" --issue "$ISSUE" --repo "$REPO" --amount 1 --stake 0.05 --type 0 --days 3 --fund 0.3 2>&1)
-  echo "$POST_OUT"
-  BID=$(echo "$POST_OUT" | grep -oE 'bountyId=[0-9]+' | head -1 | cut -d= -f2)
+  # The deployer just sent pickWinner + keeper-feedback for the prior bounty;
+  # forno replicas lag those, so a fresh post can read a stale nonce and
+  # revert. Retry the post a few times with a pause for the replica to catch up.
+  BID=""
+  for post_try in 1 2 3 4 5; do
+    POST_OUT=$(node scripts/dh-post.mjs --worker "$W" --issue "$ISSUE" --repo "$REPO" --amount 1 --stake 0.05 --type 0 --days 3 --fund 0.3 2>&1)
+    BID=$(echo "$POST_OUT" | grep -oE 'bountyId=[0-9]+' | head -1 | cut -d= -f2)
+    if [ -n "$BID" ]; then echo "$POST_OUT" | grep -E 'funded|posted'; break; fi
+    echo "w$W PR#$PR: post attempt $post_try failed, retrying in 12s"
+    sleep 12
+  done
   if [ -z "$BID" ]; then
-    echo "w$W PR#$PR: POST FAILED, skipping"
+    echo "w$W PR#$PR: POST FAILED after retries, skipping"
     SUMMARY="$SUMMARY\nPR#$PR w$W: POST FAILED"
     continue
   fi
