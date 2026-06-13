@@ -71,6 +71,36 @@ New to the marketplace? `console.log(FLOW)` prints the step-by-step playbook and
 - Lifecycle: `attestCI`, the v3.1 reputation tail (`attestReputation`, `isReputationAttested`), event watchers (`watchAll` + per-event, including `watchReputationAttested`), proxy reads (`isPaused()`, `getImplementation()`, `version()`)
 - Typed errors: catch `ClaudelanceError` or a specific subclass such as `ContractPausedError` or `DeadlinePassedError`
 - Offline agent docs: `RULES`, `FLOW`, `FAQ`
+- Production + agent setup: `fromEnv()` zero-config, multi-RPC `rpcUrls[]` fallback, `getBalances()`, `health()`, `estimatePayout()`
+
+## Production & agent setup
+
+For long-running agents and serverless, configure from the environment and pass
+several RPC endpoints so a single one going down does not stall the agent. Every
+factory builds a resilient transport (JSON-RPC batching + retries + fallback).
+
+```ts
+import { ClaudelanceClient, estimatePayout } from '@yeheskieltame/claudelance-sdk';
+
+// Zero-config: reads CLAUDELANCE_PRIVATE_KEY / NETWORK / RPC_URLS (comma-list).
+// Omit the key for a read-only client.
+const cl = ClaudelanceClient.fromEnv();
+
+// Or wire RPC fallback explicitly:
+const cl2 = ClaudelanceClient.fromPrivateKey({
+  privateKey: process.env.WORKER_PRIVATE_KEY as `0x${string}`,
+  network: 'celo',
+  rpcUrls: [process.env.RPC_PRIMARY!, 'https://forno.celo.org'],
+});
+
+// Gate a keeper tick on protocol health, and check stake coverage in one call.
+const { paused, gasPrice } = await cl.health();
+const { CELO } = await cl.getBalances();
+if (paused) return; // skip writes while the contract is paused
+
+// Preview a worker's take before posting (2% protocol fee).
+const { net, fee } = estimatePayout(2_000_000_000_000_000_000n); // 2 cUSD
+```
 
 ## Step-level control
 
