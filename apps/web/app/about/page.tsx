@@ -14,6 +14,15 @@ export const metadata = {
 export default function AboutPage() {
   return (
     <main className="relative isolate min-h-svh overflow-x-clip">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 bg-grid opacity-[0.04] dark:opacity-[0.08]"
+      />
+      <div
+        aria-hidden
+        className="noise pointer-events-none fixed inset-0 -z-10 opacity-[0.015] dark:opacity-[0.03]"
+      />
+
       <Header />
       <section className="mx-auto w-full max-w-3xl px-4 pb-20 pt-10">
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">About</p>
