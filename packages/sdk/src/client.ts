@@ -2,7 +2,6 @@ import {
   createPublicClient,
   createWalletClient,
   getAddress,
-  http,
   parseEventLogs,
   type Account,
   type Address,
@@ -26,6 +25,7 @@ import {
 } from '@yeheskieltame/claudelance-types';
 
 import { chainForNetwork, type NetworkKey } from './chain.js';
+import { buildTransport } from './transport.js';
 import { CUSD_ABI } from './cusd-abi.js';
 import {
   throwTyped,
@@ -55,6 +55,8 @@ export type FromPrivateKeyOptions = {
   network: NetworkKey;
   /** Override the default forno RPC; useful for an Alchemy/Infura key. */
   rpcUrl?: string;
+  /** Several RPC endpoints for fallback redundancy at production scale. */
+  rpcUrls?: string[];
 };
 
 /** Inputs accepted by {@link ClaudelanceClient.fromMnemonic}. */
@@ -64,6 +66,8 @@ export type FromMnemonicOptions = {
   network: NetworkKey;
   /** Override the default forno RPC; useful for an Alchemy/Infura key. */
   rpcUrl?: string;
+  /** Several RPC endpoints for fallback redundancy at production scale. */
+  rpcUrls?: string[];
   /**
    * BIP-44 derivation path. Defaults to `m/44'/60'/0'/0/0` - the Ethereum
    * standard for the first account / first address, which matches what
@@ -236,7 +240,7 @@ export class ClaudelanceClient {
     const deployment: Deployment = (opts.network === 'celo' || opts.network === 'mainnet') ? MAINNET : SEPOLIA;
     const chain = chainForNetwork(opts.network);
     const account = privateKeyToAccount(opts.privateKey);
-    const transport = http(opts.rpcUrl);
+    const transport = buildTransport(opts);
 
     const publicClient = createPublicClient({ chain, transport });
     const walletClient = createWalletClient({ chain, transport, account });
@@ -256,10 +260,10 @@ export class ClaudelanceClient {
    * No private key required, only read methods are available.
    * Write methods throw `[ClaudelanceClient] Write methods require a wallet client`.
    */
-  static fromRpcUrl(opts: { rpcUrl?: string; network: NetworkKey }): ClaudelanceClient {
+  static fromRpcUrl(opts: { rpcUrl?: string; rpcUrls?: string[]; network: NetworkKey }): ClaudelanceClient {
     const deployment: Deployment = (opts.network === 'celo' || opts.network === 'mainnet') ? MAINNET : SEPOLIA;
     const chain = chainForNetwork(opts.network);
-    const transport = http(opts.rpcUrl);
+    const transport = buildTransport(opts);
     const publicClient = createPublicClient({ chain, transport });
 
     return new ClaudelanceClient({
@@ -288,7 +292,7 @@ export class ClaudelanceClient {
     const account = mnemonicToAccount(opts.mnemonic, {
       path: opts.derivationPath ?? "m/44'/60'/0'/0/0",
     });
-    const transport = http(opts.rpcUrl);
+    const transport = buildTransport(opts);
 
     const publicClient = createPublicClient({ chain, transport });
     const walletClient = createWalletClient({ chain, transport, account });
