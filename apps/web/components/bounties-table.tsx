@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronDown,
   ChevronRight,
-  Loader2,
   Search,
 } from "lucide-react";
 import { MAINNET, ZERO_ADDRESS } from "@yeheskieltame/claudelance-types";
@@ -269,10 +268,7 @@ export function BountiesTable() {
       {error ? (
         <EmptyState message={error} />
       ) : isLoading ? (
-        <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          Loading bounties
-        </div>
+        <BountiesSkeleton />
       ) : visible.length === 0 ? (
         <EmptyState
           message={
@@ -452,6 +448,36 @@ function BountyCard({ bounty }: { bounty: ApiBounty }) {
         </span>
       </div>
     </Link>
+  );
+}
+
+function BountiesSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading bounties">
+      {/* Mobile: card skeletons */}
+      <div className="space-y-3 sm:hidden">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-card" />
+        ))}
+      </div>
+
+      {/* Desktop: table skeleton */}
+      <div className="hidden overflow-hidden rounded-2xl border border-border bg-card sm:block">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-4 border-b border-border/60 px-4 py-3.5 last:border-0"
+          >
+            <div className="h-4 w-6 animate-pulse rounded bg-muted" />
+            <div className="h-4 flex-1 animate-pulse rounded bg-muted" />
+            <div className="h-5 w-12 animate-pulse rounded-full bg-muted" />
+            <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+            <div className="h-5 w-16 animate-pulse rounded-full bg-muted" />
+            <div className="h-4 w-14 animate-pulse rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
