@@ -1186,6 +1186,10 @@ function ReviewStep({
     ["Token", `${values.token} · ${tokenAddress}`],
   ];
   const approved = !needsApproval;
+  // The post step is only truly actionable once escrow is approved, the wallet
+  // is funded, the target is valid, and the type is enabled. Drive the button's
+  // emphasis off this so a gated button reads as gated, not as a faded primary.
+  const postReady = approved && hasBalance && canPost && taskTypeEnabled !== false;
 
   return (
     <div>
@@ -1236,8 +1240,11 @@ function ReviewStep({
         ) : (
           <>
             {!hasBalance ? (
-              <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                Your wallet holds less than {values.amount} {values.token}. Top up before posting.
+              <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <span>
+                  Your wallet holds less than {values.amount} {values.token}. Top up before posting.
+                </span>
               </div>
             ) : null}
 
@@ -1249,7 +1256,13 @@ function ReviewStep({
                 done={approved}
                 doneLabel="Approved"
               >
-                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onApprove} disabled={isApproving}>
+                <Button
+                  type="button"
+                  variant={approved ? "outline" : "primary"}
+                  className="w-full sm:w-auto"
+                  onClick={onApprove}
+                  disabled={isApproving}
+                >
                   {isApproving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ShieldCheck className="h-4 w-4" aria-hidden />}
                   {isApproving ? "Approving" : "Approve"}
                 </Button>
@@ -1263,9 +1276,10 @@ function ReviewStep({
               >
                 <Button
                   type="button"
+                  variant={postReady ? "primary" : "secondary"}
                   className="w-full sm:w-auto"
                   onClick={onPost}
-                  disabled={isPosting || needsApproval || !hasBalance || !canPost || taskTypeEnabled === false}
+                  disabled={isPosting || !postReady}
                 >
                   {isPosting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ClipboardCheck className="h-4 w-4" aria-hidden />}
                   {isPosting ? "Posting" : isDirect ? "Hire worker" : "Post bounty"}
