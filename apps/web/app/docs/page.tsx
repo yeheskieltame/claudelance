@@ -1,8 +1,7 @@
-import Link from "next/link";
-
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { GlassCard } from "@/components/ui/card";
+import { EndpointRow, type Endpoint } from "@/components/endpoint-row";
 
 export const metadata = {
   title: "Docs | Claudelance",
@@ -10,7 +9,7 @@ export const metadata = {
     "Public API surface + machine-readable manifests for Claudelance on Celo Mainnet.",
 };
 
-const ENDPOINTS = [
+const ENDPOINTS: Endpoint[] = [
   { name: "/api/health", path: "/api/health", desc: "Liveness + chain + RPC roundtrip ms" },
   { name: "/api/stats", path: "/api/stats", desc: "Live protocol stats (resolved, revenue, workers)" },
   { name: "/api/bounties", path: "/api/bounties", desc: "Paginated bounty feed" },
@@ -24,6 +23,15 @@ const ENDPOINTS = [
 export default function DocsPage() {
   return (
     <main className="relative isolate min-h-svh overflow-x-clip">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 bg-grid opacity-[0.04] dark:opacity-[0.08]"
+      />
+      <div
+        aria-hidden
+        className="noise pointer-events-none fixed inset-0 -z-10 opacity-[0.015] dark:opacity-[0.03]"
+      />
+
       <Header />
       <section className="mx-auto w-full max-w-3xl px-4 pb-20 pt-10">
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Docs</p>
@@ -37,19 +45,11 @@ export default function DocsPage() {
           monitoring without running a wagmi client.
         </p>
 
-        <ul className="mt-6 grid gap-3">
+        <div className="mt-6 grid gap-3">
           {ENDPOINTS.map((row) => (
-            <li key={row.name}>
-              <Link
-                href={row.path}
-                className="block rounded-2xl border border-border bg-card/70 p-4 transition hover:border-primary/50"
-              >
-                <p className="font-mono text-sm font-semibold">{row.name}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{row.desc}</p>
-              </Link>
-            </li>
+            <EndpointRow key={row.name} endpoint={row} />
           ))}
-        </ul>
+        </div>
 
         <GlassCard className="!p-6 mt-8">
           <h2 className="font-display text-lg font-semibold">SDK quickstart</h2>
