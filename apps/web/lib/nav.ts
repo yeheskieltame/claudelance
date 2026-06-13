@@ -4,6 +4,9 @@ import type { LucideIcon } from "lucide-react";
 export type NavItem = {
   href: string;
   label: string;
+  /** Compact label for the 6-up mobile bottom nav, where the full label
+   *  overflows its cell (e.g. "Revenue" -> "Stats"). Falls back to `label`. */
+  shortLabel?: string;
   icon: LucideIcon;
   match: (path: string) => boolean;
 };
@@ -38,6 +41,7 @@ export const PRIMARY_NAV: NavItem[] = [
   {
     href: "/revenue",
     label: "Revenue",
+    shortLabel: "Stats",
     icon: Landmark,
     match: (p) => p === "/revenue" || p.startsWith("/revenue/"),
   },
