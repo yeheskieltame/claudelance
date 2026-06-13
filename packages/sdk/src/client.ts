@@ -49,6 +49,12 @@ declare function setTimeout(handler: () => void, timeout: number): unknown;
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 
+/** Read `process.env` portably: present in Node/edge, absent in the browser. */
+function readProcessEnv(): Record<string, string | undefined> {
+  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
+  return proc?.env ?? {};
+}
+
 /** Inputs accepted by {@link ClaudelanceClient.fromPrivateKey}. */
 export type FromPrivateKeyOptions = {
   privateKey: `0x${string}`;
@@ -305,6 +311,35 @@ export class ClaudelanceClient {
       identityRegistry: deployment.identityRegistry,
       reputationRegistry: deployment.reputationRegistry,
     });
+  }
+
+  /**
+   * Zero-config factory for agents and serverless: build a client from
+   * environment variables. Drops straight into a deployment or an AI skill
+   * without bespoke wiring.
+   *
+   * Reads (first match wins):
+   * - key:     `CLAUDELANCE_PRIVATE_KEY` | `PRIVATE_KEY` (omit → read-only client)
+   * - network: `CLAUDELANCE_NETWORK` | `NETWORK` (default `celo`)
+   * - rpc:     `CLAUDELANCE_RPC_URLS` (comma-separated, multi-RPC fallback)
+   *            | `CLAUDELANCE_RPC_URL` | `CELO_RPC_URL` (single)
+   *
+   * Pass `env` to read from an explicit record; defaults to `process.env`
+   * when available (Node / edge), else an empty object (browser).
+   */
+  static fromEnv(env: Record<string, string | undefined> = readProcessEnv()): ClaudelanceClient {
+    const network = (env.CLAUDELANCE_NETWORK ?? env.NETWORK ?? 'celo') as NetworkKey;
+    const rpcCsv = env.CLAUDELANCE_RPC_URLS;
+    const rpcUrls = rpcCsv
+      ? rpcCsv.split(',').map((s) => s.trim()).filter(Boolean)
+      : undefined;
+    const rpcUrl = env.CLAUDELANCE_RPC_URL ?? env.CELO_RPC_URL;
+    const privateKey = (env.CLAUDELANCE_PRIVATE_KEY ?? env.PRIVATE_KEY) as `0x${string}` | undefined;
+
+    if (privateKey) {
+      return ClaudelanceClient.fromPrivateKey({ privateKey, network, rpcUrl, rpcUrls });
+    }
+    return ClaudelanceClient.fromRpcUrl({ network, rpcUrl, rpcUrls });
   }
 
   // Read API
