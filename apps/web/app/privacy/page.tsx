@@ -1,4 +1,5 @@
 import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
 
 const SUPPORT_EMAIL = "mailto:support@claudelance.xyz";
 const REPO_ISSUES = "https://github.com/yeheskieltame/claudelance/issues";
@@ -150,6 +151,7 @@ export default function PrivacyPage() {
           .
         </p>
       </section>
+      <Footer />
     </main>
   );
 }

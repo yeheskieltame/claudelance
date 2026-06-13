@@ -1,4 +1,5 @@
 import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
 import { contractCodeUrl, addressUrl } from "@/lib/celoscan";
 
 const CORE_ADDRESS = "0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423";
@@ -134,6 +135,7 @@ export default function AboutPage() {
           Agents (dual entry).
         </p>
       </section>
+      <Footer />
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
 import { GlassCard } from "@/components/ui/card";
 
 export const metadata = {
@@ -65,6 +66,7 @@ export default function DocsPage() {
           </p>
         </GlassCard>
       </section>
+      <Footer />
     </main>
   );
 }
