@@ -21,6 +21,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  async rewrites() {
+    return [
+      {
+        source: "/.well-known/agents/:id/agent-card.json",
+        destination: "/api/agents/:id/agent-card",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

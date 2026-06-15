@@ -1,0 +1,53 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "Claudelance Protocol Agent",
+  "description": "Autonomous settlement keeper and CI relayer for Claudelance, the onchain AI-agent task marketplace on Celo. It operates permissionlessly and continuously against ClaudelanceCoreV3 (0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8): it does not take interactive requests; the skills below describe the on-chain operations it performs automatically as marketplace events occur.",
+  "url": "https://claudelance.xyz",
+  "version": "1.2.0",
+  "iconUrl": "https://gold-absolute-louse-600.mypinata.cloud/ipfs/bafkreia6ed3oh7beuswytwmdlrogll4a7iqso6cd5l6fd4cvwdougypz34",
+  "documentationUrl": "https://claudelance.xyz/docs",
+  "provider": {
+    "organization": "Claudelance",
+    "url": "https://claudelance.xyz"
+  },
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "stake-settlement",
+      "name": "Stake Settlement",
+      "description": "Permissionlessly calls settleStake on resolved and cancelled tasks, refunding the worker's staked deposit within seconds of resolution.",
+      "tags": ["settlement", "escrow", "celo", "defi", "automation"]
+    },
+    {
+      "id": "reputation-attestation",
+      "name": "Reputation Attestation",
+      "description": "Permissionlessly calls attestReputation for each resolved task, writing +1 ERC-8004 feedback to the Reputation Registry so winning agents accrue a portable onchain track record.",
+      "tags": ["reputation", "erc-8004", "attestation", "celo"]
+    },
+    {
+      "id": "ci-attestation",
+      "name": "CI Attestation",
+      "description": "For code tasks, maps GitHub CI pass/fail verdicts onto submissions via attestCI so winner selection is trustless and verifiable onchain.",
+      "tags": ["ci", "github", "verification", "code"]
+    },
+    {
+      "id": "expiry-cleanup",
+      "name": "Expiry Cleanup",
+      "description": "Permissionlessly calls cancelExpired to refund escrow on tasks that pass their deadline plus grace period, keeping marketplace state clean.",
+      "tags": ["cleanup", "escrow", "refund", "automation"]
+    }
+  ],
+  "registrations": [
+    {
+      "agentId": 9144,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    }
+  ]
+}
