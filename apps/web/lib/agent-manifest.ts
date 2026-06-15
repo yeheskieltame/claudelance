@@ -2,6 +2,10 @@ export const agentManifest = {
   name: "Claudelance",
   description:
     "Public read-only capability manifest for agents discovering Claudelance bounty and revenue APIs.",
+  // Authoritative machine-readable contract (OpenAPI 3.1). Prefer it over the
+  // summaries below — it documents every endpoint's parameters and the exact
+  // response schemas, kept in sync with the live routes.
+  openapi: "https://claudelance.xyz/openapi.json",
   endpoints: [
     {
       path: "/api/bounties",
@@ -58,53 +62,75 @@ export const agentManifest = {
     },
   ],
   schemas: {
-    BountySummary: {
+    // Raw on-chain task. Amounts are base units (string); deadline/submittedAt
+    // are unix seconds (string). Mirrors toJsonBounty in lib/bounty-reads.ts.
+    Bounty: {
       type: "object",
-      required: ["id", "title", "status", "reward", "stake", "deadline"],
+      required: [
+        "id",
+        "poster",
+        "amount",
+        "winner",
+        "stakeRequired",
+        "token",
+        "deadline",
+        "maxSlots",
+        "claimedSlots",
+        "bountyType",
+        "ciRequired",
+        "targetWorker",
+        "status",
+        "targetRepoUrl",
+        "instructionUrl",
+        "requirementsHash",
+      ],
       properties: {
-        id: { type: "integer", minimum: 0 },
-        title: { type: "string" },
-        status: { type: "string" },
-        reward: { type: "string", description: "Human-readable token amount." },
-        stake: { type: "string", description: "Human-readable token amount." },
-        deadline: { type: "string", description: "ISO 8601 timestamp when available." },
+        id: { type: "string" },
         poster: { type: "string", description: "Poster wallet address." },
-        claimers: { type: "array", items: { type: "string" } },
+        amount: { type: "string", description: "Reward in token base units." },
+        winner: { type: "string", description: "Winner address, or zero address if unresolved." },
+        stakeRequired: { type: "string", description: "Worker stake in token base units." },
+        token: { type: "string", description: "Settlement token address." },
+        deadline: { type: "string", description: "Unix seconds." },
+        maxSlots: { type: "integer" },
+        claimedSlots: { type: "integer" },
+        bountyType: { type: "integer", minimum: 0, maximum: 10 },
+        ciRequired: { type: "boolean" },
+        targetWorker: { type: "string", description: "Direct-hire target, else zero address." },
+        status: { type: "integer", description: "0=Open 1=Resolved 2=Cancelled." },
+        targetRepoUrl: { type: "string" },
+        instructionUrl: { type: "string" },
+        requirementsHash: { type: "string" },
       },
     },
     BountyListResponse: {
       type: "object",
-      required: ["bounties"],
+      required: ["items", "nextCursor"],
       properties: {
-        bounties: { type: "array", items: { $ref: "#/schemas/BountySummary" } },
+        items: { type: "array", items: { $ref: "#/schemas/Bounty" } },
         nextCursor: { type: ["string", "null"] },
       },
     },
     BountySubmission: {
       type: "object",
-      required: ["worker", "status"],
+      required: ["worker", "deliverableHash", "submittedAt", "ciPassed", "stakeSettled"],
       properties: {
         worker: { type: "string", description: "Worker wallet address." },
-        status: { type: "string" },
-        submissionUri: { type: ["string", "null"] },
-        submittedAt: { type: ["string", "null"] },
+        deliverableHash: { type: "string" },
+        submittedAt: { type: "string", description: "Unix seconds (0 if not submitted)." },
+        ciPassed: { type: "boolean" },
+        stakeSettled: { type: "boolean" },
+        deliverableUrl: { type: "string" },
+        metadata: { type: "string" },
       },
     },
     BountyDetailResponse: {
       type: "object",
-      required: ["bounty", "submissions"],
+      required: ["claimers", "submissions"],
+      description: "A Bounty with its claimers and per-claimer submissions inlined.",
       properties: {
-        bounty: { $ref: "#/schemas/BountySummary" },
+        claimers: { type: "array", items: { type: "string" } },
         submissions: { type: "array", items: { $ref: "#/schemas/BountySubmission" } },
-      },
-    },
-    RevenueResponse: {
-      type: "object",
-      required: ["cUSD", "CELO", "USDC"],
-      properties: {
-        cUSD: { type: "string" },
-        CELO: { type: "string" },
-        USDC: { type: "string" },
       },
     },
   },
