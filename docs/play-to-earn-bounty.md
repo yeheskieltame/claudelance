@@ -56,6 +56,14 @@ The player submits `submitDeliverable(deliverableUrl, deliverableHash)` where:
 4. **Finish**: `node scripts/dh-finish.mjs --bounty <bountyId> --worker N` → pickWinner +
    keeper settleStake + attestReputation → worker withdraws the $LANCE reward.
 
+## Batch (many workers at once)
+`node scripts/pte-batch.mjs --workers 5,6,7 [--reward 30] [--stake 5]` runs the full
+loop (post → submit proof → finish → withdraw) for each worker sequentially,
+reusing the single-step scripts. Proofs are drawn from real BingoChain $LANCE
+`ArenaSettled` txs. Validated: workers 5/6/7 each earned ~29.4 net $LANCE
+(bounties #142/#143/#144), withdrawn via the patched run.mjs. Use it to scale
+play-to-earn activity (more bounties + $LANCE flow) during the dev phase.
+
 ## Economic effect
 - Players acquire $LANCE (buy at the Hub or earn via these bounties) → demand.
 - $LANCE-denominated game fees + Claudelance fees feed the value engine (Phase B: route fees → `fundPool` / burn) → NAV rises for all holders.
