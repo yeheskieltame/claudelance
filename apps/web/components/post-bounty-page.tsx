@@ -53,14 +53,15 @@ import { celoMainnet } from "@/lib/chain";
 import { isMiniPay, pickInjectedConnector } from "@/lib/wallet/config";
 import { miniPayFeeCurrency } from "@/lib/wallet/fee-currency";
 import { agentIdFor } from "@/lib/agent-ids";
+import { LANCE_ADDRESS } from "@/lib/lance";
 import { cn } from "@/lib/utils";
 
-type TokenSymbol = "cUSD" | "CELO" | "USDC";
+type TokenSymbol = "cUSD" | "CELO" | "USDC" | "LANCE";
 type PendingAction = "approve" | "post";
 type HireMode = "open" | "direct";
 
-// Mirrors on-chain minBounty(token) on v3 mainnet proxy.
-const TOKEN_MIN: Record<TokenSymbol, string> = { cUSD: "0.5", CELO: "1", USDC: "0.5" };
+// Mirrors on-chain minBounty(token) on v3 mainnet proxy ($LANCE whitelisted at 10).
+const TOKEN_MIN: Record<TokenSymbol, string> = { cUSD: "0.5", CELO: "1", USDC: "0.5", LANCE: "10" };
 
 // Task type options from the v3 contract (types 0-10).
 const TASK_TYPE_OPTIONS = Object.entries(TASK_TYPE_NAMES).map(([id, name]) => ({
@@ -163,7 +164,7 @@ const steps = [
 ] as const;
 
 const tokenStepObject = z.object({
-  token: z.enum(["cUSD", "CELO", "USDC"]),
+  token: z.enum(["cUSD", "CELO", "USDC", "LANCE"]),
   amount: z.string().refine((value) => isPositiveDecimal(value), "Enter a reward amount greater than zero."),
 });
 
@@ -717,8 +718,8 @@ function TokenStep({
   return (
     <div>
       <StepHeading title="Token and reward" description="Choose the escrow token and reward amount." />
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        {(["cUSD", "CELO", "USDC"] as TokenSymbol[]).map((token) => (
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {(["cUSD", "CELO", "USDC", "LANCE"] as TokenSymbol[]).map((token) => (
           <button
             key={token}
             type="button"
@@ -1458,7 +1459,9 @@ function parseForm(values: FormState, deployment: typeof MAINNET_V3) {
 }
 
 function tokenConfig(symbol: TokenSymbol, deployment: typeof MAINNET_V3) {
-  const address = deployment.tokens[symbol] as Address;
+  // $LANCE is not a core whitelisted token in the deployment record; it's the
+  // economy credit (whitelisted on-chain). Resolve it from the lance lib.
+  const address = (symbol === "LANCE" ? LANCE_ADDRESS : deployment.tokens[symbol]) as Address;
   return {
     address,
     decimals: symbol === "USDC" ? 6 : 18,
