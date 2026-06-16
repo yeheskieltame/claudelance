@@ -12,6 +12,7 @@ import { WalletButton } from "@/components/wallet-button";
 import { AssetList } from "@/components/profile/asset-list";
 import { SendToken } from "@/components/profile/send-token";
 import { ReceiveCard } from "@/components/profile/receive-card";
+import { LancePanel } from "@/components/profile/lance-panel";
 import { WorkerClaimCard, type ClaimRow } from "@/components/worker-claim-card";
 import type { TokenSymbol } from "@/lib/token-theme";
 import { shortAddress } from "@/lib/utils";
@@ -118,6 +119,10 @@ export function ProfileHub() {
             <div className="mt-5 grid gap-5 lg:grid-cols-2">
               <AssetList onSend={setToken} />
               <SendToken token={token} onTokenChange={setToken} />
+            </div>
+
+            <div className="mt-5">
+              <LancePanel />
             </div>
 
             <div className="mt-5">
