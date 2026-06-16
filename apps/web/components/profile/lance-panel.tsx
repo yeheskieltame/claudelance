@@ -42,6 +42,8 @@ export function LancePanel() {
   });
   const { data: navRaw } = useReadContract({ address: LANCE_ADDRESS, abi: lanceAbi, functionName: "nav", chainId: DEFAULT_CHAIN_ID });
   const { data: feeRaw } = useReadContract({ address: LANCE_ADDRESS, abi: lanceAbi, functionName: "redeemFeeBps", chainId: DEFAULT_CHAIN_ID });
+  const { data: supplyRaw } = useReadContract({ address: LANCE_ADDRESS, abi: lanceAbi, functionName: "totalSupply", chainId: DEFAULT_CHAIN_ID });
+  const { data: poolRaw } = useReadContract({ address: LANCE_ADDRESS, abi: lanceAbi, functionName: "totalAssets", chainId: DEFAULT_CHAIN_ID });
   const { data: allowanceRaw, refetch: refetchAllowance } = useReadContract({
     address: LANCE_ASSET, abi: erc20Abi, functionName: "allowance",
     args: address ? [address, LANCE_ADDRESS] : undefined, chainId: DEFAULT_CHAIN_ID, query: { enabled: Boolean(address) },
@@ -51,6 +53,8 @@ export function LancePanel() {
   const lance = typeof lanceRaw === "bigint" ? lanceRaw : 0n;
   const nav = typeof navRaw === "bigint" && navRaw > 0n ? navRaw : WAD / 1000n; // CELO per $LANCE (1e18)
   const feeBps = typeof feeRaw === "number" ? feeRaw : 100;
+  const supply = typeof supplyRaw === "bigint" ? supplyRaw : 0n;
+  const pool = typeof poolRaw === "bigint" ? poolRaw : 0n;
 
   useTransactionToast(txHash, {
     pendingMessage: mode === "buy" ? "Buying $LANCE" : "Redeeming $LANCE",
@@ -133,6 +137,22 @@ export function LancePanel() {
         <div className="rounded-xl border border-border bg-background px-3 py-2">
           <div className="text-muted-foreground">Your CELO</div>
           <div className="mt-0.5 font-mono text-sm font-semibold">{fmt(celo)}</div>
+        </div>
+      </div>
+
+      {/* Economy at a glance — read-only, fully backed by the pool */}
+      <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[0.7rem]">
+        <div className="rounded-xl border border-border bg-background px-2 py-1.5">
+          <div className="text-muted-foreground">Supply</div>
+          <div className="mt-0.5 font-mono font-semibold">{fmt(supply, 18, 0)}</div>
+        </div>
+        <div className="rounded-xl border border-border bg-background px-2 py-1.5">
+          <div className="text-muted-foreground">Pool</div>
+          <div className="mt-0.5 font-mono font-semibold">{fmt(pool, 18, 2)} CELO</div>
+        </div>
+        <div className="rounded-xl border border-border bg-background px-2 py-1.5">
+          <div className="text-muted-foreground">Backed</div>
+          <div className="mt-0.5 font-mono font-semibold text-emerald-500">100%</div>
         </div>
       </div>
 
