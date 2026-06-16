@@ -872,17 +872,27 @@ export class ClaudelanceClient {
   }
 
   /**
-   * Convenience: sweep earnings for every whitelisted token.
+   * Convenience: sweep earnings for every whitelisted token, plus any
+   * `extraTokens` passed in (e.g. a non-core settlement token like $LANCE that a
+   * bounty paid out in). Extra tokens are de-duplicated against the whitelist.
    *
    * v3 has no `earnings` getter, so each token is probed with a simulation
    * first: tokens with nothing to withdraw revert `NothingToWithdraw` and are
    * skipped (no gas burned on a guaranteed-revert tx). Real withdrawals are
    * sent one at a time, awaiting each receipt before the next, so nonces
-   * advance cleanly. Firing all three back-to-back collides on nonce.
+   * advance cleanly. Firing them back-to-back collides on nonce.
    */
-  async withdrawAllEarnings(): Promise<Array<{ token: Address; hash: `0x${string}` }>> {
+  async withdrawAllEarnings(extraTokens: Address[] = []): Promise<Array<{ token: Address; hash: `0x${string}` }>> {
     const wallet = this.requireWalletClient();
     const tokens: Address[] = [this.tokens.cUSD, this.tokens.CELO, this.tokens.USDC];
+    const seen = new Set(tokens.map((t) => t.toLowerCase()));
+    for (const t of extraTokens) {
+      const key = t.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        tokens.push(t);
+      }
+    }
     const out: Array<{ token: Address; hash: `0x${string}` }> = [];
     for (const t of tokens) {
       try {
