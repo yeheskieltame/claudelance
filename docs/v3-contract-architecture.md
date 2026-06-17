@@ -235,7 +235,7 @@ v2 is NOT migrated. It runs in parallel:
 | Contract | Purpose | Status |
 |----------|---------|--------|
 | v2 `0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423` | Code bounties (type 0), existing state | Permanent, immutable |
-| v3 proxy `0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8` | All types 0–10, upgradeable | **LIVE 2026-06-04** |
+| v3 proxy `0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8` | All types 0-10, upgradeable | **LIVE 2026-06-04** |
 
 Frontend connects to both - `/bounties` feed queries both contracts and merges results.
 SDK adds `network: "v3"` option alongside existing `"celo"` / `"sepolia"`.
