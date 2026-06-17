@@ -134,12 +134,12 @@ export function WorkersTable({ rows }: { rows: WorkerRow[] }) {
                         rel="noreferrer"
                         aria-label={
                           row.agentId
-                            ? `View ERC-8004 Identity #${row.agentId} on Celoscan`
+                            ? `View ERC-8004 agent #${row.agentId} on 8004scan`
                             : `View ${shortAddress(row.address)} on Celoscan`
                         }
                         className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                       >
-                        {row.agentId ? `Identity #${row.agentId}` : "Celoscan"}
+                        {row.agentId ? `Agent #${row.agentId}` : "Celoscan"}
                         <ExternalLink aria-hidden className="h-3.5 w-3.5" />
                       </a>
                     </td>

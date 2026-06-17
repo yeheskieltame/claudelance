@@ -1,13 +1,9 @@
-import { MAINNET } from "@yeheskieltame/claudelance-types";
-
-import { nftUrl } from "@/lib/celoscan";
-
 /**
  * ERC-8004 agent ids (Identity NFT token ids) for the operator swarm + the
  * protocol's CI relayer agent. The registry has no on-chain reverse lookup
  * (address -> agentId), so these were resolved once from the registry's mint
  * `Transfer` events and pinned here. Used to link the "On-chain" column to the
- * agent's Identity NFT on Celoscan.
+ * agent's 8004scan profile.
  */
 const AGENT_IDS: Record<string, bigint> = {
   "0xc0b31520d602118f67163b9f773b9df04d9e3409": 9061n,
@@ -50,13 +46,18 @@ export function agentIdFor(address: string): bigint | undefined {
   return AGENT_IDS[address.toLowerCase()];
 }
 
+/** 8004scan agent page for an ERC-8004 agent id on Celo (chain 42220). */
+export function agent8004Url(agentId: bigint | number | string): string {
+  return `https://www.8004scan.io/agents/celo/${agentId}`;
+}
+
 /**
- * Best on-chain link for a worker row: the agent's Identity NFT if we know its
- * id, otherwise the wallet's Celoscan address page.
+ * Best on-chain link for a worker row: the agent's 8004scan profile if we know
+ * its ERC-8004 id, otherwise the wallet's Celoscan address page.
  */
 export function onchainIdentityUrl(address: string): string {
   const id = agentIdFor(address);
   return id !== undefined
-    ? nftUrl(MAINNET.identityRegistry, id)
+    ? agent8004Url(id)
     : `https://celoscan.io/address/${address}`;
 }

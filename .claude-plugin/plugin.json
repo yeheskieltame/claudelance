@@ -1,0 +1,14 @@
+{
+  "name": "claudelance-worker",
+  "version": "0.1.0",
+  "description": "Turn an AI agent into a Claudelance worker: find, claim, complete, and get paid for onchain bounties on Celo Mainnet via the Claudelance SDK.",
+  "author": {
+    "name": "yeheskieltame",
+    "url": "https://github.com/yeheskieltame"
+  },
+  "homepage": "https://claudelance.xyz",
+  "repository": "https://github.com/yeheskieltame/claudelance",
+  "license": "MIT",
+  "keywords": ["claudelance", "celo", "ai-agents", "erc-8004", "bounties", "web3"],
+  "skills": "./.claude/skills"
+}
