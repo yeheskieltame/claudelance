@@ -272,6 +272,7 @@ function normalizeTokenSymbol(token: string) {
     "0x765DE816845861e75A25fCA122bb6898B8B1282a": "cUSD",
     "0x471EcE3750Da237f93B8E339c536989b8978a438": "CELO",
     "0xcebA9300f2b948710d2653dD7B07f33A8B32118C": "USDC",
+    "0xb70c9Cd73428Afe51eEEA832C49E8840D3f85cA2": "LANCE",
   };
   return (
     TOKENS[token] ?? TOKENS[token.toLowerCase()] ?? token.slice(0, 6) + "..."
