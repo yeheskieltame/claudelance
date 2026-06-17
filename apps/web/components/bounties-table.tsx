@@ -372,7 +372,7 @@ export function BountiesTable() {
       {!isLoading && !error && filtered.length > 0 ? (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
-            Showing {start + 1}–{start + visible.length} of {filtered.length}{" "}
+            Showing {start + 1}-{start + visible.length} of {filtered.length}{" "}
             {filtered.length === 1 ? "bounty" : "bounties"}
           </p>
           <div className="flex items-center gap-3">
