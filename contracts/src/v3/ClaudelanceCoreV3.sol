@@ -12,7 +12,7 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts/proxy/utils/UUPSUpgrade
 // Ownable2Step + Pausable retain the Upgradeable suffix in the upgradeable package
 import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-// OZ v5 dropped ReentrancyGuardUpgradeable — reentrancy flag lives in CoreStorage instead
+// OZ v5 dropped ReentrancyGuardUpgradeable - reentrancy flag lives in CoreStorage instead
 
 import { IClaudelanceCoreV3 } from "./interfaces/IClaudelanceCoreV3.sol";
 import { IReputationRegistry } from "./interfaces/IReputationRegistry.sol";
@@ -99,8 +99,8 @@ contract ClaudelanceCoreV3 is
     /// @param _treasury       Protocol fee recipient.
     /// @param _ciRelayer      Address authorized to call attestCI().
     /// @param _owner          Initial owner (Safe multisig on mainnet).
-    /// @param _identityReg    ERC-8004 Identity Registry — workers must hold ≥1 NFT.
-    /// @param _reputationReg  ERC-8004 Reputation Registry — stored for Phase 2.
+    /// @param _identityReg    ERC-8004 Identity Registry - workers must hold ≥1 NFT.
+    /// @param _reputationReg  ERC-8004 Reputation Registry - stored for Phase 2.
     function initialize(
         address _treasury,
         address _ciRelayer,
@@ -114,8 +114,8 @@ contract ClaudelanceCoreV3 is
         // OZ v5: Ownable2StepUpgradeable inherits __Ownable_init(address initialOwner)
         __Ownable_init(_owner);
         __Pausable_init();
-        // No __ReentrancyGuard_init — reentrancy flag is in CoreStorage
-        // No __UUPSUpgradeable_init — UUPSUpgradeable in OZ v5 is stateless
+        // No __ReentrancyGuard_init - reentrancy flag is in CoreStorage
+        // No __UUPSUpgradeable_init - UUPSUpgradeable in OZ v5 is stateless
 
         CoreStorage storage s = _s();
         s.treasury = _treasury;
