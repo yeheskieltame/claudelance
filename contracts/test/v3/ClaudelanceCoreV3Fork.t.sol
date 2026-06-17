@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fork test — fires against the live ClaudelanceCoreV3 proxy on Celo Sepolia.
+// Fork test - fires against the live ClaudelanceCoreV3 proxy on Celo Sepolia.
 //
 // Run:
 //   CELO_SEPOLIA_RPC=https://forno.celo-sepolia.celo-testnet.org/ \
@@ -122,7 +122,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 1 — Deployment sanity
+    // Section 1 - Deployment sanity
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_proxyPointsToImpl() public view {
@@ -175,7 +175,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 2 — Happy path: code bounty full lifecycle
+    // Section 2 - Happy path: code bounty full lifecycle
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_codeBounty_fullLifecycle() public {
@@ -215,7 +215,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
 
         // worker1 got payout + stake back
         assertEq(cUSD.balanceOf(worker),  workerAfterClaim + payout + STAKE);
-        // worker2 lost stake (CI failed) — balance stays at post-claim level
+        // worker2 lost stake (CI failed) - balance stays at post-claim level
         assertEq(cUSD.balanceOf(worker2), worker2AfterClaim);
 
         // Bounty resolved
@@ -228,7 +228,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 3 — Happy path: research bounty (no CI gate)
+    // Section 3 - Happy path: research bounty (no CI gate)
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_researchBounty_noCI() public {
@@ -248,7 +248,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 4 — Direct hire
+    // Section 4 - Direct hire
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_directHire_onlyTargetCanClaim() public {
@@ -274,7 +274,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 5 — Multi-token (CELO, USDC)
+    // Section 5 - Multi-token (CELO, USDC)
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_celoToken_lifecycle() public {
@@ -320,7 +320,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 6 — Cancel expired
+    // Section 6 - Cancel expired
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_cancelExpired() public {
@@ -342,7 +342,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
         _claim(id, worker);
         _claim(id, worker2);
 
-        // Capture AFTER claim — stake already deducted
+        // Capture AFTER claim - stake already deducted
         uint256 w1AfterClaim = cUSD.balanceOf(worker);
         uint256 w2AfterClaim = cUSD.balanceOf(worker2);
 
@@ -363,7 +363,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 7 — Stats tracking
+    // Section 7 - Stats tracking
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_statsAccumulate() public {
@@ -386,7 +386,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 8 — Admin: configureTaskType
+    // Section 8 - Admin: configureTaskType
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_configureTaskType_enableNew() public {
@@ -406,7 +406,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 9 — Admin: treasury rotation timelock
+    // Section 9 - Admin: treasury rotation timelock
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_treasuryRotation_fullFlow() public {
@@ -454,7 +454,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 10 — Security: access control
+    // Section 10 - Security: access control
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_sec_attestCI_onlyRelayer() public {
@@ -501,7 +501,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 11 — Security: double-spend / replay attacks
+    // Section 11 - Security: double-spend / replay attacks
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_sec_doubleClaimReverts() public {
@@ -548,7 +548,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 12 — Security: timing attacks
+    // Section 12 - Security: timing attacks
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_sec_submitAfterDeadlineReverts() public {
@@ -576,7 +576,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 13 — Security: slot saturation
+    // Section 13 - Security: slot saturation
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_sec_slotsFullReverts() public {
@@ -594,7 +594,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 14 — Security: no-identity gate
+    // Section 14 - Security: no-identity gate
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_sec_noIdentityReverts() public {
@@ -608,7 +608,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 15 — Security: pause blocks key flows
+    // Section 15 - Security: pause blocks key flows
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_sec_pauseBlocksPost() public {
@@ -639,7 +639,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 16 — Security: winner must have submitted + CI passed
+    // Section 16 - Security: winner must have submitted + CI passed
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_sec_pickNonClaimerAsWinnerReverts() public {
@@ -672,7 +672,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 17 — Fee accounting correctness
+    // Section 17 - Fee accounting correctness
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_feeAccounting_exact() public {
@@ -682,7 +682,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
 
         (uint96 expectedFee, uint96 expectedPayout) = EscrowLib.calcFeeAndPayout(AMT);
 
-        // Capture AFTER claim — stake already deducted from worker
+        // Capture AFTER claim - stake already deducted from worker
         uint256 workerAfterClaim = cUSD.balanceOf(worker);
 
         (,uint256 revBefore,,,) = core.getStats(address(cUSD));
@@ -701,7 +701,7 @@ contract ClaudelanceCoreV3ForkTest is Test {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Section 18 — Getters and views
+    // Section 18 - Getters and views
     // ─────────────────────────────────────────────────────────────
 
     function test_fork_getEligibleSubmissions() public {
@@ -837,6 +837,6 @@ contract ClaudelanceCoreV3ForkTest is Test {
         // Read treasury earnings from storage via proxy
         // earnings[treasury][cUSD] is in EIP-7201 namespaced storage,
         // so we read it via a withdrawEarnings dry-run (staticcall)
-        return 0; // placeholder — actual balance tracked via getStats revenue
+        return 0; // placeholder - actual balance tracked via getStats revenue
     }
 }
