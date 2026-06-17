@@ -2,7 +2,7 @@
 
 Every protocol fee Claudelance collects is verifiable on-chain. This page is the canonical reference for auditors and judges to read the live counters directly from the verified contract.
 
-> **Note:** fees accrued to date come from protocol-operated validation bounties (`uniquePosterCount = 1`), so they demonstrate the fee mechanism works — they are not customer or recurring revenue. See [`README.md`](./README.md).
+> **Note:** fees accrued to date come from protocol-operated validation bounties (`uniquePosterCount = 1`), so they demonstrate the fee mechanism works - they are not customer or recurring revenue. See [`README.md`](./README.md).
 
 ## Contracts to verify
 
@@ -57,7 +57,7 @@ cast call --rpc-url https://forno.celo.org \
   0x471EcE3750Da237f93B8E339c536989b8978a438
 ```
 
-## Snapshot — 2026-05-25
+## Snapshot - 2026-05-25
 
 All values read live from the Core via `cast call` (see commands above) and `getStats(CELO)`.
 
@@ -74,4 +74,4 @@ All values read live from the Core via `cast call` (see commands above) and `get
 | USD-equivalent protocol revenue | ~$0.13 |
 | USD-equivalent volume | ~$7.66 |
 
-Numbers grow with every resolved bounty. Cross-check at the Celoscan link any time. USD figures move with the CELO spot price — recompute against the live rate before publishing.
+Numbers grow with every resolved bounty. Cross-check at the Celoscan link any time. USD figures move with the CELO spot price - recompute against the live rate before publishing.
