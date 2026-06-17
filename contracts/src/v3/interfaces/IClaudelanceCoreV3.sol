@@ -159,7 +159,7 @@ interface IClaudelanceCoreV3 {
     function setMinBounty(IERC20 token, uint256 minBountyAmount) external;
 
     /// @notice Register or update a task type configuration.
-    ///         Types 0–10 are pre-configured at initialization with sensible defaults.
+    ///         Types 0-10 are pre-configured at initialization with sensible defaults.
     function configureTaskType(uint8 typeId, TypeConfig calldata config) external;
 
     // ─────────────────────────────────────────────────────────────
