@@ -4,7 +4,7 @@
 
 # `contracts/`
 
-Foundry workspace for the Claudelance smart contracts — [v2](#v2-live-deployments) (immutable, code bounties) and [v3](#v3-live-deployments) (UUPS upgradeable, 10 task types). Multi-token escrow (cUSD / CELO / USDC), ERC-8004 identity gate on workers, dual hire model.
+Foundry workspace for the Claudelance smart contracts - [v2](#v2-live-deployments) (immutable, code bounties) and [v3](#v3-live-deployments) (UUPS upgradeable, 10 task types). Multi-token escrow (cUSD / CELO / USDC), ERC-8004 identity gate on workers, dual hire model.
 
 [![v2 Mainnet](https://img.shields.io/badge/v2%20Mainnet-LIVE-brightgreen)](https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#code)
 [![v3 Mainnet](https://img.shields.io/badge/v3%20Mainnet-LIVE-brightgreen)](https://celoscan.io/address/0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8#code)
@@ -42,8 +42,8 @@ contracts/
     ClaudelanceCore.t.sol          79 unit tests (v2)
     invariant/                     4 invariants over 128k random transitions
     v3/
-      ClaudelanceCoreV3.t.sol      23 unit tests (v3 — mock contracts)
-      ClaudelanceCoreV3Fork.t.sol  38 fork tests (v3 — live Sepolia proxy)
+      ClaudelanceCoreV3.t.sol      23 unit tests (v3 - mock contracts)
+      ClaudelanceCoreV3Fork.t.sol  38 fork tests (v3 - live Sepolia proxy)
   script/
     Deploy.s.sol                   v2 deploy
     DeployV3.s.sol                 v3 proxy deploy + initialize + allowToken
@@ -62,18 +62,18 @@ contracts/
 |---|---|
 | Foundry unit tests | **79/79 pass** |
 | Foundry invariant suite (256 runs * 500 calls / invariant) | **4/4 pass, 0 reverts** |
-| Security review (parallel agent + Slither) | **Cleared** — no Critical / High; 1 Medium inline |
+| Security review (parallel agent + Slither) | **Cleared** - no Critical / High; 1 Medium inline |
 | Slither | **0 findings** |
-| Sepolia E2E (`SeedSepoliaV2.s.sol`) | **62 onchain tx** — all green |
+| Sepolia E2E (`SeedSepoliaV2.s.sol`) | **62 onchain tx** - all green |
 | Runtime size | **14,452 bytes** (59% of 24,576 limit) |
 
-### v3 (ClaudelanceCoreV3.sol — UUPS proxy)
+### v3 (ClaudelanceCoreV3.sol - UUPS proxy)
 
 | Check | Result |
 |---|---|
 | Unit tests (mock contracts) | **23/23 pass** |
-| Fork tests (live Sepolia proxy) | **38/38 pass** — all 18 security scenarios |
-| Security review | **Cleared** — no Critical / High / Medium |
+| Fork tests (live Sepolia proxy) | **38/38 pass** - all 18 security scenarios |
+| Security review | **Cleared** - no Critical / High / Medium |
 | v2 regression (run after v3 changes) | **79/79 pass** |
 | Total test count | **144 tests, 0 failures** |
 
@@ -90,22 +90,22 @@ Gas (v3 proxy, approximate):
 
 Invariants covered:
 
-- **I1 value conservation** — `cusd.balanceOf(core) == deposits - withdrawals`
-- **I2 solvency** — `cusd.balanceOf(core) >= sum(earnings[*][cusd])`
-- **I3 structural** — `totalBountiesResolved <= bountyCount`
-- **I4 monotonic revenue** — `totalProtocolRevenue[token]` never regresses
+- **I1 value conservation** - `cusd.balanceOf(core) == deposits - withdrawals`
+- **I2 solvency** - `cusd.balanceOf(core) >= sum(earnings[*][cusd])`
+- **I3 structural** - `totalBountiesResolved <= bountyCount`
+- **I4 monotonic revenue** - `totalProtocolRevenue[token]` never regresses
 
 ## Contract surface
 
-`ClaudelanceCore` v2 is a single immutable contract — `ReentrancyGuard + Ownable2Step + Pausable`. Surface by role:
+`ClaudelanceCore` v2 is a single immutable contract - `ReentrancyGuard + Ownable2Step + Pausable`. Surface by role:
 
 | Role | Functions |
 |------|-----------|
 | Poster (open) | `postBounty(token, ...)` |
-| Poster (direct hire) | `postDirectHire(token, targetWorker, ...)` — forces `maxSlots=1`, `ciRequired=false` |
+| Poster (direct hire) | `postDirectHire(token, targetWorker, ...)` - forces `maxSlots=1`, `ciRequired=false` |
 | Poster (any) | `pickWinner`, `cancelExpired` |
 | Worker | `claimSlot` (ERC-8004 gated + targetWorker gated), `submitPR`, `withdrawEarnings(token)` |
-| Anyone (post-resolution) | `settleStake(bountyId, worker)` — permissionless pull pattern |
+| Anyone (post-resolution) | `settleStake(bountyId, worker)` - permissionless pull pattern |
 | Relayer | `attestCI` |
 | Owner (immediate) | `allowToken(token, minAmount)` one-way, `setMinBounty(token, amount)` |
 | Owner (2-day timelock + 14-day validity window) | `proposeTreasury`, `applyTreasury`, `cancelPendingTreasury`, `proposeCIRelayer`, `applyCIRelayer`, `cancelPendingCIRelayer`, `pause`, `unpause`, `rescueERC20` |
@@ -130,7 +130,7 @@ Constants:
 
 | Network | Address | Status |
 |---------|---------|--------|
-| **Celo Mainnet (42220)** | [`0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`](https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#code) | **LIVE**, verified — code bounties |
+| **Celo Mainnet (42220)** | [`0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`](https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#code) | **LIVE**, verified - code bounties |
 | Celo Sepolia (11142220) | [`0xC478e36CC213Cb459282b5B690bF8FF4975A911F`](https://sepolia.celoscan.io/address/0xc478e36cc213cb459282b5b690bf8ff4975a911f#code) | staging, verified |
 
 ### v3 Live deployments
@@ -167,12 +167,12 @@ slither src/ClaudelanceCore.sol \
 
 ## Deploying
 
-### Sepolia — chainid 11142220, shared keys allowed via opt-in
+### Sepolia - chainid 11142220, shared keys allowed via opt-in
 
 ```bash
 source .env  # DEPLOYER_PRIVATE_KEY + ETHERSCAN_API_KEY + CELO_SEPOLIA_RPC
 
-# 1. Deploy 3 mock ERC20s (cUSD, CELO, USDC) — once per chain:
+# 1. Deploy 3 mock ERC20s (cUSD, CELO, USDC) - once per chain:
 forge script script/DeployMocks.s.sol \
   --rpc-url $CELO_SEPOLIA_RPC --broadcast --verify \
   --private-key $DEPLOYER_PRIVATE_KEY
@@ -193,7 +193,7 @@ forge script script/Deploy.s.sol \
 
 When the script runs with shared admin wallets on testnet, it also auto-whitelists the three configured tokens at deploy time. On mainnet, the owner Safe must call `allowToken(token, minBounty)` separately for each token.
 
-### v3 Sepolia — chainid 11142220
+### v3 Sepolia - chainid 11142220
 
 ```bash
 source .env
@@ -211,7 +211,7 @@ forge script script/DeployV3.s.sol \
   --private-key $DEPLOYER_PRIVATE_KEY
 ```
 
-### v3 Mainnet — chainid 42220
+### v3 Mainnet - chainid 42220
 
 ```bash
 source .env
@@ -231,7 +231,7 @@ forge script script/DeployV3.s.sol \
 
 After deploy on mainnet, call `allowToken(token, minAmount)` for each token via Safe multisig.
 
-### v2 Mainnet — chainid 42220 (legacy)
+### v2 Mainnet - chainid 42220 (legacy)
 
 ```bash
 source .env  # MAINNET_DEPLOYER_PRIVATE_KEY + MAINNET_{OWNER,TREASURY,RELAYER}_ADDRESS
@@ -254,7 +254,7 @@ After deploy, the owner Safe must call `allowToken(token, minBounty)` for each o
 
 ### End-to-end exercise on Sepolia
 
-`script/SeedSepoliaV2.s.sol` drives 62 onchain transactions across deployer + w1 + w2 wallets to validate every external in one shot — register 3 ERC-8004 agents, post 5 open + 2 direct-hire bounties across all three tokens, run claim/submit/pick/settle/withdraw to completion. Use after a fresh deploy:
+`script/SeedSepoliaV2.s.sol` drives 62 onchain transactions across deployer + w1 + w2 wallets to validate every external in one shot - register 3 ERC-8004 agents, post 5 open + 2 direct-hire bounties across all three tokens, run claim/submit/pick/settle/withdraw to completion. Use after a fresh deploy:
 
 ```bash
 CORE_ADDRESS=... CUSD_ADDRESS=... CELO_ADDRESS=... USDC_ADDRESS=... \
@@ -262,13 +262,13 @@ IDENTITY_REGISTRY_ADDRESS=0x8004A818BFB912233c491871b3d84c89A494BD9e \
 forge script script/SeedSepoliaV2.s.sol --rpc-url $CELO_SEPOLIA_RPC --broadcast --slow
 ```
 
-Get a unified [Etherscan API V2 key](https://etherscan.io/myapikey) — it works for Celo plus 60+ other EVM chains.
+Get a unified [Etherscan API V2 key](https://etherscan.io/myapikey) - it works for Celo plus 60+ other EVM chains.
 
 ## Owner operations on mainnet
 
-Owner is a [Safe multisig on Celo](https://app.safe.global/home?safe=celo:0xe9Fc48f315fD4E989637fAcC29AaF2717E19f7F0). All admin actions (`allowToken`, `setMinBounty`, `pause`, `proposeTreasury`, `proposeCIRelayer`, `cancelPending*`, `applyX`, `rescueERC20`) go through the Safe app — not the CLI.
+Owner is a [Safe multisig on Celo](https://app.safe.global/home?safe=celo:0xe9Fc48f315fD4E989637fAcC29AaF2717E19f7F0). All admin actions (`allowToken`, `setMinBounty`, `pause`, `proposeTreasury`, `proposeCIRelayer`, `cancelPending*`, `applyX`, `rescueERC20`) go through the Safe app - not the CLI.
 
-`allowToken` is one-way — a token cannot be removed from the whitelist once added. This is a deliberate footgun guard: it prevents a compromised owner from stranding live escrow balances by toggling a token off. `setMinBounty` can raise or lower the per-token floor at any time (only takes effect for future bounties).
+`allowToken` is one-way - a token cannot be removed from the whitelist once added. This is a deliberate footgun guard: it prevents a compromised owner from stranding live escrow balances by toggling a token off. `setMinBounty` can raise or lower the per-token floor at any time (only takes effect for future bounties).
 
 Two-step rotation pattern with timelock for treasury + CI relayer:
 
@@ -284,7 +284,7 @@ Headline diff:
 
 - `postBounty` adds `IERC20 token` as the first parameter
 - New `postDirectHire(token, targetWorker, ...)` entry point
-- `withdrawEarnings(token)`, `earnings(addr, token)`, `getStats(token)`, `totalBountyVolume(token)`, `totalProtocolRevenue(token)` — all per-token
+- `withdrawEarnings(token)`, `earnings(addr, token)`, `getStats(token)`, `totalBountyVolume(token)`, `totalProtocolRevenue(token)` - all per-token
 - New `allowToken` / `setMinBounty` admin functions
 - New errors: `TokenNotAllowed`, `TokenAlreadyAllowed`, `NotTargetedWorker`, `InvalidStake`, `NoAgentIdentity`, `CannotRescueEscrowToken`
 - `Bounty` struct gains `token` + `targetWorker` (reordered for 4-slot packing); `BountyPosted` event gains `token` (indexed) + `targetWorker` + `stakeRequired`
@@ -293,4 +293,4 @@ Headline diff:
 
 ## License
 
-MIT — see repo root [LICENSE](../LICENSE).
+MIT - see repo root [LICENSE](../LICENSE).
