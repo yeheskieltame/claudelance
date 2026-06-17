@@ -69,6 +69,7 @@ if (settled && args['no-thanks'] === undefined) {
   const KEEPER_AGENT_ID = 9144n;
   try {
     const fbTx = await cl.giveFeedback(KEEPER_AGENT_ID, {
+      value: 100n,
       tag1: 'claudelance',
       tag2: 'keeper-service',
       endpoint: `bounty:${args.bounty}`,
