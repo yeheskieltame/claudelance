@@ -273,7 +273,7 @@ async function executeBatch(
 /**
  * Resolve and verify the winner's agentId for an attest action. Returns null
  * (and logs why) when the worker has no identity in scan range or no longer
- * holds the NFT — those bounties are skipped, never failed.
+ * holds the NFT - those bounties are skipped, never failed.
  */
 async function resolveAgentId(
   chain: ChainClient,
