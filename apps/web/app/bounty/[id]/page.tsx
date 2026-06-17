@@ -292,7 +292,7 @@ function formatToken(raw: string, tokenAddress: string): string {
 function formatDeadlineFull(deadline: string) {
   const d = Number(deadline);
   const date = new Date(d < 10_000_000_000 ? d * 1000 : d);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   const diff = date.getTime() - Date.now();
   const days = Math.ceil(diff / 86_400_000);
   const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
