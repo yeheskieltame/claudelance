@@ -37,7 +37,7 @@ const bountyId = BigInt(args.bounty);
 
 // agentId is only used for reputation logging + attest tracking; pickWinner
 // itself takes the address. The swarm minted identities on 2026-05-15 (outside
-// agentIdOf's default window) so it needs a deep getLogs scan — which flakes
+// agentIdOf's default window) so it needs a deep getLogs scan - which flakes
 // when forno returns -32011 or a backup caps the block range. So accept an
 // explicit --agentId override and never let this lookup abort the finish.
 let agentId = args.agentId ? BigInt(args.agentId) : null;

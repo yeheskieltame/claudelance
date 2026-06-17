@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Top up the deployer's $LANCE by depositing CELO into the LanceHub ERC-4626
-// vault. This MINTS new $LANCE at the current NAV (NAV-neutral — does not change
+// vault. This MINTS new $LANCE at the current NAV (NAV-neutral - does not change
 // the rate), keeping $LANCE cheap for dev/dogfood distribution. Posting bounties
 // in $LANCE drains the deployer ~110/bounty; refill when it runs low.
 // Usage: node scripts/lance-topup.mjs [celoAmount=1]   → ~celoAmount*1000 $LANCE
