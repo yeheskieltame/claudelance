@@ -123,7 +123,7 @@ contract ClaudelanceCoreV3 is
         s.identityRegistry = _identityReg;
         s.reputationRegistry = _reputationReg;
 
-        // Pre-configure all canonical task types (0–10) with sensible defaults
+        // Pre-configure all canonical task types (0-10) with sensible defaults
         for (uint8 i = 0; i <= TaskTypeLib.MAX_CANONICAL_TYPE; i++) {
             s.taskTypeConfigs[i] = TaskTypeLib.defaultConfig(i);
         }
