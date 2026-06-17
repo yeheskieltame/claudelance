@@ -46,7 +46,7 @@ export const wagmiConfig = createConfig({
 
 /** Connector picker shared by every connect affordance. The single injected
  *  connector reports id "minipay" inside the webview and degrades to the
- *  default "injected" target (window.ethereum) everywhere else — wagmi falls
+ *  default "injected" target (window.ethereum) everywhere else - wagmi falls
  *  back to the generic target when target() returns undefined. */
 export function pickInjectedConnector<T extends { id: string }>(connectors: readonly T[]): T | undefined {
   return connectors.find((c) => c.id === "minipay" || c.id === "injected") ?? connectors[0];
