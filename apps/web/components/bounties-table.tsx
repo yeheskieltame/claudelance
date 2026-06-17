@@ -14,6 +14,7 @@ import { MAINNET, ZERO_ADDRESS } from "@yeheskieltame/claudelance-types";
 
 import { Button } from "@/components/ui/button";
 import { TOKEN_BADGE, type TokenSymbol } from "@/lib/token-theme";
+import { LANCE_ADDRESS } from "@/lib/lance";
 import { formatDeadline } from "@/lib/format-deadline";
 import { formatTokenAmount } from "@/lib/format-token";
 import { cn } from "@/lib/utils";
@@ -34,7 +35,7 @@ type ApiBounty = {
 };
 
 type StatusFilter = "open" | "resolved" | "expired" | "all";
-type TokenFilter = "all" | "cusd" | "celo" | "usdc";
+type TokenFilter = "all" | "cusd" | "celo" | "usdc" | "lance";
 
 const PAGE_SIZE = 15;
 const FETCH_LIMIT = 50;
@@ -52,6 +53,7 @@ const TOKEN_FILTERS: Array<{ value: TokenFilter; label: string }> = [
   { value: "cusd", label: "cUSD" },
   { value: "celo", label: "CELO" },
   { value: "usdc", label: "USDC" },
+  { value: "lance", label: "LANCE" },
 ];
 
 const STATUS_LABELS = ["Open", "Resolved", "Cancelled", "Expired"] as const;
@@ -64,6 +66,7 @@ function symbolForAddress(address: string): TokenSymbol | null {
   if (a === DEPLOYMENT.tokens.cUSD.toLowerCase()) return "cUSD";
   if (a === DEPLOYMENT.tokens.CELO.toLowerCase()) return "CELO";
   if (a === DEPLOYMENT.tokens.USDC.toLowerCase()) return "USDC";
+  if (a === LANCE_ADDRESS.toLowerCase()) return "LANCE";
   return null;
 }
 
