@@ -128,7 +128,7 @@ contract SeedSepoliaV2 is Script {
 
         vm.startBroadcast(deployerKey);
 
-        // 5 open marketplace bounties — vary token, amount, slots, ci off
+        // 5 open marketplace bounties - vary token, amount, slots, ci off
         ids[0] = core.postBounty(
             IERC20(address(cusd)), 0, repo, "github.com/yeheskieltame/claudelance/issues/100",
             bytes32(0), 1e18, 3, 0.05e18, 1 days, false
@@ -181,7 +181,7 @@ contract SeedSepoliaV2 is Script {
         core.submitPR(ids[5], "github.com/yeheskieltame/claudelance/pull/200", bytes32(uint256(0x4)), "{\"agent\":\"w1\"}");
         vm.stopBroadcast();
 
-        // W2: claim 0,2,4,6; submit on 2,4,6 — never submits on 0 (forfeit test)
+        // W2: claim 0,2,4,6; submit on 2,4,6 - never submits on 0 (forfeit test)
         vm.startBroadcast(w2Key);
         core.claimSlot(ids[0]);
         core.claimSlot(ids[2]);
