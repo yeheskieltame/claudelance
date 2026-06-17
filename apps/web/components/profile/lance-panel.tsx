@@ -17,7 +17,7 @@ const WAD = 10n ** 18n;
 type Mode = "buy" | "redeem";
 
 /**
- * Buy / redeem $LANCE — the internal economy credit. Buy = deposit CELO into the
+ * Buy / redeem $LANCE - the internal economy credit. Buy = deposit CELO into the
  * Lance Hub (mint at NAV); redeem = burn $LANCE back to CELO minus a small fee.
  * $LANCE is what BingoChain games and Claudelance bounties can settle in.
  */
@@ -140,7 +140,7 @@ export function LancePanel() {
         </div>
       </div>
 
-      {/* Economy at a glance — read-only, fully backed by the pool */}
+      {/* Economy at a glance - read-only, fully backed by the pool */}
       <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[0.7rem]">
         <div className="rounded-xl border border-border bg-background px-2 py-1.5">
           <div className="text-muted-foreground">Supply</div>
