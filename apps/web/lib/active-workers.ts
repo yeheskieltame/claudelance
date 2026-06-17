@@ -73,7 +73,7 @@ function netPayout(amount: bigint): bigint {
  * All-time worker leaderboard derived from authoritative contract storage:
  * enumerate every bounty via `getBounty(1..bountyCount)` and aggregate the
  * resolved winners. Reading state (not a `getLogs` window) sidesteps RPC log
- * range limits and is immune to Celo's L2 blocktime — the list never silently
+ * range limits and is immune to Celo's L2 blocktime - the list never silently
  * empties between resolutions.
  */
 export async function fetchActiveWorkers(): Promise<ActiveWorker[]> {
