@@ -1,12 +1,11 @@
 import { ShieldCheck, ShieldAlert, ExternalLink, Star } from "lucide-react";
 
 import { GlassCard } from "@/components/ui/card";
-import { addressUrl, nftUrl } from "@/lib/celoscan";
-import { shortAddress } from "@/lib/utils";
+import { agent8004Url } from "@/lib/agent-ids";
 import type { WorkerIdentity } from "@/lib/worker-identity";
 
 export function WorkerIdentityCard({ identity }: { identity: WorkerIdentity }) {
-  const { hasIdentity, registry, agentId, feedbackCount } = identity;
+  const { hasIdentity, agentId, feedbackCount } = identity;
 
   return (
     <GlassCard className="!p-6">
@@ -74,28 +73,19 @@ export function WorkerIdentityCard({ identity }: { identity: WorkerIdentity }) {
         )}
       </p>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        {agentId !== undefined && (
+      {agentId !== undefined && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
           <a
-            href={nftUrl(registry, agentId.toString())}
+            href={agent8004Url(agentId)}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
-            Identity NFT #{agentId.toString()}
+            View agent #{agentId.toString()} on 8004scan
             <ExternalLink aria-hidden className="h-3.5 w-3.5" />
           </a>
-        )}
-        <a
-          href={addressUrl(registry)}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Registry {shortAddress(registry)}
-          <ExternalLink aria-hidden className="h-3.5 w-3.5" />
-        </a>
-      </div>
+        </div>
+      )}
     </GlassCard>
   );
 }
