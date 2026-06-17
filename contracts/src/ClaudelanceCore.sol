@@ -351,7 +351,7 @@ contract ClaudelanceCore is IClaudelanceCore, ReentrancyGuard, Ownable2Step, Pau
         emit BountyResolved(bountyId, winner, payout, fee);
     }
 
-    /// @notice After `deadline`, anyone may cancel — but during the grace window only the
+    /// @notice After `deadline`, anyone may cancel - but during the grace window only the
     ///         poster, so a third party cannot race a passing-CI worker out of their win.
     function cancelExpired(uint256 bountyId) external nonReentrant {
         Bounty storage b = _bounties[bountyId];
@@ -531,7 +531,7 @@ contract ClaudelanceCore is IClaudelanceCore, ReentrancyGuard, Ownable2Step, Pau
         _unpause();
     }
 
-    /// @notice Rescue accidentally-sent ERC20s. Blocks any whitelisted token —
+    /// @notice Rescue accidentally-sent ERC20s. Blocks any whitelisted token -
     ///         their balance is held legitimately as bounty / stake / earnings.
     function rescueERC20(IERC20 token, address to, uint256 amount) external onlyOwner {
         if (allowedToken[address(token)]) revert CannotRescueEscrowToken();
