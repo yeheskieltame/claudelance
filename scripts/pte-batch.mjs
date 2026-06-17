@@ -61,7 +61,7 @@ for (let i = 0; i < workers.length; i++) {
   } catch (e) {
     const msg = (e.stdout || '') + (e.stderr || '') + (e.message || '');
     results.push({ worker: w, error: msg.slice(-200) });
-    log(`worker ${w}: FAILED — ${msg.slice(-160)}`);
+    log(`worker ${w}: FAILED - ${msg.slice(-160)}`);
   }
 }
 

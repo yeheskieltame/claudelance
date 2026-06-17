@@ -48,7 +48,7 @@ contract ClaudelanceInvariants is Test {
 
         targetContract(address(handler));
 
-        // Restrict the fuzzer to handler functions only — random calls into core
+        // Restrict the fuzzer to handler functions only - random calls into core
         // or cUSD would create unreachable states.
         bytes4[] memory selectors = new bytes4[](9);
         selectors[0] = ClaudelanceHandler.postBounty.selector;
@@ -71,7 +71,7 @@ contract ClaudelanceInvariants is Test {
         assertEq(balance, expected, "core cUSD balance must equal net deposits");
     }
 
-    /// I2: the contract is always solvent — its cUSD balance must be at least the
+    /// I2: the contract is always solvent - its cUSD balance must be at least the
     ///     sum of all outstanding `earnings`. (Stronger: it must also cover
     ///     unresolved bounties + unsettled stakes, but I1 already nails that.)
     function invariant_solvency() public view {

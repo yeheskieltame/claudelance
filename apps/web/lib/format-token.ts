@@ -31,7 +31,7 @@ export function formatCELO(wei: bigint): string {
   return formatTokenAmount(wei, 18);
 }
 
-/** USDC on Celo uses 6 decimals — convenience wrapper to avoid passing it inline. */
+/** USDC on Celo uses 6 decimals - convenience wrapper to avoid passing it inline. */
 export function formatUSDC(units: bigint): string {
   return formatTokenAmount(units, 6);
 }

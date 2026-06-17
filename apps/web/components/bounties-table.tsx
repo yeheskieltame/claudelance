@@ -334,7 +334,7 @@ export function BountiesTable() {
                             symbol ? TOKEN_BADGE[symbol] : "bg-muted text-muted-foreground ring-border",
                           )}
                         >
-                          {symbol ?? "—"}
+                          {symbol ?? "-"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right font-mono font-medium tabular-nums text-foreground">
@@ -372,7 +372,7 @@ export function BountiesTable() {
       {!isLoading && !error && filtered.length > 0 ? (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
-            Showing {start + 1}–{start + visible.length} of {filtered.length}{" "}
+            Showing {start + 1}-{start + visible.length} of {filtered.length}{" "}
             {filtered.length === 1 ? "bounty" : "bounties"}
           </p>
           <div className="flex items-center gap-3">
@@ -439,7 +439,7 @@ function BountyCard({ bounty }: { bounty: ApiBounty }) {
             symbol ? TOKEN_BADGE[symbol] : "bg-muted text-muted-foreground ring-border",
           )}
         >
-          {symbol ?? "—"}
+          {symbol ?? "-"}
         </span>
       </div>
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">

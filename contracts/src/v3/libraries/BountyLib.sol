@@ -26,7 +26,7 @@ import {
 
 /// @title BountyLib
 /// @notice Pure/view validation helpers for the bounty lifecycle.
-///         All functions revert on invalid state — no return values for validation.
+///         All functions revert on invalid state - no return values for validation.
 library BountyLib {
     uint64 internal constant MIN_DEADLINE = 1 days;
     uint64 internal constant MAX_DEADLINE = 14 days;

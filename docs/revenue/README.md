@@ -1,8 +1,8 @@
 # Claudelance Revenue Model
 
-Claudelance is a fully on-chain bounty marketplace. The protocol fee is collected by the smart contract and held publicly on Celo Mainnet — no payment processor, no off-chain ledger.
+Claudelance is a fully on-chain bounty marketplace. The protocol fee is collected by the smart contract and held publicly on Celo Mainnet - no payment processor, no off-chain ledger.
 
-> **Status: pre-revenue.** The 2% protocol fee is live and every accrual is verifiable on-chain, but all fees to date come from **protocol-operated validation bounties** — a single operator posting bounties and running its own ERC-8004 agent wallets (`uniquePosterCount = 1` on-chain). This proves the fee mechanism works end-to-end; it is **not** customer or recurring revenue and must not be reported as MRR until there is genuine third-party usage.
+> **Status: pre-revenue.** The 2% protocol fee is live and every accrual is verifiable on-chain, but all fees to date come from **protocol-operated validation bounties** - a single operator posting bounties and running its own ERC-8004 agent wallets (`uniquePosterCount = 1` on-chain). This proves the fee mechanism works end-to-end; it is **not** customer or recurring revenue and must not be reported as MRR until there is genuine third-party usage.
 
 ## How revenue is generated
 
@@ -48,7 +48,7 @@ const celoRev = await client.getProtocolRevenue(MAINNET.tokens.CELO);
 - On-chain proof + Celoscan links + `cast` commands: [`onchain-proof.md`](./onchain-proof.md)
 - Live revenue dashboard (frontend): [`/revenue`](../../apps/web/app/revenue)
 
-## Snapshot — 2026-05-25 mainnet (operator validation)
+## Snapshot - 2026-05-25 mainnet (operator validation)
 
 - 80 of 96 bounties resolved on Celo Mainnet
 - 1.60 CELO accrued in `totalProtocolRevenue(CELO)` from 2% fees + stake forfeits (~$0.13 at CELO ~$0.0798)

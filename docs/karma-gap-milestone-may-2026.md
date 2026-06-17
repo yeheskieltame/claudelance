@@ -1,4 +1,4 @@
-# Karma GAP — Proof of Ship #8 Milestone (May 4-29, 2026)
+# Karma GAP - Proof of Ship #8 Milestone (May 4-29, 2026)
 
 > Drop-in markdown for the Karma GAP milestone form. Paste the matching block into each milestone entry. Numbers anchored to 2026-05-19; refresh before submitting if dates shift.
 
@@ -13,12 +13,12 @@
 | GitHub repository | `https://github.com/yeheskieltame/claudelance` |
 | Contract address | `0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423` (chain 42220) |
 | Verified on | `https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#code` |
-| Divvi profile id | (to be filled — register at divvi.xyz, link deployer `0x77c4a1cD22005b67Eb9CcEaE7E9577188d7Bca82`) |
+| Divvi profile id | (to be filled - register at divvi.xyz, link deployer `0x77c4a1cD22005b67Eb9CcEaE7E9577188d7Bca82`) |
 | Tracks | MiniApps + AI Powered Apps & Agents |
 
 ---
 
-## Milestone 1 — Ship v2 multi-token core on Celo Mainnet
+## Milestone 1 - Ship v2 multi-token core on Celo Mainnet
 
 **Status:** Complete (2026-05-15)
 
@@ -39,33 +39,33 @@
 
 ---
 
-## Milestone 2 — Direct-hire bounty flow + worker onboarding
+## Milestone 2 - Direct-hire bounty flow + worker onboarding
 
 **Status:** Complete (2026-05-17)
 
 **What was delivered**
 
 - New `postDirectHire(token, targetWorker, ...)` entrypoint targeting one specific ERC-8004 worker; forces `maxSlots=1`, `ciRequired=false`. Used to run the protocol's own validation agents through the full lifecycle on mainnet.
-- 30 operator-run validation agents, each holding an ERC-8004 Identity NFT, exercise the direct-hire pipeline (dogfooding — not external workers).
+- 30 operator-run validation agents, each holding an ERC-8004 Identity NFT, exercise the direct-hire pipeline (dogfooding - not external workers).
 - Any remaining open-round PR backlog resolved off-protocol; no new public bounties posted under the open `postBounty` path during the hackathon.
 
 **Verifiable outputs**
 
 - Resolved bounties: 80 of 96 posted (`getStats(token)`); total bounty volume 96 CELO (CELO-denominated; cUSD/USDC volume currently 0). All operator-run validation, not third-party adoption.
 - `uniqueWorkerCount` = 30 (operator-run agents); `uniquePosterCount` = 1 (the operator).
-- Protocol fees accrued: 1.60 CELO (read `totalProtocolRevenue(token)`) — from validation bounties, not customer revenue.
+- Protocol fees accrued: 1.60 CELO (read `totalProtocolRevenue(token)`) - from validation bounties, not customer revenue.
 - Direct-hire example txs: include 3-5 recent Celoscan tx links here before submit.
 
 ---
 
-## Milestone 3 — Publish npm SDK surface
+## Milestone 3 - Publish npm SDK surface
 
 **Status:** Complete (2026-05-14, ongoing)
 
 **What was delivered**
 
-- `@yeheskieltame/claudelance-types@0.4.2` — TS types, ABI, deployment addresses for mainnet + Sepolia. Live on npmjs.org + GitHub Packages.
-- `@yeheskieltame/claudelance-sdk@0.4.5` — viem-based agent client wrapping the v2 ABI: post / claim / submit / attestCI / pick / settle / withdraw helpers + revenue stream reads.
+- `@yeheskieltame/claudelance-types@0.4.2` - TS types, ABI, deployment addresses for mainnet + Sepolia. Live on npmjs.org + GitHub Packages.
+- `@yeheskieltame/claudelance-sdk@0.4.5` - viem-based agent client wrapping the v2 ABI: post / claim / submit / attestCI / pick / settle / withdraw helpers + revenue stream reads.
 - Both packages: dual ESM+CJS, `sideEffects: false`, `repository.directory` pointing to monorepo subpath.
 - Downloads (last 7d): sdk **59**, types **92**; lifetime 963 + 996 (read live from api.npmjs.org).
 
@@ -77,7 +77,7 @@
 
 ---
 
-## Milestone 4 — Frontend MiniApp on Celo
+## Milestone 4 - Frontend MiniApp on Celo
 
 **Status:** Complete (2026-05-18)
 
@@ -96,13 +96,13 @@
 
 ---
 
-## Milestone 5 — Talent Protocol Trust MRR integration
+## Milestone 5 - Talent Protocol Trust MRR integration
 
 **Status:** In progress
 
 **What's planned**
 
-- `/revenue` dashboard exposes per-token `totalProtocolRevenue(token)` + `ProtocolRevenueAccrued` event log scan. Treasury accrual is the Trust MRR signal — published to `docs/revenue/`.
+- `/revenue` dashboard exposes per-token `totalProtocolRevenue(token)` + `ProtocolRevenueAccrued` event log scan. Treasury accrual is the Trust MRR signal - published to `docs/revenue/`.
 - SDK helpers `getProtocolRevenue` (read) + `listProtocolRevenueEvents` (event log) make the signal API-consumable.
 - Talent API integration in `apps/web/`: show Builder Score badges on poster + worker profile cards using Pro account API key.
 
@@ -114,7 +114,7 @@
 
 ---
 
-## Milestone 6 — Demo video + Talent app + KarmaGAP submission
+## Milestone 6 - Demo video + Talent app + KarmaGAP submission
 
 **Status:** Scheduled for 2026-05-20 (Day 7-1)
 
@@ -130,7 +130,7 @@
 
 - **Language distribution:** Solidity (contracts), TypeScript (sdk, types, web), with strict configs across the monorepo.
 - **Test coverage:** 83 contract tests (unit + invariant + fork), forge coverage report committed.
-- **CI/CD:** GitHub Actions on every PR — lint, typecheck, contract tests, frontend build.
+- **CI/CD:** GitHub Actions on every PR - lint, typecheck, contract tests, frontend build.
 - **Documentation:** `README.md` (pitch + status), per-package READMEs (sdk, types, contracts, web), and revenue + KarmaGAP docs under `docs/`.
 - **License:** MIT across all packages and contracts.
 - **Security:** OZ v5 base (`ReentrancyGuard + Ownable2Step + Pausable`), Slither + `/security-review` on every contract diff, 2-day admin timelock + 14-day validity window on treasury/relayer rotation, pull-pattern payouts.
@@ -140,7 +140,7 @@
 
 ## On-chain metrics (report honestly)
 
-> All on-chain activity to date is operator-run validation (`uniquePosterCount = 1`). Report it as protocol dogfooding / end-to-end validation — **not** as organic users or customer revenue.
+> All on-chain activity to date is operator-run validation (`uniquePosterCount = 1`). Report it as protocol dogfooding / end-to-end validation - **not** as organic users or customer revenue.
 
 | Metric | Value (refresh before submit) | Source |
 |---|---|---|

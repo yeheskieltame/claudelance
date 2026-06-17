@@ -65,7 +65,7 @@ contract ClaudelanceCoreV3Test is Test {
         cUSD = new MockERC20("Mock cUSD", "cUSD", 18);
         celo = new MockERC20("Mock CELO", "CELO", 18);
 
-        // Deploy mock identity registry — all holders have 1 NFT
+        // Deploy mock identity registry - all holders have 1 NFT
         identity = new MockIdentityRegistry();
         reputation = new MockReputationRegistry();
 
@@ -172,7 +172,7 @@ contract ClaudelanceCoreV3Test is Test {
 
     function test_postBounty_research_ciOverriddenFalse() public {
         vm.prank(poster);
-        // Research type doesn't support CI — ciRequired is overridden to false
+        // Research type doesn't support CI - ciRequired is overridden to false
         uint256 id = core.postBounty(
             IERC20(address(cUSD)),
             TaskTypeLib.TYPE_RESEARCH,
@@ -325,7 +325,7 @@ contract ClaudelanceCoreV3Test is Test {
         vm.prank(worker);
         core.submitDeliverable(id, DELIVERABLE_URL, DELIVERABLE_HASH, "");
 
-        // CI not attested — should revert
+        // CI not attested - should revert
         vm.prank(poster);
         vm.expectRevert(WinnerInvalid.selector);
         core.pickWinner(id, worker);

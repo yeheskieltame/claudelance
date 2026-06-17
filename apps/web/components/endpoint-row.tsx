@@ -31,7 +31,7 @@ export function EndpointRow({ endpoint }: { endpoint: Endpoint }) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard blocked (insecure context / denied) — leave state unchanged.
+      // Clipboard blocked (insecure context / denied) - leave state unchanged.
     }
   }, [endpoint.path]);
 

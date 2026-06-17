@@ -28,14 +28,14 @@ pnpm add @yeheskieltame/claudelance-types --registry https://npm.pkg.github.com
 
 ## What's inside
 
-- `Bounty`, `Submission`, `PendingAddress` — types mirroring the on-chain structs (v2 `Bounty` carries `token` + `targetWorker`)
+- `Bounty`, `Submission`, `PendingAddress` - types mirroring the on-chain structs (v2 `Bounty` carries `token` + `targetWorker`)
 - `BountyStatus` enum aligned with the contract
-- `TokenSet` — `{ cUSD, CELO, USDC }` per `Deployment`
-- `Deployment` — `{ chainId, chainName, core, tokens, identityRegistry, reputationRegistry, owner, treasury, ciRelayer, explorerUrl }`
-- `CLAUDELANCE_CORE_ABI` — typed ABI const ready to feed into viem / wagmi / ethers
-- `SEPOLIA` — live v2 deployment record on Celo Sepolia
-- `MAINNET` — live v2 deployment record on Celo Mainnet
-- `deploymentByChainId(chainId)` — lookup helper
+- `TokenSet` - `{ cUSD, CELO, USDC }` per `Deployment`
+- `Deployment` - `{ chainId, chainName, core, tokens, identityRegistry, reputationRegistry, owner, treasury, ciRelayer, explorerUrl }`
+- `CLAUDELANCE_CORE_ABI` - typed ABI const ready to feed into viem / wagmi / ethers
+- `SEPOLIA` - live v2 deployment record on Celo Sepolia
+- `MAINNET` - live v2 deployment record on Celo Mainnet
+- `deploymentByChainId(chainId)` - lookup helper
 - `ZERO_ADDRESS` constant + `isDirectHire(bounty)` helper
 
 v2 is live on both Celo Sepolia and Celo Mainnet as of 0.3.0. The legacy v1 mainnet contract (`0x775d…11AB5`) is being paused via Safe.
@@ -88,7 +88,7 @@ const [volume, revenue, resolved, posters, workers] =
 | Network | Address | Status |
 |---------|---------|--------|
 | Celo Mainnet v2 (42220) | [`0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`](https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#code) | v2 LIVE (immutable, code only) |
-| **Celo Mainnet v3 (42220)** | [`0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8`](https://celoscan.io/address/0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8#code) | **v3 LIVE** (UUPS, types 0–10) |
+| **Celo Mainnet v3 (42220)** | [`0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8`](https://celoscan.io/address/0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8#code) | **v3 LIVE** (UUPS, types 0-10) |
 | Celo Sepolia (11142220) | [`0xC478e36CC213Cb459282b5B690bF8FF4975A911F`](https://sepolia.celoscan.io/address/0xc478e36cc213cb459282b5b690bf8ff4975a911f#code) | v2 staging |
 
 Sepolia token whitelist (v2):
@@ -124,11 +124,11 @@ Headline changes:
 - `CLAUDELANCE_CORE_ABI` regenerated from the v2 Foundry artifact: signatures for `postBounty`, `postDirectHire`, `withdrawEarnings(token)`, `earnings(addr, token)`, `getStats(token)`, `allowToken`, `setMinBounty` all differ from v1
 - Constructor signature change: `(treasury, ciRelayer, owner, identityRegistry, reputationRegistry)`
 
-Bump callers from 0.1.x → 0.2.0 in one shot — the v1 ABI no longer matches any live deployment we plan to support.
+Bump callers from 0.1.x → 0.2.0 in one shot - the v1 ABI no longer matches any live deployment we plan to support.
 
 ## v0.2.x → v0.3.0 migration
 
-Non-breaking — drop-in upgrade:
+Non-breaking - drop-in upgrade:
 
 - `MAINNET: Deployment` constant added (chainId 42220, core `0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`)
 - `deploymentByChainId(42220)` now returns `MAINNET` instead of `undefined`
@@ -147,4 +147,4 @@ The PAT needs `read:packages` scope (or `write:packages` if you're also publishi
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT - see [LICENSE](./LICENSE).

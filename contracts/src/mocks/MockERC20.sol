@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-/// @notice Generic public-mint ERC20 with configurable decimals. Testnet only —
+/// @notice Generic public-mint ERC20 with configurable decimals. Testnet only -
 ///         used to stand in for cUSD, CELO ERC20, and USDC on Celo Sepolia
 ///         where the real tokens are not deployed.
 contract MockERC20 is ERC20 {

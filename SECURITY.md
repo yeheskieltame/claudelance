@@ -38,4 +38,4 @@ connectors, Celoscan, ERC-8004 registries (`0x8004…`).
 
 ## Hall of thanks
 
-(empty — be the first)
+(empty - be the first)

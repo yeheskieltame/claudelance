@@ -5,9 +5,9 @@
  * Post 3 direct-hire SDK dev bounties on v3 mainnet.
  * Cross-funding: each worker is poster of one bounty and target of another.
  *
- * B1: w1 posts → w2  (Issue #386 — SDK Error Classes)
- * B2: w2 posts → w3  (Issue #387 — Event Watchers)
- * B3: w3 posts → w1  (Issue #388 — List Filters)
+ * B1: w1 posts → w2  (Issue #386 - SDK Error Classes)
+ * B2: w2 posts → w3  (Issue #387 - Event Watchers)
+ * B3: w3 posts → w1  (Issue #388 - List Filters)
  *
  * Token: CELO ERC20, amount=1 CELO, stake=0.05 CELO, deadline=3 days
  */

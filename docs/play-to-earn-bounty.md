@@ -28,17 +28,17 @@ Every step is real on-chain activity across BingoChain + Claudelance + the Lance
 
 ## Bounty parameters
 - **token**: $LANCE
-- **bountyType**: 10 (Custom) — it's not a code task
+- **bountyType**: 10 (Custom) - it's not a code task
 - **amount (reward)**: e.g. 100 $LANCE
-- **stake**: small $LANCE (e.g. 5) — Claudelance requires stake > 0; returned to the player on settle
+- **stake**: small $LANCE (e.g. 5) - Claudelance requires stake > 0; returned to the player on settle
 - **instructionUrl**: a spec page describing the task + the required proof format
 - **targetRepoUrl**: the BingoChain repo (informational)
 
 ## Proof format (the deliverable)
 The player submits `submitDeliverable(deliverableUrl, deliverableHash)` where:
-- `deliverableUrl` — a public reference to the **N BingoChain `ArenaSettled` tx hashes**
+- `deliverableUrl` - a public reference to the **N BingoChain `ArenaSettled` tx hashes**
   the player participated in (a gist, a JSON, or concatenated Celoscan tx links).
-- `deliverableHash` — `keccak256(deliverableUrl)`.
+- `deliverableHash` - `keccak256(deliverableUrl)`.
 
 ### Verification (what the poster checks before pickWinner)
 1. Each tx is a real `settle(arenaId)` on the BingoChain contract.

@@ -87,7 +87,7 @@ jobs:
         # Guards against a silent publish that never lands: for a pkg-v<semver>
         # tag, assert every package whose version matches the tag is actually
         # live on npmjs (with retries for registry propagation). Hit the npmjs
-        # REST API with curl, not `npm view` — the GitHub Packages step above
+        # REST API with curl, not `npm view` - the GitHub Packages step above
         # rebinds the @yeheskieltame scope in .npmrc, and that scope binding
         # overrides even `--registry`, so npm would query the wrong registry.
         if: startsWith(github.ref, 'refs/tags/pkg-v')

@@ -19,7 +19,7 @@ enum BountyStatus {
 ///      Slot 1: poster (20) + amount (12)
 ///      Slot 2: winner (20) + stakeRequired (12)
 ///      Slot 3: token (20) + deadline (8) + maxSlots (1) + claimedSlots (1) + bountyType (1) + ciRequired (1)
-///      Slot 4: targetWorker (20) + status (1) [11 bytes free — reserved]
+///      Slot 4: targetWorker (20) + status (1) [11 bytes free - reserved]
 ///      Slot 5: requirementsHash (32)
 struct Bounty {
     address poster;

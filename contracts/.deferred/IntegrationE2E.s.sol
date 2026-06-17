@@ -13,11 +13,11 @@ import { MockCUSD } from "../src/mocks/MockCUSD.sol";
 ///         and confirms the post-state on-chain.
 ///
 /// Required env:
-///   CORE_ADDRESS         — deployed ClaudelanceCore
-///   CUSD_ADDRESS         — deployed MockCUSD (Sepolia stand-in)
-///   DEPLOYER_PRIVATE_KEY — poster + relayer + treasury + owner
-///   W1_PRIVATE_KEY       — winning worker
-///   W2_PRIVATE_KEY       — losing-but-passing-CI worker (good-faith refund)
+///   CORE_ADDRESS         - deployed ClaudelanceCore
+///   CUSD_ADDRESS         - deployed MockCUSD (Sepolia stand-in)
+///   DEPLOYER_PRIVATE_KEY - poster + relayer + treasury + owner
+///   W1_PRIVATE_KEY       - winning worker
+///   W2_PRIVATE_KEY       - losing-but-passing-CI worker (good-faith refund)
 ///
 /// Sequence on chain (10 transactions):
 ///   1.  Poster approves cUSD spend for AMOUNT

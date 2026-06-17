@@ -9,7 +9,7 @@ import { Bounty, Submission, TypeConfig } from "../types/ClaudelanceTypes.sol";
 ///         frontend) targets this interface, not the implementation directly.
 interface IClaudelanceCoreV3 {
     // ─────────────────────────────────────────────────────────────
-    // Events — indexed fields are relayer/frontend hot paths
+    // Events - indexed fields are relayer/frontend hot paths
     // ─────────────────────────────────────────────────────────────
 
     event BountyPosted(
@@ -130,7 +130,7 @@ interface IClaudelanceCoreV3 {
     // ─────────────────────────────────────────────────────────────
 
     /// @notice Settle stake for a worker after a bounty is resolved or cancelled.
-    ///         Pull pattern — anyone can call; winner/loser determination is on-chain.
+    ///         Pull pattern - anyone can call; winner/loser determination is on-chain.
     function settleStake(uint256 bountyId, address worker) external;
 
     /// @notice Write +1 ERC-8004 reputation feedback for a resolved bounty's winner.
@@ -149,7 +149,7 @@ interface IClaudelanceCoreV3 {
     function attestCI(uint256 bountyId, address worker, bool passed) external;
 
     // ─────────────────────────────────────────────────────────────
-    // Admin — immediate (onlyOwner)
+    // Admin - immediate (onlyOwner)
     // ─────────────────────────────────────────────────────────────
 
     /// @notice Whitelist a token. One-way: cannot be disabled after enable.
@@ -159,11 +159,11 @@ interface IClaudelanceCoreV3 {
     function setMinBounty(IERC20 token, uint256 minBountyAmount) external;
 
     /// @notice Register or update a task type configuration.
-    ///         Types 0–10 are pre-configured at initialization with sensible defaults.
+    ///         Types 0-10 are pre-configured at initialization with sensible defaults.
     function configureTaskType(uint8 typeId, TypeConfig calldata config) external;
 
     // ─────────────────────────────────────────────────────────────
-    // Admin — timelocked (2-day lock + 14-day validity window)
+    // Admin - timelocked (2-day lock + 14-day validity window)
     // ─────────────────────────────────────────────────────────────
 
     function proposeTreasury(address newTreasury) external;
@@ -175,7 +175,7 @@ interface IClaudelanceCoreV3 {
     function cancelPendingCIRelayer() external;
 
     // ─────────────────────────────────────────────────────────────
-    // Admin — circuit breaker
+    // Admin - circuit breaker
     // ─────────────────────────────────────────────────────────────
 
     function pause() external;

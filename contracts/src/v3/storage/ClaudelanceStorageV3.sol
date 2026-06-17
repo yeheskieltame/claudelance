@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import { Bounty, Submission, TypeConfig, PendingAddress } from "../types/ClaudelanceTypes.sol";
 
 /// @dev All mutable state lives here, isolated under an EIP-7201 namespace.
-///      Never change the order or type of existing fields — only append to CoreStorage.
+///      Never change the order or type of existing fields - only append to CoreStorage.
 ///      Appending is safe because EIP-7201 gives us an isolated storage region.
 struct CoreStorage {
     // ── Token whitelist ─────────────────────────────────────────

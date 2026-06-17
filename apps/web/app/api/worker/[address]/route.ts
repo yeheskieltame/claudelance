@@ -42,9 +42,7 @@ export async function GET(_request: Request, { params }: { params: Params }) {
         history: history.map((row) => ({
           bountyId: row.bountyId.toString(),
           winnerPayout: row.winnerPayout.toString(),
-          protocolFee: row.protocolFee.toString(),
-          txHash: row.txHash,
-          blockNumber: row.blockNumber.toString(),
+          token: row.token,
         })),
       },
       { headers: { "cache-control": "public, max-age=30, s-maxage=30" } },

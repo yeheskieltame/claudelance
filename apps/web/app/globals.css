@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    /* Light editorial canvas — warm near-white, near-black ink, Claude-clay accent */
+    /* Light editorial canvas - warm near-white, near-black ink, Claude-clay accent */
     --background: 40 33% 98%;
     --foreground: 20 14% 8%;
 
@@ -108,7 +108,7 @@
     color: transparent;
   }
 
-  /* Crisp protocol grid — visible in dark mode */
+  /* Crisp protocol grid - visible in dark mode */
   .bg-grid {
     background-image:
       linear-gradient(hsl(var(--border) / 0.8) 1px, transparent 1px),

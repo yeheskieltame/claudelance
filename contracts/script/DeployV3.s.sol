@@ -19,7 +19,7 @@ import { TaskTypeLib } from "../src/v3/libraries/TaskTypeLib.sol";
 ///
 /// Mainnet only:
 ///   ALLOW_SHARED_ADMIN_WALLETS must NOT be set (or set to false)
-///   — Deploy.s.sol enforces 4-key separation on chainid 42220.
+///   - Deploy.s.sol enforces 4-key separation on chainid 42220.
 contract DeployV3 is Script {
     // ── Min bounty floors (18 decimals for cUSD/CELO, 6 for USDC) ──
     uint256 constant MIN_CUSD = 0.5e18;
@@ -61,7 +61,7 @@ contract DeployV3 is Script {
             (treasury, ciRelayer, owner, identityReg, reputationReg)
         );
 
-        // 3. Deploy proxy — calls initialize() atomically
+        // 3. Deploy proxy - calls initialize() atomically
         ClaudelanceProxy proxy = new ClaudelanceProxy(address(impl), initData);
         console2.log("Proxy (ClaudelanceCoreV3):", address(proxy));
 

@@ -24,8 +24,8 @@ export type WorkerIdentity = {
 };
 
 /**
- * Whether `worker` holds an ERC-8004 Identity NFT — the same `balanceOf > 0`
- * gate the Core enforces on `claimSlot` (NoAgentIdentity) — plus its agent id
+ * Whether `worker` holds an ERC-8004 Identity NFT - the same `balanceOf > 0`
+ * gate the Core enforces on `claimSlot` (NoAgentIdentity) - plus its agent id
  * and on-chain reputation (feedback count) when known.
  */
 export async function fetchWorkerIdentity(worker: Address): Promise<WorkerIdentity> {
@@ -45,7 +45,7 @@ export async function fetchWorkerIdentity(worker: Address): Promise<WorkerIdenti
     })) as bigint;
     hasIdentity = balance > 0n;
   } catch {
-    // RPC trip — fall through with defaults
+    // RPC trip - fall through with defaults
   }
 
   let feedbackCount = 0;
@@ -67,7 +67,7 @@ export async function fetchWorkerIdentity(worker: Address): Promise<WorkerIdenti
         feedbackCount = Number(count);
       }
     } catch {
-      // reputation read failed — leave at 0
+      // reputation read failed - leave at 0
     }
   }
 

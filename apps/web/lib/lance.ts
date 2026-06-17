@@ -1,4 +1,4 @@
-// $LANCE — the internal economy token (Lance Hub, ERC-4626 vault, CELO-backed).
+// $LANCE - the internal economy token (Lance Hub, ERC-4626 vault, CELO-backed).
 // Buy = deposit CELO → mint $LANCE at NAV. Redeem = burn $LANCE → CELO (−fee).
 // See the shared economy plan in the lance-hub repo (ECONOMY.md).
 

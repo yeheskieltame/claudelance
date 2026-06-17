@@ -5,7 +5,7 @@ import {
   type Deployment,
 } from "@yeheskieltame/claudelance-types";
 
-/** Default ABI for ClaudelanceCore — v3 (UUPS proxy). */
+/** Default ABI for ClaudelanceCore - v3 (UUPS proxy). */
 export const coreAbi = CLAUDELANCE_CORE_V3_ABI;
 
 function flatten(d: Deployment) {
@@ -26,7 +26,7 @@ export const deployments = {
   [MAINNET_V3.chainId]: flatten(MAINNET_V3),
 } as const;
 
-/** @deprecated Use deployments[chainId] — kept for backward compat. */
+/** @deprecated Use deployments[chainId] - kept for backward compat. */
 export const MAINNET_FLAT = flatten(MAINNET_V2);
 
 export function getDeployment(chainId: number) {

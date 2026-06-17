@@ -5,7 +5,7 @@ name: Subtree mirror
 # shallow-scan crawler compatibility. See docs/subtree-mirrors.md.
 #
 # Trigger:
-#   - pkg-v* tags (same trigger as publish-npm.yml — keeps mirror in sync with
+#   - pkg-v* tags (same trigger as publish-npm.yml - keeps mirror in sync with
 #     each npm release)
 #   - manual workflow_dispatch with optional package filter
 

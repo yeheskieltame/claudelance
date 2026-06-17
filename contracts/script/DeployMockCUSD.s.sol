@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import { Script, console2 } from "forge-std/Script.sol";
 import { MockCUSD } from "../src/mocks/MockCUSD.sol";
 
-/// @notice Testnet-only — deploys MockCUSD as a cUSD stand-in for Celo Sepolia
+/// @notice Testnet-only - deploys MockCUSD as a cUSD stand-in for Celo Sepolia
 ///         and seeds the deployer with 10_000 mock cUSD so the bounty flow can
 ///         be exercised end-to-end. Refuses to broadcast on Celo mainnet.
 contract DeployMockCUSD is Script {

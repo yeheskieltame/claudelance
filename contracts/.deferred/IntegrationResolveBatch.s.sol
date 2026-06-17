@@ -51,7 +51,7 @@ contract IntegrationResolveBatch is Script {
         vm.stopBroadcast();
 
         // ====================================================================
-        // Bounty A — bountyId 1 — forfeit-to-treasury path
+        // Bounty A - bountyId 1 - forfeit-to-treasury path
         // ====================================================================
         uint256 idA = 1;
         IClaudelanceCore.Bounty memory bA = core.getBounty(idA);
@@ -80,7 +80,7 @@ contract IntegrationResolveBatch is Script {
         vm.stopBroadcast();
 
         // ====================================================================
-        // Bounty B — bountyId 2 — alt-winner path (W2 wins this time)
+        // Bounty B - bountyId 2 - alt-winner path (W2 wins this time)
         // ====================================================================
         uint256 idB = 2;
         IClaudelanceCore.Bounty memory bB = core.getBounty(idB);

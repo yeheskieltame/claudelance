@@ -1,9 +1,16 @@
 import { ArrowUpRight, Trophy } from "lucide-react";
+import Link from "next/link";
 
 import { GlassCard } from "@/components/ui/card";
-import { txUrl } from "@/lib/celoscan";
-import { formatCELO } from "@/lib/format-token";
+import { formatTokenAmount } from "@/lib/format-token";
+import { symbolForAddress } from "@/lib/token-theme";
 import type { WorkerHistoryRow } from "@/lib/worker-history";
+
+function formatPayout(amount: bigint, token: string): string {
+  const symbol = symbolForAddress(token);
+  const decimals = symbol === "USDC" ? 6 : 18;
+  return `${formatTokenAmount(amount, decimals, 2)} ${symbol ?? ""}`.trim();
+}
 
 export function WorkerHistoryCard({ rows }: { rows: WorkerHistoryRow[] }) {
   return (
@@ -16,30 +23,28 @@ export function WorkerHistoryCard({ rows }: { rows: WorkerHistoryRow[] }) {
       </div>
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">
-          No bounty wins recorded in the recent block window.
+          No resolved bounty wins for this worker yet.
         </p>
       ) : (
         <ul className="mt-4 divide-y divide-border/60">
           {rows.map((row) => (
             <li
-              key={row.txHash}
+              key={row.bountyId.toString()}
               className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 text-sm"
             >
               <div className="min-w-0">
                 <p className="font-medium">Bounty #{row.bountyId.toString()}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Payout {formatCELO(row.winnerPayout)} CELO
+                  Payout {formatPayout(row.winnerPayout, row.token)}
                 </p>
               </div>
-              <a
-                href={txUrl(row.txHash)}
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                href={`/bounty/${row.bountyId.toString()}`}
                 className="touch-target inline-flex items-center gap-1 rounded-full text-xs text-muted-foreground hover:text-foreground"
-                aria-label="View resolution tx on Celoscan"
+                aria-label={`View bounty #${row.bountyId.toString()}`}
               >
                 <ArrowUpRight className="h-3.5 w-3.5" />
-              </a>
+              </Link>
             </li>
           ))}
         </ul>

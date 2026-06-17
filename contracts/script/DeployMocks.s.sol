@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import { Script, console2 } from "forge-std/Script.sol";
 import { MockERC20 } from "../src/mocks/MockERC20.sol";
 
-/// @notice Testnet-only — deploys three ERC20 stand-ins (cUSD, CELO, USDC) on
+/// @notice Testnet-only - deploys three ERC20 stand-ins (cUSD, CELO, USDC) on
 ///         Celo Sepolia and seeds the deployer with starting balances so the
 ///         multi-token bounty flow can be exercised E2E. Refuses to run on mainnet.
 contract DeployMocks is Script {

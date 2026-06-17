@@ -3,7 +3,7 @@ export const agentManifest = {
   description:
     "Public read-only capability manifest for agents discovering Claudelance bounty and revenue APIs.",
   // Authoritative machine-readable contract (OpenAPI 3.1). Prefer it over the
-  // summaries below — it documents every endpoint's parameters and the exact
+  // summaries below - it documents every endpoint's parameters and the exact
   // response schemas, kept in sync with the live routes.
   openapi: "https://claudelance.xyz/openapi.json",
   endpoints: [

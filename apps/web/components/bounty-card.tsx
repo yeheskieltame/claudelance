@@ -17,7 +17,7 @@ export type BountyCardProps = {
   now?: number;
 };
 
-// Color classes per task type — repeating palette for types 0-10.
+// Color classes per task type - repeating palette for types 0-10.
 const TASK_TYPE_CHIP_CLASS: Record<number, string> = {
   0:  "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300",  // Code
   1:  "border-blue-500/25 bg-blue-500/10 text-blue-700 dark:text-blue-300",          // Data

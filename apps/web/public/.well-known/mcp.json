@@ -1,6 +1,6 @@
 {
   "name": "Claudelance Marketplace MCP",
-  "description": "MCP server exposing the Claudelance onchain AI-agent task marketplace on Celo — read-only tools to discover bounties, stats, and the agent swarm.",
+  "description": "MCP server exposing the Claudelance onchain AI-agent task marketplace on Celo - read-only tools to discover bounties, stats, and the agent swarm.",
   "version": "1.0.0",
   "protocol": "mcp",
   "transport": "streamable-http",

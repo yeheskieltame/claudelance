@@ -19,16 +19,16 @@ MiniPay-friendly Next.js 15 frontend for the [Claudelance](../../README.md) boun
 
 ## What's in here
 
-- **Landing page** (`/`) — hero, four-tile live stats card (server-side multicall against the deployed core), feature grid, footer
-- **Theming** — `next-themes` with system default; dark + light variants of the glassmorphism surface
-- **Live chain reads** — viem `createPublicClient` reading from the active Claudelance core
-- **MiniPay detection hook** — `useMiniPayDetection` for the Opera MiniPay in-app browser eligibility gate
+- **Landing page** (`/`) - hero, four-tile live stats card (server-side multicall against the deployed core), feature grid, footer
+- **Theming** - `next-themes` with system default; dark + light variants of the glassmorphism surface
+- **Live chain reads** - viem `createPublicClient` reading from the active Claudelance core
+- **MiniPay detection hook** - `useMiniPayDetection` for the Opera MiniPay in-app browser eligibility gate
 
 ## Status
 
 | Route | State | Notes |
 |-------|-------|-------|
-| `/` | landing live; v2 wire-up pending | Hero + stats card currently bound to v1 ABI — needs port to `getStats(token)` + `@yeheskieltame/claudelance-sdk@0.2.0` |
+| `/` | landing live; v2 wire-up pending | Hero + stats card currently bound to v1 ABI - needs port to `getStats(token)` + `@yeheskieltame/claudelance-sdk@0.2.0` |
 | `/bounties` | pending | Listing of open bounties (sortable, filter by token + status) |
 | `/bounties/[id]` | pending | Bounty detail + claim/submit/pick UI |
 | `/post` | pending | Open marketplace post-bounty form |
@@ -45,7 +45,7 @@ The landing route still compiles and renders, but its multicall path returns zer
 | Network | Core address | Status |
 |---------|--------------|--------|
 | Celo Mainnet v2 (42220) | [`0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`](https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#code) | v2 LIVE (immutable, code only) |
-| **Celo Mainnet v3 (42220)** | [`0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8`](https://celoscan.io/address/0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8#code) | **v3 LIVE** (UUPS, types 0–10) |
+| **Celo Mainnet v3 (42220)** | [`0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8`](https://celoscan.io/address/0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8#code) | **v3 LIVE** (UUPS, types 0-10) |
 | Celo Sepolia (11142220) | [`0xC478e36CC213Cb459282b5B690bF8FF4975A911F`](https://sepolia.celoscan.io/address/0xc478e36cc213cb459282b5b690bf8ff4975a911f#code) | v2 staging |
 
 Read addresses from `@yeheskieltame/claudelance-types` (`MAINNET.core`, `MAINNET.tokens.cUSD`, etc.). Never hardcode in source.
@@ -54,7 +54,7 @@ Read addresses from `@yeheskieltame/claudelance-types` (`MAINNET.core`, `MAINNET
 
 ```bash
 pnpm install              # from monorepo root
-cp .env.example .env      # or skip — fallback defaults work
+cp .env.example .env      # or skip - fallback defaults work
 pnpm --filter @yeheskieltame/claudelance-web dev
 # -> http://localhost:3000
 ```
@@ -63,7 +63,7 @@ No backend service is required for the landing page; every chain read is a serve
 
 ## Environment variables
 
-The app reads from `.env` (or `.env.local` for overrides). All vars are optional — sensible defaults fall back to live Celo Mainnet RPC.
+The app reads from `.env` (or `.env.local` for overrides). All vars are optional - sensible defaults fall back to live Celo Mainnet RPC.
 
 ```bash
 NEXT_PUBLIC_CHAIN=celo            # celo (mainnet) | celo-sepolia (staging); default: celo
@@ -94,7 +94,7 @@ lib/
   minipay.ts      useMiniPayDetection, Opera MiniPay in-app browser check
 ```
 
-Migration target — replace the inline `coreAbi` and bespoke deployment record in `lib/contracts.ts` with imports from `@yeheskieltame/claudelance-types@0.3.0`:
+Migration target - replace the inline `coreAbi` and bespoke deployment record in `lib/contracts.ts` with imports from `@yeheskieltame/claudelance-types@0.3.0`:
 
 ```ts
 import {
@@ -128,8 +128,8 @@ Write-side wagmi connectors land alongside the post-bounty + claim-slot flows in
 pnpm typecheck && pnpm build
 ```
 
-The build must stay under ~120 kB First Load JS on `/` — the landing route is the canonical optimization target.
+The build must stay under ~120 kB First Load JS on `/` - the landing route is the canonical optimization target.
 
 ## License
 
-MIT — see repo root [LICENSE](../../LICENSE).
+MIT - see repo root [LICENSE](../../LICENSE).

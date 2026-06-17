@@ -15,7 +15,7 @@ shapes depending on what you're touching.
 ## Worker flow
 
 All bounties are **direct-hire only** as of 2026-05-17. Public `bounty-open`
-issues are not posted — bounty issues are informational, the on-chain
+issues are not posted - bounty issues are informational, the on-chain
 `postDirectHire` call is the source of truth.
 
 If you've been targeted as the worker for a bounty:
@@ -58,7 +58,7 @@ Non-bounty contributions follow the standard fork-PR loop.
    ```
 
 4. For contracts: `slither contracts/src/ClaudelanceCore.sol` must come back
-   clean. Mainnet contracts are immutable — security review gating is strict.
+   clean. Mainnet contracts are immutable - security review gating is strict.
 5. Open a PR using the template. Self-review is fine for hackathon scope.
 6. CI must pass before merge.
 
@@ -74,7 +74,7 @@ Non-bounty contributions follow the standard fork-PR loop.
 ## Releasing npm packages
 
 `@yeheskieltame/claudelance-sdk` + `-types` publish from CI on a tag. npm
-`latest` only reflects what was tagged — a feature merged to `main` is **not**
+`latest` only reflects what was tagged - a feature merged to `main` is **not**
 on npm until the next release, so release promptly after merging a consumer-
 facing change.
 
@@ -91,7 +91,7 @@ facing change.
    ```
 
    (We shipped `0.4.3` without the `ClaudelanceClient.address` getter because
-   it was tagged before the getter merged — a tarball check would have caught it.)
+   it was tagged before the getter merged - a tarball check would have caught it.)
 
 ## Local setup
 
@@ -112,6 +112,6 @@ forge install + deploy notes.
 - New abstractions without a concrete second caller.
 - Emoji / decorative checkmarks in code, comments, commit messages, or
   PR descriptions.
-- Test mocks for the database or contract interactions — we use real
+- Test mocks for the database or contract interactions - we use real
   Anvil / Sepolia for integration testing.
 - PRs that bypass pre-commit hooks (`--no-verify`).
