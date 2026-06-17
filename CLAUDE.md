@@ -30,8 +30,8 @@
 | Protocol fee | 2% on resolved bounties, per-token accounting |
 | Submission method | Unified: GitHub PR (all bounty types) |
 | Off-chain config | `claudelance/bounties-registry` (JSON), keccak256 hash onchain |
-| Phase 1 UI bounty types | All v3 types 0–10 live in the web post form (type picker, per-type deliverable hints, disclaimer notice for 8/9); CI checkbox only for types 0/5 |
-| Smart contract bounty types | 0-255 (future-proof); v3 defines canonical types 0–10 |
+| Phase 1 UI bounty types | All v3 types 0-10 live in the web post form (type picker, per-type deliverable hints, disclaimer notice for 8/9); CI checkbox only for types 0/5 |
+| Smart contract bounty types | 0-255 (future-proof); v3 defines canonical types 0-10 |
 | v3 contract pattern | UUPS upgradeable (EIP-1822) via OZ upgradeable contracts; `_authorizeUpgrade` gated to Safe multisig; EIP-7201 namespaced storage |
 | v3 submission method | `submitDeliverable(url, contentHash)` - GitHub PR for code, Gist/IPFS/Arweave for all other types |
 | Hackathon tracks | MiniApps + AI Powered Apps & Agents (dual entry) |
@@ -44,7 +44,7 @@
 | Mainnet wallet topology | 4 distinct keys - `Deploy.s.sol` aborts on chainid 42220 if any collide. Owner is a Safe multisig (threshold 2). |
 | Mainnet deployer | Must be the user's Talent-registered address (`0x77c4a1c…`) for Celo Proof of Ship attribution |
 | Mainnet v2 status | **LIVE** at `0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`, Celoscan-verified, allowToken applied for cUSD/CELO/USDC. As of 2026-05-24: 76 of 92 bounties resolved, 1.52 CELO protocol fees, 30 operator-run validation wallets, `uniquePosterCount = 1`. Operator dogfooding only - never label as organic adoption. |
-| Mainnet v3 status | **LIVE** - proxy `0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8`, impl `0x92b7d04E9A3fa3C96bfc891D8E8dB61Fe6C1D49C`, deployed 2026-06-04, Celoscan-verified. cUSD/CELO/USDC whitelisted via Safe multisig. Accepts task types 0–10. **v3.1 LIVE (2026-06-10):** proxy upgraded via Safe to impl `0x01A7Ee90F121Bd57BD1059f5B347C98e37aAaea7` (`version()` = 3.1.0). Adds permissionless `attestReputation(bountyId, agentId)` writing +1 ERC-8004 feedback per resolved bounty (PR #462). All 21 resolved v3 bounties backfilled from the relayer wallet - 9 worker agents (ids 9061-9072) now carry registry feedback with the proxy as client. |
+| Mainnet v3 status | **LIVE** - proxy `0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8`, impl `0x92b7d04E9A3fa3C96bfc891D8E8dB61Fe6C1D49C`, deployed 2026-06-04, Celoscan-verified. cUSD/CELO/USDC whitelisted via Safe multisig. Accepts task types 0-10. **v3.1 LIVE (2026-06-10):** proxy upgraded via Safe to impl `0x01A7Ee90F121Bd57BD1059f5B347C98e37aAaea7` (`version()` = 3.1.0). Adds permissionless `attestReputation(bountyId, agentId)` writing +1 ERC-8004 feedback per resolved bounty (PR #462). All 21 resolved v3 bounties backfilled from the relayer wallet - 9 worker agents (ids 9061-9072) now carry registry feedback with the proxy as client. |
 | Sepolia v3 status | **LIVE** - proxy `0x64b45Fe2C64951013389740AD530e5c664fd0Ffe`, impl `0x1fb667a40159e4652A89dDFC9ADF3eEcB6F0A572`, deployed 2026-06-04, tokens whitelisted inline. |
 
 ## Repo structure
@@ -52,8 +52,8 @@
 | Path | Status | Notes |
 |------|--------|-------|
 | `contracts/` | v2 LIVE mainnet + Sepolia | Foundry, Solidity 0.8.24, OZ v5 |
-| `contracts/src/v3/` | **v3 LIVE mainnet + Sepolia** | UUPS proxy, task types 0–10, EIP-7201 storage, 144 tests |
-| `apps/web/` | LIVE at claudelance.xyz, targets mainnet v3 | Next.js 15 MiniPay app on the v3 proxy (post all task types 0–10 / feed / detail / worker / revenue + MiniPay + Privy); deploy = manual `vercel --prod` from repo root |
+| `contracts/src/v3/` | **v3 LIVE mainnet + Sepolia** | UUPS proxy, task types 0-10, EIP-7201 storage, 144 tests |
+| `apps/web/` | LIVE at claudelance.xyz, targets mainnet v3 | Next.js 15 MiniPay app on the v3 proxy (post all task types 0-10 / feed / detail / worker / revenue + MiniPay + Privy); deploy = manual `vercel --prod` from repo root |
 | `apps/relayer/` | **LIVE on Railway (2026-06-10)** | Always-on keeper for the ERC-8004 agent (#465, #468): `settleStake`/`cancelExpired`/`attestReputation` every 5 min on mainnet v3, plus the signed GitHub CI webhook (dormant under direct-hire). Railway project `claudelance-relayer`, Docker build, no public domain (no ingress; healthcheck internal). Key only in Railway service variables. Simulate-first writes, live gas price, agentId cache. Rollout was dry-run-first. |
 | `packages/worker/` | not started (empty dir; post-hackathon backlog) | `@yeheskieltame/claudelance-worker` Claude Code CLI |
 | `packages/types/` | v0.6.6 LIVE on npmjs + GH Packages | `@yeheskieltame/claudelance-types` shared ABI + types; V3 ABI mirrors the deployed proxy exactly (UUPS/Pausable/Ownable2Step + OZ errors) |
@@ -205,7 +205,7 @@ All new tooling targets v3 proxy `0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8` (m
 
 **v3 surface highlights vs v2:**
 - `initialize(treasury, ciRelayer, owner, identityReg, reputationReg)` - replaces constructor
-- `postBounty(token, bountyType, ...)` - same shape as v2 but `bountyType` 0–10 canonical
+- `postBounty(token, bountyType, ...)` - same shape as v2 but `bountyType` 0-10 canonical
 - `postDirectHire(token, targetWorker, bountyType, ...)` - forces `maxSlots=1`, `ciRequired=false`
 - `submitDeliverable(bountyId, deliverableUrl, deliverableHash, metadata)` - replaces `submitPR`; accepts GitHub PR, Gist, IPFS, Arweave
 - `attestCI(bountyId, worker, passed)` - same interface
