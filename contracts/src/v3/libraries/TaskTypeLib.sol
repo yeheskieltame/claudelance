@@ -25,7 +25,7 @@ library TaskTypeLib {
     uint8 internal constant MAX_CANONICAL_TYPE = 10;
 
     /// @notice Returns the default TypeConfig for a canonical type ID.
-    ///         All canonical types (0–10) are enabled by default.
+    ///         All canonical types (0-10) are enabled by default.
     ///         Types above MAX_CANONICAL_TYPE return a disabled config.
     function defaultConfig(uint8 typeId) internal pure returns (TypeConfig memory cfg) {
         if (typeId > MAX_CANONICAL_TYPE) return cfg; // disabled, all false
