@@ -1,10 +1,10 @@
-# ClaudelanceCore v3 — Contract Architecture
+# ClaudelanceCore v3 - Contract Architecture
 
 ## Status
 
-**v2** — immutable at `0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423` (Celo Mainnet). Serves existing code bounties.
+**v2** - immutable at `0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423` (Celo Mainnet). Serves existing code bounties.
 
-**v3 — LIVE (2026-06-04)**
+**v3 - LIVE (2026-06-04)**
 
 | Network | Proxy | Implementation |
 |---------|-------|----------------|
@@ -17,7 +17,7 @@ Both Celoscan-verified. cUSD / CELO / USDC whitelisted on both networks. 144 tes
 
 ## Why UUPS for v3
 
-v2's immutability was correct for Phase 1 — minimal surface area, no admin risk.
+v2's immutability was correct for Phase 1 - minimal surface area, no admin risk.
 v3 introduces 10+ task type categories, a deliverable registry, disclaimer enforcement,
 and a pluggable verification layer. These subsystems will evolve as the marketplace
 grows; an immutable contract would require a full redeploy for each iteration.
@@ -237,22 +237,22 @@ v2 is NOT migrated. It runs in parallel:
 | v2 `0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423` | Code bounties (type 0), existing state | Permanent, immutable |
 | v3 proxy `0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8` | All types 0–10, upgradeable | **LIVE 2026-06-04** |
 
-Frontend connects to both — `/bounties` feed queries both contracts and merges results.
+Frontend connects to both - `/bounties` feed queries both contracts and merges results.
 SDK adds `network: "v3"` option alongside existing `"celo"` / `"sepolia"`.
 
 ---
 
 ## Security Considerations
 
-1. **Upgrade key is the Safe multisig** — cannot be upgraded by a single compromised key.
-2. **Storage namespacing** — EIP-7201 prevents slot collision between v3 versions.
-3. **Initializer guard** — `initializer` modifier prevents re-initialization.
-4. **`_disableInitializers()`** called in the implementation constructor — prevents
+1. **Upgrade key is the Safe multisig** - cannot be upgraded by a single compromised key.
+2. **Storage namespacing** - EIP-7201 prevents slot collision between v3 versions.
+3. **Initializer guard** - `initializer` modifier prevents re-initialization.
+4. **`_disableInitializers()`** called in the implementation constructor - prevents
    direct initialization of the implementation contract.
-5. **Token whitelist is one-way** — same as v2; cannot strand live escrows.
-6. **Pause mechanism** — owner can pause/unpause via Safe.
-7. **Reentrancy guards** — all fund-moving functions use `nonReentrant`.
-8. **Pull pattern** — earnings and stake refunds are pull-based (no push to untrusted addresses).
+5. **Token whitelist is one-way** - same as v2; cannot strand live escrows.
+6. **Pause mechanism** - owner can pause/unpause via Safe.
+7. **Reentrancy guards** - all fund-moving functions use `nonReentrant`.
+8. **Pull pattern** - earnings and stake refunds are pull-based (no push to untrusted addresses).
 
 ---
 
@@ -262,12 +262,12 @@ Beyond the 83 unit + 4 invariant tests inherited from v2:
 
 ```
 test/v3/
-  UpgradeProxy.t.sol        — deploy proxy, upgrade impl, storage integrity
-  TaskTypes.t.sol           — configureTaskType, enabled/disabled checks
-  DeliverableSubmit.t.sol   — submitDeliverable with non-code types
-  DisclaimerAttest.t.sol    — relayer rejects submission without disclaimer (types 8,9)
-  StorageLayout.t.sol       — slot collision check across two impl versions
-  Invariants.v3.t.sol       — extend v2 invariant suite for v3 state
+  UpgradeProxy.t.sol        - deploy proxy, upgrade impl, storage integrity
+  TaskTypes.t.sol           - configureTaskType, enabled/disabled checks
+  DeliverableSubmit.t.sol   - submitDeliverable with non-code types
+  DisclaimerAttest.t.sol    - relayer rejects submission without disclaimer (types 8,9)
+  StorageLayout.t.sol       - slot collision check across two impl versions
+  Invariants.v3.t.sol       - extend v2 invariant suite for v3 state
 ```
 
 Target: 120+ tests before mainnet v3 deploy.
@@ -278,10 +278,10 @@ Target: 120+ tests before mainnet v3 deploy.
 
 | Milestone | Status |
 |-----------|--------|
-| Sepolia v3 deploy (all 10 types, EIP-7201) | **DONE — 2026-06-04** |
+| Sepolia v3 deploy (all 10 types, EIP-7201) | **DONE - 2026-06-04** |
 | 144 tests pass (23 unit + 38 fork + 79 regression) | **DONE** |
 | Security review cleared (no Critical/High/Medium) | **DONE** |
-| Mainnet v3 deploy via deployer key | **DONE — 2026-06-04** |
-| allowToken cUSD/CELO/USDC via Safe multisig | **DONE — 2026-06-06** (Safe exec confirmed) |
+| Mainnet v3 deploy via deployer key | **DONE - 2026-06-04** |
+| allowToken cUSD/CELO/USDC via Safe multisig | **DONE - 2026-06-06** (Safe exec confirmed) |
 | Frontend v3 pages (/post-v3, /bounties?v=3) | Pending |
 | SDK v3 support (`@yeheskieltame/claudelance-sdk@1.0.0`) | Pending |
