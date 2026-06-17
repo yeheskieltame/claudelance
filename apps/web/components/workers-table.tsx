@@ -112,7 +112,7 @@ export function WorkersTable({ rows }: { rows: WorkerRow[] }) {
                             ERC-8004
                           </span>
                         ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground">-</span>
                         )}
                         {row.feedbackCount > 0 && (
                           <span
