@@ -6,7 +6,7 @@ import type { Address } from "viem";
  * Identity NFT, have approved Core for all whitelisted tokens, and
  * rotate through direct-hire bounties.
  *
- * Listing them publicly is intentional — it lets judges + observers
+ * Listing them publicly is intentional - it lets judges + observers
  * trace daily on-chain activity per worker via Celoscan.
  */
 export const SWARM_ROSTER: ReadonlyArray<Address> = [
