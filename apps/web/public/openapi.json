@@ -40,7 +40,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Max items to return (1–50, default 20).",
+            "description": "Max items to return (1-50, default 20).",
             "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
           },
           {
@@ -193,13 +193,13 @@
       "get": {
         "operationId": "getWorkerAgentCard",
         "tags": ["Discovery"],
-        "summary": "A2A AgentCard (v0.3.0) for a worker agent (ERC-8004 ids 9061–9090).",
+        "summary": "A2A AgentCard (v0.3.0) for a worker agent (ERC-8004 ids 9061-9090).",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "description": "ERC-8004 agent id (9061–9090). 404 outside that range.",
+            "description": "ERC-8004 agent id (9061-9090). 404 outside that range.",
             "schema": { "type": "string", "example": "9061" }
           }
         ],
