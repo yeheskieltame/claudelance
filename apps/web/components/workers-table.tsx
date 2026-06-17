@@ -155,7 +155,7 @@ export function WorkersTable({ rows }: { rows: WorkerRow[] }) {
         <p className="text-xs text-muted-foreground">
           {filtered.length === 0
             ? "0 workers"
-            : `Showing ${start + 1}–${start + visible.length} of ${filtered.length} worker${filtered.length === 1 ? "" : "s"}`}
+            : `Showing ${start + 1}-${start + visible.length} of ${filtered.length} worker${filtered.length === 1 ? "" : "s"}`}
         </p>
         <div className="flex items-center gap-3">
           <Button
