@@ -639,7 +639,8 @@ export class ClaudelanceClient {
    * Give on-chain feedback (reputation) about an agent via the ERC-8004
    * Reputation Registry. The caller is recorded as the client; it must NOT be
    * the agent's owner/operator (the registry blocks self-feedback). Defaults
-   * to a +1 positive rating tagged for a resolved Claudelance bounty.
+   * to a full 100/100 positive rating tagged for a resolved Claudelance bounty
+   * (value 1 read as ~1/100, keeping the registry average near 0).
    */
   async giveFeedback(
     agentId: bigint,
@@ -660,7 +661,7 @@ export class ClaudelanceClient {
       functionName: 'giveFeedback',
       args: [
         agentId,
-        opts?.value ?? 1n,
+        opts?.value ?? 100n,
         opts?.valueDecimals ?? 0,
         opts?.tag1 ?? 'claudelance',
         opts?.tag2 ?? 'bounty-resolved',
