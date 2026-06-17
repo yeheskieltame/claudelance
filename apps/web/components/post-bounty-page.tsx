@@ -111,7 +111,7 @@ type FormState = {
   hireMode: HireMode;
   // Direct-hire only: the worker's WALLET address (contract `targetWorker` is an
   // `address`, not the ERC-8004 id). The wallet must hold an ERC-8004 identity
-  // to claim — validated live in the form, since the contract checks it only at
+  // to claim - validated live in the form, since the contract checks it only at
   // claim time.
   targetWorker: string;
   token: TokenSymbol;
@@ -284,7 +284,7 @@ function PostBountyForm() {
   const onReview = step === 3;
 
   // Best practice: the contract doesn't check the target holds an ERC-8004
-  // identity at post time (only at claim), so validate it here — a target
+  // identity at post time (only at claim), so validate it here - a target
   // without one can never claim and the bounty would sit until cancelExpired.
   const { data: targetIdentityBal } = useReadContract({
     address: deployment.identityRegistry as Address,
@@ -343,7 +343,7 @@ function PostBountyForm() {
   const isPostConfirmed = postReceipt?.status === "success";
 
   // Re-read allowance once the approval is mined, so Post unlocks exactly when
-  // the on-chain allowance is actually sufficient — not when the tx was sent.
+  // the on-chain allowance is actually sufficient - not when the tx was sent.
   React.useEffect(() => {
     if (isApproveConfirmed) void refetchAllowance();
   }, [isApproveConfirmed, refetchAllowance]);
@@ -1438,7 +1438,7 @@ function parseForm(values: FormState, deployment: typeof MAINNET_V3) {
     const amount = parseUnits(values.amount, token.decimals);
     const stake = parseUnits(values.stake, token.decimals);
     // Contract takes `deadline` as a DURATION in seconds from now (it adds
-    // block.timestamp on-chain) bounded to MIN_DEADLINE 1d..MAX_DEADLINE 14d —
+    // block.timestamp on-chain) bounded to MIN_DEADLINE 1d..MAX_DEADLINE 14d -
     // NOT an absolute timestamp.
     const deadlineSeconds = BigInt(Math.floor((Date.parse(values.deadline) - Date.now()) / 1000));
     const requirementsHash = keccak256(
