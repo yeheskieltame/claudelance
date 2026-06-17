@@ -16,7 +16,7 @@ import { DEFAULT_CHAIN_ID } from "@/lib/chain";
 import { cn } from "@/lib/utils";
 
 /**
- * Plain wallet-to-wallet token transfer — the flow MiniPay omits. Picks a token,
+ * Plain wallet-to-wallet token transfer - the flow MiniPay omits. Picks a token,
  * validates the recipient and amount against the live balance, and sends an
  * ERC-20 transfer (all three tokens, incl. CELO, are ERC-20 on Celo) paying gas
  * in cUSD inside MiniPay via the fee-currency field.
