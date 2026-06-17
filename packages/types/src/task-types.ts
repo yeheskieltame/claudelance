@@ -1,4 +1,4 @@
-/** Canonical task type IDs for ClaudelanceCoreV3 (uint8, 0–10). */
+/** Canonical task type IDs for ClaudelanceCoreV3 (uint8, 0-10). */
 export enum TaskType {
   Code = 0,
   DataAnalysis = 1,
