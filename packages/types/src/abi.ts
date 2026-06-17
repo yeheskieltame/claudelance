@@ -1707,7 +1707,7 @@ export type ClaudelanceCoreAbi = typeof CLAUDELANCE_CORE_ABI;
  *   - getClaimers / getEligibleSubmissions view helpers
  *   - initialize replaces constructor (UUPS proxy pattern)
  *   - State vars (hasClaimed, earnings, minBounty, bountyCount) are in
- *     EIP-7201 namespaced storage — no public getters. Use getStatsV3 for
+ *     EIP-7201 namespaced storage - no public getters. Use getStatsV3 for
  *     aggregate counts; use event logs for per-account earnings.
  */
 export const CLAUDELANCE_CORE_V3_ABI = [
