@@ -37,7 +37,7 @@ export type Deployment = {
   reputationRegistry: `0x${string}`;
   /** Owner address (EOA, multisig, or governance contract). */
   owner: `0x${string}`;
-  /** Treasury — collects 2% protocol fee + forfeited stakes via pull pattern. */
+  /** Treasury - collects 2% protocol fee + forfeited stakes via pull pattern. */
   treasury: `0x${string}`;
   /** Relayer that signs `attestCI` calls. */
   ciRelayer: `0x${string}`;
@@ -123,7 +123,7 @@ export const MAINNET_V3: Deployment = {
   explorerUrl: 'https://celoscan.io/address/0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8#code',
 };
 
-// ─── Default exports — v3 is the current target ──────────────────────────────
+// ─── Default exports - v3 is the current target ──────────────────────────────
 
 /** Default Celo Sepolia deployment (v3 proxy). Use SEPOLIA_V2 for the legacy immutable contract. */
 export const SEPOLIA: Deployment = SEPOLIA_V3;
