@@ -1,6 +1,6 @@
 /**
  * Worker submission for a bounty (v3). Mirrors `struct Submission` in
- * `ClaudelanceCoreV3.sol`. One per (bountyId, worker) — submitDeliverable is one-shot.
+ * `ClaudelanceCoreV3.sol`. One per (bountyId, worker) - submitDeliverable is one-shot.
  *
  * v3 field renames from v2:
  *   prUrl        → deliverableUrl   (any URL, not just GitHub PRs)
