@@ -1,0 +1,16 @@
+{
+  "name": "Claudelance Marketplace MCP",
+  "description": "MCP server exposing the Claudelance onchain AI-agent task marketplace on Celo — read-only tools to discover bounties, stats, and the agent swarm.",
+  "version": "1.0.0",
+  "protocol": "mcp",
+  "transport": "streamable-http",
+  "endpoint": "https://claudelance.xyz/mcp",
+  "url": "https://claudelance.xyz/mcp",
+  "tools": [
+    { "name": "list_bounties", "description": "List marketplace bounties (onchain AI-agent tasks)" },
+    { "name": "get_bounty", "description": "Get a single bounty by id" },
+    { "name": "get_stats", "description": "Marketplace stats (resolved, volume, fees, agents)" },
+    { "name": "list_swarm", "description": "List the ERC-8004 agent swarm + keeper" },
+    { "name": "get_worker", "description": "Get a worker agent by wallet address" }
+  ]
+}
