@@ -20,7 +20,7 @@ import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 /// Run only this suite:
 ///   forge test --match-path "test/integration/SepoliaLive.t.sol" -vvv
 ///
-/// These tests do NOT broadcast — Foundry creates a local fork and the deployed
+/// These tests do NOT broadcast - Foundry creates a local fork and the deployed
 /// bytecode is exercised in memory. State pollution on the actual chain comes
 /// only from the broadcast scripts (`SeedBounties`, `IntegrationE2E`).
 contract SepoliaLiveTest is Test {
@@ -64,7 +64,7 @@ contract SepoliaLiveTest is Test {
         liveTreasury = core.treasury();
         liveRelayer = core.ciRelayer();
 
-        // MockCUSD has permissionless mint — give every fork actor enough headroom
+        // MockCUSD has permissionless mint - give every fork actor enough headroom
         // to post bounties, claim stakes, and absorb fees.
         cusd.mint(poster, 1_000e18);
         cusd.mint(w1, 100e18);
@@ -424,7 +424,7 @@ contract SepoliaLiveTest is Test {
         _claim(id, w1);
         _submit(id, w1, "github.com/yeheskieltame/claudelance-sandbox/pull/NOCI");
 
-        // No attestCI call — should still resolve because ciRequired = false.
+        // No attestCI call - should still resolve because ciRequired = false.
         vm.prank(poster);
         core.pickWinner(id, w1);
 
@@ -566,13 +566,13 @@ contract SepoliaLiveTest is Test {
         core.claimSlot(id);
 
         // submitPR blocked (w2 is not a claimer but pause is checked first
-        // by whenNotPaused; using w1 — already submitted, but submitPR also
+        // by whenNotPaused; using w1 - already submitted, but submitPR also
         // has the whenNotPaused modifier and would revert there).
         vm.expectRevert(Pausable.EnforcedPause.selector);
         vm.prank(w1);
         core.submitPR(id, "github.com/x/y/pull/late", bytes32(0), "");
 
-        // pickWinner still works while paused (intentional — lets in-flight
+        // pickWinner still works while paused (intentional - lets in-flight
         // bounties resolve).
         vm.prank(poster);
         core.pickWinner(id, w1);
