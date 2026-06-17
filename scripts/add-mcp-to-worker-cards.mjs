@@ -49,6 +49,11 @@ for (let i = 1; i <= 30; i++) {
   const agentId = BigInt(9060 + i);
   try {
     const cur = await pub.readContract({ address: IDENTITY, abi: ABI, functionName: "tokenURI", args: [agentId] });
+    if (!cur || !cur.includes("base64,")) {
+      console.log(`w${i} (${agentId}) card not a data-URI — skip`);
+      skipped++;
+      continue;
+    }
     const card = JSON.parse(Buffer.from(cur.split("base64,")[1], "base64").toString());
     if ((card.services || []).some((s) => (s.name || "").toUpperCase() === "MCP")) {
       console.log(`w${i} (${agentId}) already has MCP — skip`);
@@ -64,7 +69,7 @@ for (let i = 1; i <= 30; i++) {
     card.services.unshift(MCP);
     const newURI = "data:application/json;base64," + Buffer.from(JSON.stringify(card)).toString("base64");
     const wal = createWalletClient({ account: privateKeyToAccount(pk.startsWith("0x") ? pk : `0x${pk}`), chain: celo, transport: http(RPC) });
-    const hash = await wal.writeContract({ address: IDENTITY, abi: ABI, functionName: "setAgentURI", args: [agentId, newURI], gas: 1_700_000n, ...FEE });
+    const hash = await wal.writeContract({ address: IDENTITY, abi: ABI, functionName: "setAgentURI", args: [agentId, newURI], gas: 600_000n, ...FEE });
     const r = await pub.waitForTransactionReceipt({ hash });
     console.log(`w${i} (${agentId}) MCP set — status=${r.status} gas=${r.gasUsed}`);
     done++;
