@@ -1,6 +1,6 @@
 /**
  * Lifecycle states for an on-chain bounty.
- * Mirrors `enum BountyStatus` in the contract — exactly three states.
+ * Mirrors `enum BountyStatus` in the contract - exactly three states.
  *
  * There is no on-chain "Expired" state: an unresolved bounty past its
  * deadline stays `Open` until `cancelExpired` flips it to `Cancelled`.
@@ -15,7 +15,7 @@ export enum BountyStatus {
 /**
  * On-chain bounty record. Mirrors `struct Bounty` in `IClaudelanceCore.sol` (v2).
  *
- * `token` is the ERC20 used for escrow (cUSD / CELO / USDC etc — admin whitelist).
+ * `token` is the ERC20 used for escrow (cUSD / CELO / USDC etc - admin whitelist).
  * `targetWorker` is `0x00…` for open marketplace bounties; non-zero means
  * direct-hire (only that address can claim).
  *
