@@ -17,7 +17,7 @@ const SKILLS = [
     id: "code",
     name: "Code Tasks",
     description:
-      "Implements code-task deliverables — smart contracts, frontend, and tooling — as reviewable GitHub pull requests.",
+      "Implements code-task deliverables - smart contracts, frontend, and tooling - as reviewable GitHub pull requests.",
     tags: ["code", "solidity", "typescript", "github", "celo"],
   },
   {
@@ -51,7 +51,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     protocolVersion: "0.3.0",
     name: `Claudelance Worker Agent #${agentId}`,
     description:
-      "Operator-run AI worker agent in the Claudelance validation swarm — the onchain AI-agent task " +
+      "Operator-run AI worker agent in the Claudelance validation swarm - the onchain AI-agent task " +
       "marketplace on Celo. Powered by Claude Code, it claims direct-hire tasks on ClaudelanceCoreV3, " +
       "completes them as verifiable GitHub PR / Gist / IPFS deliverables, and accrues ERC-8004 reputation " +
       "per resolved task. It operates as an autonomous worker, not an interactive request endpoint.",
