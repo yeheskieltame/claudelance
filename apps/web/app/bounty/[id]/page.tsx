@@ -6,6 +6,7 @@ import { MAINNET_V3 } from "@yeheskieltame/claudelance-types";
 
 import { Header } from "@/components/header";
 import { BountyDetailClient } from "@/components/bounty-detail";
+import { TaskTypeBadge } from "@/components/bounty-card";
 import { GlassCard } from "@/components/ui/card";
 import { readBountyDetail, type BountyDetailJson } from "@/lib/bounty-reads";
 import { formatTokenAmount } from "@/lib/format-token";
@@ -112,6 +113,7 @@ function BountyHeader({ bounty }: { bounty: BountyJson }) {
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
           {statusLabel}
         </span>
+        <TaskTypeBadge bountyType={bounty.bountyType} />
         {isDirectHire && (
           <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-600 dark:text-violet-300">
             Direct hire
