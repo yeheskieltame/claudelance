@@ -15,7 +15,7 @@ const CORE      = "0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423";
 const CELO_ERC20 = "0x471EcE3750Da237f93B8E339c536989b8978a438";
 const RPC       = process.env.CELO_RPC ?? "https://forno.celo.org";
 
-// All expired public-round bounty IDs from B38–B55 (bountyId 39 is the blank entry)
+// All expired public-round bounty IDs from B38-B55 (bountyId 39 is the blank entry)
 const CANCEL_IDS = [38n, 39n, 40n, 42n, 43n, 44n, 47n, 48n, 49n, 50n, 51n, 52n, 53n, 54n, 55n];
 
 // Off-protocol payouts: winners who gave wallet addresses but never completed on-chain flow
