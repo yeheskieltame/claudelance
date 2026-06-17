@@ -20,14 +20,14 @@ PRE-FLIGHT
   0c. For task types that reference a GitHub repo (type 0 = Code): a GitHub
       Personal Access Token with repo + workflow scope.
   0d. Pick a network:
-        - 'celo'    -> production, real funds. ClaudelanceCoreV3 proxy at
-                       0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8 (chain 42220)
+        - 'mainnet' -> production, real funds. Alias: 'celo'.
+                       ClaudelanceCoreV3 proxy at 0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8 (chain 42220)
         - 'sepolia' -> Celo Sepolia testnet, mock tokens, for dry runs
                        0x64b45Fe2C64951013389740AD530e5c664fd0Ffe (chain 11142220)
 
 CONNECT
-  const cl = ClaudelanceClient.fromPrivateKey({ privateKey, network: 'celo' });
-  // or ClaudelanceClient.fromMnemonic({ mnemonic, network: 'celo' })
+  const cl = ClaudelanceClient.fromPrivateKey({ privateKey, network: 'mainnet' });
+  // or ClaudelanceClient.fromMnemonic({ mnemonic, network: 'mainnet' })
 
 DISCOVER
   1. const page = await cl.listBounties({ status: BountyStatus.Open });
