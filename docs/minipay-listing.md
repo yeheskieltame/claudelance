@@ -1,4 +1,4 @@
-# MiniPay Listing — Submission Prep
+# MiniPay Listing - Submission Prep
 
 Working reference for submitting Claudelance to the MiniPay Discover page.
 
@@ -14,17 +14,17 @@ Working reference for submitting Claudelance to the MiniPay Discover page.
 | HTTPS production URL | Done |
 | Auto-connect, no separate connect button in MiniPay | Done (PR #317) |
 | Mainnet-only web app (Sepolia removed) | Done (PR #317) |
-| MiniPay fee abstraction — `feeCurrency` on all writes | Done |
+| MiniPay fee abstraction - `feeCurrency` on all writes | Done |
 | Mobile responsive (min viewport 360x720) | Done (loads in MiniPay dev mode) |
-| Terms of Service page (in-app) | Done — `/terms` (PR #319) |
-| Privacy Policy page (in-app) | Done — `/privacy` (PR #319) |
-| Support URL (in-app) | Done — footer Support link → `mailto:support@claudelance.xyz` |
-| Icon 512x512 | Done — `/icon-512.png` |
-| App name / tagline / publisher / category | Done — draft below |
-| Network manifest | Done — below |
-| Sample transaction links | Done — below |
-| PageSpeed Insights score | Pending — run at pagespeed.web.dev (Mobile tab) |
-| Screenshots | Pending — capture from MiniPay |
+| Terms of Service page (in-app) | Done - `/terms` (PR #319) |
+| Privacy Policy page (in-app) | Done - `/privacy` (PR #319) |
+| Support URL (in-app) | Done - footer Support link → `mailto:support@claudelance.xyz` |
+| Icon 512x512 | Done - `/icon-512.png` |
+| App name / tagline / publisher / category | Done - draft below |
+| Network manifest | Done - below |
+| Sample transaction links | Done - below |
+| PageSpeed Insights score | Pending - run at pagespeed.web.dev (Mobile tab) |
+| Screenshots | Pending - capture from MiniPay |
 
 ## 1. Listing fields
 
@@ -32,7 +32,7 @@ Working reference for submitting Claudelance to the MiniPay Discover page.
 |-------|-------|
 | App Name | Claudelance |
 | Tagline | The onchain bounty marketplace where idle AI coding agents earn cUSD, CELO, or USDC on Celo by solving real GitHub issues. |
-| Tagline (alt) | Got Claude Code? Earn cUSD, CELO, or USDC while it sleeps — onchain on Celo. |
+| Tagline (alt) | Got Claude Code? Earn cUSD, CELO, or USDC while it sleeps - onchain on Celo. |
 | Publisher | Claudelance (yeheskieltame) |
 | Category | developer-tools (alt: finance) |
 | App URL | https://claudelance.xyz |
@@ -55,20 +55,20 @@ Working reference for submitting Claudelance to the MiniPay Discover page.
 
 Origins the app connects to at runtime (allow-list these):
 
-- `https://claudelance.xyz` — app origin and same-origin API routes: `/api/bounties`, `/api/bounty/[id]`, `/api/stats`, `/api/worker/[address]`, `/api/swarm`, `/api/health`, `/api/agent/manifest`
-- `https://forno.celo.org` — Celo Mainnet JSON-RPC (all chain reads and transaction broadcast)
-- `https://api.coingecko.com` — CELO/USD price (server-side, `apps/web/lib/price.ts`)
-- `https://auth.privy.io` and `*.privy.io` — optional Privy sign-in (only when a user logs in with GitHub, email, or an external wallet)
-- MiniPay injected provider — in-app, no external origin
+- `https://claudelance.xyz` - app origin and same-origin API routes: `/api/bounties`, `/api/bounty/[id]`, `/api/stats`, `/api/worker/[address]`, `/api/swarm`, `/api/health`, `/api/agent/manifest`
+- `https://forno.celo.org` - Celo Mainnet JSON-RPC (all chain reads and transaction broadcast)
+- `https://api.coingecko.com` - CELO/USD price (server-side, `apps/web/lib/price.ts`)
+- `https://auth.privy.io` and `*.privy.io` - optional Privy sign-in (only when a user logs in with GitHub, email, or an external wallet)
+- MiniPay injected provider - in-app, no external origin
 
 Outbound navigation links (no in-app data sent):
 
-- `https://celoscan.io` — block explorer (tx/address links)
-- `https://github.com` — repository, issue, and PR links
-- `https://celo.org` — Proof of Ship link (footer)
-- `https://www.npmjs.com`, `https://bundlephobia.com` — package badges/links on `/docs`
+- `https://celoscan.io` - block explorer (tx/address links)
+- `https://github.com` - repository, issue, and PR links
+- `https://celo.org` - Proof of Ship link (footer)
+- `https://www.npmjs.com`, `https://bundlephobia.com` - package badges/links on `/docs`
 
-Hosting: Vercel. Fonts (Geist + Bricolage Grotesque, via `next/font`) and images are self-hosted — no external font or image CDN at runtime.
+Hosting: Vercel. Fonts (Geist + Bricolage Grotesque, via `next/font`) and images are self-hosted - no external font or image CDN at runtime.
 
 ## 4. Sample transactions
 
@@ -89,16 +89,16 @@ User-facing lifecycle methods:
 Not user-facing:
 
 - Deployment (verified): https://celoscan.io/tx/0x8c7f6b28f3a422200a55509e7825af5d5f1f753728431d313fb52558207420c5
-- `allowToken` / `setMinBounty` / treasury rotation / `pause` — owner-only via the Safe multisig (`0xe9Fc48f315fD4E989637fAcC29AaF2717E19f7F0`); execute as zero-value internal calls, not in the standard txlist.
-- `attestCI` — relayer-only (`0x1fEDda23c2945D59f3929e6C463cF685aC077ad5`), automated; not exercised on recent direct-hire bounties (`ciRequired=false`).
-- `approve` — standard ERC20 method on the token contract (cUSD/CELO/USDC), not the Claudelance core.
+- `allowToken` / `setMinBounty` / treasury rotation / `pause` - owner-only via the Safe multisig (`0xe9Fc48f315fD4E989637fAcC29AaF2717E19f7F0`); execute as zero-value internal calls, not in the standard txlist.
+- `attestCI` - relayer-only (`0x1fEDda23c2945D59f3929e6C463cF685aC077ad5`), automated; not exercised on recent direct-hire bounties (`ciRequired=false`).
+- `approve` - standard ERC20 method on the token contract (cUSD/CELO/USDC), not the Claudelance core.
 
 463 total transactions to the contract; all 7 user-facing methods are proven on-chain.
 
 ## 5. Pending (manual)
 
-- **PageSpeed Insights** — run <https://pagespeed.web.dev/?url=https://claudelance.xyz>, record the Mobile score.
-- **Screenshots** — capture from MiniPay (landing, bounties list, bounty detail, post flow).
+- **PageSpeed Insights** - run <https://pagespeed.web.dev/?url=https://claudelance.xyz>, record the Mobile score.
+- **Screenshots** - capture from MiniPay (landing, bounties list, bounty detail, post flow).
 
 ## 6. Testing inside MiniPay (dev mode)
 
