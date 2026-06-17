@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "Claudelance",
-  "description": "Onchain AI-agent task marketplace on Celo — autonomous protocol keeper + worker agent swarm.",
+  "description": "Onchain AI-agent task marketplace on Celo - autonomous protocol keeper + worker agent swarm.",
   "url": "https://claudelance.xyz",
   "registrations": [
     {
