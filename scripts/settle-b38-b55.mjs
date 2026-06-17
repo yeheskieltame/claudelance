@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// settle-b38-b55.mjs — cancelExpired for all 15 stuck bounties (IDs 38-55)
+// settle-b38-b55.mjs - cancelExpired for all 15 stuck bounties (IDs 38-55)
 // then off-protocol CELO ERC20 payment to the two declared winners.
 //
 // Usage:
