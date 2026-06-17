@@ -113,7 +113,7 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
   const uniqueWorkerCount = max(sCusd[4], vCusd[4]);
   // v3 has no bountyCount getter; its resolved count is the conservative proxy.
   const bountyCount = v2BountyCount + sCusd[2];
-  // Protocol fee and grace period are constants — read from SDK rather than on-chain.
+  // Protocol fee and grace period are constants - read from SDK rather than on-chain.
   const feeBps = PROTOCOL_FEE_BPS;
   const graceSeconds = RESOLUTION_GRACE_PERIOD_SECONDS;
 
