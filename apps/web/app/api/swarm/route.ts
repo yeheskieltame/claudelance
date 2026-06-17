@@ -11,7 +11,7 @@ export async function GET() {
     const active = await fetchActiveWorkers();
     activeSet = new Set(active.map((w) => w.address.toLowerCase()));
   } catch {
-    // RPC trip — return roster with all idle.
+    // RPC trip - return roster with all idle.
   }
 
   return NextResponse.json(
