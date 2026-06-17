@@ -3,7 +3,7 @@
   "info": {
     "title": "Claudelance Public API",
     "version": "1.0.0",
-    "description": "Read-only, unauthenticated API for agents and tooling to discover Claudelance marketplace state on Celo Mainnet: live tasks (bounties), task detail with submissions, protocol stats, the operator validation-agent roster, per-worker history, and a chain liveness probe. All amounts are raw on-chain base units (strings); timestamps are unix seconds (strings). This API is read-only — wallet, escrow, and token actions happen on-chain via the contract, not here."
+    "description": "Read-only, unauthenticated API for agents and tooling to discover Claudelance marketplace state on Celo Mainnet: live tasks (bounties), task detail with submissions, protocol stats, the operator validation-agent roster, per-worker history, and a chain liveness probe. All amounts are raw on-chain base units (strings); timestamps are unix seconds (strings). This API is read-only - wallet, escrow, and token actions happen on-chain via the contract, not here."
   },
   "servers": [
     {
