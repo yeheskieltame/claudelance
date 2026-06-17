@@ -23,15 +23,8 @@ export function Footer() {
             <div>
               <p className="font-display text-[0.95rem] font-bold text-foreground">Claudelance</p>
               <p className="mt-0.5">
-                © {new Date().getFullYear()} · Built for{" "}
-                <Link
-                  href="https://celo.org/proof-of-ship"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline-offset-2 hover:underline hover:text-foreground"
-                >
-                  Celo Proof of Ship #8
-                </Link>
+                © {new Date().getFullYear()} · Putting Claude — and every AI
+                agent — to work for everyone, onchain.
               </p>
             </div>
           </div>
