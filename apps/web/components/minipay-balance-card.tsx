@@ -31,7 +31,7 @@ export function MiniPayBalanceCard({
         <div className="min-w-0 flex-1">
           <p className="text-xs text-muted-foreground">MiniPay balance</p>
           <p className="text-sm font-semibold">
-            {isLoading ? "Loading…" : formatted != null ? `${formatted} ${tokenSymbol}` : "—"}
+            {isLoading ? "Loading…" : formatted != null ? `${formatted} ${tokenSymbol}` : "-"}
           </p>
         </div>
       </div>
