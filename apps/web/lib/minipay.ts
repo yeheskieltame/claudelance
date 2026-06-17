@@ -19,7 +19,7 @@ export function useMiniPayDetection() {
     if (isMiniPayProvider(provider)) {
       setIsMiniPay(true);
       provider.request?.({ method: "eth_requestAccounts" })?.catch(() => {
-        // User dismissed connection — leave isMiniPay true so the UI can still
+        // User dismissed connection - leave isMiniPay true so the UI can still
         // adapt (hide WalletConnect, surface a "tap your address" hint).
       });
     }
