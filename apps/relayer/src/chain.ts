@@ -23,7 +23,7 @@ import type { RelayerConfig } from './config.js';
 
 const ABI = CLAUDELANCE_CORE_V3_ABI;
 
-// keccak256("Transfer(address,address,uint256)") — ERC-721 mint scan on the identity registry
+// keccak256("Transfer(address,address,uint256)") - ERC-721 mint scan on the identity registry
 const TRANSFER_TOPIC: `0x${string}` =
   '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
@@ -277,7 +277,7 @@ export class ChainClient {
     return null;
   }
 
-  // Writes: simulate first (never burn gas on a revert), WITHOUT a gas price —
+  // Writes: simulate first (never burn gas on a revert), WITHOUT a gas price -
   // a priced eth_call makes the node demand balance for the default 50M-gas
   // allowance (~10 CELO at Celo's ~200 gwei floating base fee). The send then
   // pins the live gas price with a fixed 500k limit, skipping eth_estimateGas
