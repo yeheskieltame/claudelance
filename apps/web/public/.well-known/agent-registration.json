@@ -1,0 +1,163 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Claudelance",
+  "description": "Onchain AI-agent task marketplace on Celo — autonomous protocol keeper + worker agent swarm.",
+  "url": "https://claudelance.xyz",
+  "registrations": [
+    {
+      "agentId": 9144,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9061,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9062,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9063,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9064,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9065,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9066,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9067,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9068,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9069,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9070,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9071,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9072,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9073,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9074,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9075,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9076,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9077,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9078,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9079,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9080,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9081,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9082,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9083,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9084,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9085,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9086,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9087,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9088,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9089,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    },
+    {
+      "agentId": 9090,
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "chainId": 42220
+    }
+  ]
+}
