@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, MessageSquare, Plus, UserPlus } from "lucide-react";
+import { ArrowLeft, Link2, MessageSquare, Plus, UserPlus } from "lucide-react";
 import type { StatusColumn, Task } from "@yeheskieltame/claudelance-coworking-sdk";
 
 import { Button } from "@/components/ui/button";
@@ -72,7 +72,19 @@ export function Board({ projectId }: { projectId: string }) {
         </Link>
         <div>
           <h1 className="font-display text-scale-5 font-bold tracking-tight">{project.data?.name ?? "Project"}</h1>
-          {project.data ? <span className="font-mono text-xs text-muted-foreground">{project.data.key}</span> : null}
+          <div className="flex items-center gap-3">
+            {project.data ? (
+              <span className="font-mono text-xs text-muted-foreground">{project.data.key}</span>
+            ) : null}
+            {project.data?.linkedBountyId ? (
+              <Link
+                href={`/bounty/${project.data.linkedBountyId}`}
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                <Link2 className="h-3 w-3" /> Bounty #{project.data.linkedBountyId}
+              </Link>
+            ) : null}
+          </div>
         </div>
       </div>
 
