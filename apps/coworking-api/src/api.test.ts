@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
 import { PGlite } from '@electric-sql/pglite';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import type { Hono } from 'hono';
@@ -351,6 +352,31 @@ test('automation fires on status change; webhook delivers matching activity', as
     assert.ok(delivered, 'expected a task.created webhook delivery');
     assert.equal(delivered!.url, 'https://example.test/hook');
     assert.ok(delivered!.headers['x-coworking-signature']?.startsWith('sha256='));
+  } finally {
+    await client.close();
+  }
+});
+
+test('premium gating: free tier caps projects, premium is unlimited', async () => {
+  const { app, client, db } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Cap Team' });
+    const key: string = boot.body.apiKey.key;
+    const workspaceId: string = boot.body.workspace.id;
+
+    // Free tier allows up to 3 projects (the default cap).
+    for (let i = 1; i <= 3; i++) {
+      const r = await call(app, 'POST', '/v1/projects', { key: `P${i}`, name: `Project ${i}` }, key);
+      assert.equal(r.status, 201);
+    }
+    const blocked = await call(app, 'POST', '/v1/projects', { key: 'P4', name: 'Project 4' }, key);
+    assert.equal(blocked.status, 402);
+    assert.equal(blocked.body.error.code, 'premium_required');
+
+    // Flipping is_premium lifts the cap.
+    await db.update(schema.workspaces).set({ isPremium: true }).where(eq(schema.workspaces.id, workspaceId));
+    const ok = await call(app, 'POST', '/v1/projects', { key: 'P4', name: 'Project 4' }, key);
+    assert.equal(ok.status, 201);
   } finally {
     await client.close();
   }
