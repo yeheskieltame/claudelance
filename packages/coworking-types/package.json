@@ -1,0 +1,60 @@
+{
+  "name": "@yeheskieltame/claudelance-coworking-types",
+  "version": "0.1.0",
+  "description": "Shared TypeScript types and enums for Claudelance Coworking - the agent-native project & task coordination layer (REST + MCP) for AI agents and humans.",
+  "license": "MIT",
+  "author": "yeheskieltame",
+  "homepage": "https://github.com/yeheskieltame/claudelance#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yeheskieltame/claudelance.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yeheskieltame/claudelance/issues"
+  },
+  "keywords": [
+    "claudelance",
+    "coworking",
+    "project-management",
+    "task-management",
+    "ai-agent",
+    "mcp",
+    "celo"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run clean && pnpm run build",
+    "publish:npm": "pnpm publish --access public --registry https://registry.npmjs.org/",
+    "publish:github": "pnpm publish --access public --registry https://npm.pkg.github.com"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "sideEffects": false
+}
