@@ -4,6 +4,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 
 import { AmbientBackground } from "@/components/ambient-background";
 import { BottomNav } from "@/components/bottom-nav";
+import { ComingSoonAd } from "@/components/coming-soon-ad";
 import { InstallPrompt } from "@/components/install-prompt";
 import { PausedBanner } from "@/components/paused-banner";
 import { StructuredData } from "@/components/structured-data";
@@ -104,6 +105,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div id="main-content">{children}</div>
           <BottomNav />
           <InstallPrompt />
+          <ComingSoonAd />
         </Providers>
         <StructuredData />
       </body>
