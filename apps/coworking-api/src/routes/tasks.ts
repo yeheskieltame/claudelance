@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, max } from 'drizzle-orm';
+import { and, count, desc, eq, lt, max } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -13,7 +13,8 @@ import {
   tasks,
 } from '../db/schema.js';
 import type { AppEnv } from '../lib/context.js';
-import { badRequest, conflict, isUniqueViolation, notFound, parse } from '../lib/errors.js';
+import { badRequest, conflict, isUniqueViolation, notFound, parse, paymentRequired } from '../lib/errors.js';
+import { LIMITS } from '../lib/limits.js';
 import { loadTaskScoped } from '../lib/loaders.js';
 import {
   serializeComment,
@@ -57,6 +58,18 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
       .limit(1);
     const project = projectRows[0];
     if (!project) throw notFound('project not found');
+
+    if (LIMITS.enforce && !workspace.isPremium) {
+      const rows = await db
+        .select({ value: count() })
+        .from(tasks)
+        .where(eq(tasks.projectId, project.id));
+      if ((rows[0]?.value ?? 0) >= LIMITS.freeMaxTasksPerProject) {
+        throw paymentRequired(
+          `Free workspaces are limited to ${LIMITS.freeMaxTasksPerProject} tasks per project. Upgrade to Premium.`,
+        );
+      }
+    }
 
     const cols = await db
       .select()

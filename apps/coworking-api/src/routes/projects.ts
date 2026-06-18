@@ -1,11 +1,12 @@
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
 import type { Database } from '../db/client.js';
 import { activities, projects, statusColumns } from '../db/schema.js';
 import type { AppEnv } from '../lib/context.js';
-import { conflict, isUniqueViolation, notFound, parse } from '../lib/errors.js';
+import { conflict, isUniqueViolation, notFound, parse, paymentRequired } from '../lib/errors.js';
+import { LIMITS } from '../lib/limits.js';
 import { loadProjectScoped } from '../lib/loaders.js';
 import { serializeProject, serializeStatusColumn } from '../lib/serialize.js';
 import { authMiddleware } from '../middleware/auth.js';
@@ -43,6 +44,18 @@ export function projectRoutes(db: Database): Hono<AppEnv> {
   r.post('/projects', async (c) => {
     const { workspace, member } = c.get('auth');
     const body = parse(createSchema, await c.req.json().catch(() => ({})));
+
+    if (LIMITS.enforce && !workspace.isPremium) {
+      const rows = await db
+        .select({ value: count() })
+        .from(projects)
+        .where(eq(projects.workspaceId, workspace.id));
+      if ((rows[0]?.value ?? 0) >= LIMITS.freeMaxProjects) {
+        throw paymentRequired(
+          `Free workspaces are limited to ${LIMITS.freeMaxProjects} projects. Upgrade to Premium for unlimited projects.`,
+        );
+      }
+    }
 
     const project = await db.transaction(async (tx) => {
       const inserted = await tx

@@ -11,6 +11,7 @@ import { ProblemSection } from "@/components/problem-section";
 import { SolutionSection } from "@/components/solution-section";
 import { HowItWorks } from "@/components/how-it-works";
 import { Advantages } from "@/components/advantages";
+import { CoworkingCta } from "@/components/coworking-cta";
 import { BountiesScroll } from "@/components/bounties-scroll";
 import { WorkerOnboard } from "@/components/worker-onboard";
 import { Footer } from "@/components/footer";
@@ -43,6 +44,10 @@ export default function HomePage() {
 
       <Reveal>
         <Advantages />
+      </Reveal>
+
+      <Reveal>
+        <CoworkingCta />
       </Reveal>
 
       <Reveal>
