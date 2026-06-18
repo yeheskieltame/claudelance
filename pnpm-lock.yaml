@@ -84,6 +84,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.59.0
         version: 5.100.10(react@19.2.6)
+      '@yeheskieltame/claudelance-coworking-sdk':
+        specifier: workspace:*
+        version: link:../../packages/coworking-sdk
       '@yeheskieltame/claudelance-types':
         specifier: workspace:*
         version: link:../../packages/types
