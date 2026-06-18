@@ -1,0 +1,39 @@
+import { and, eq } from 'drizzle-orm';
+import { Hono } from 'hono';
+
+import type { Database } from '../db/client.js';
+import { projects } from '../db/schema.js';
+import type { AppEnv } from '../lib/context.js';
+import { notFound } from '../lib/errors.js';
+import { authMiddleware } from '../middleware/auth.js';
+import { myOpenTasks, whatsBlockingMe, whatsNext } from '../services/coordination.js';
+
+/** REST surface for the coordination queries (also exposed as MCP "sense" tools). */
+export function coordinationRoutes(db: Database): Hono<AppEnv> {
+  const r = new Hono<AppEnv>();
+  r.use('*', authMiddleware(db));
+
+  r.get('/me/tasks', async (c) => {
+    const { workspace, member } = c.get('auth');
+    return c.json({ items: await myOpenTasks(db, workspace.id, member.id) });
+  });
+
+  r.get('/me/blocked', async (c) => {
+    const { workspace, member } = c.get('auth');
+    return c.json({ items: await whatsBlockingMe(db, workspace.id, member.id) });
+  });
+
+  r.get('/projects/:id/next', async (c) => {
+    const { workspace, member } = c.get('auth');
+    const rows = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.id, c.req.param('id')), eq(projects.workspaceId, workspace.id)))
+      .limit(1);
+    const project = rows[0];
+    if (!project) throw notFound('project not found');
+    return c.json({ items: await whatsNext(db, project.id, member.id) });
+  });
+
+  return r;
+}

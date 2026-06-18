@@ -9,9 +9,12 @@
 packages/*
 !packages/types
 !packages/sdk
+!packages/coworking-types
+!packages/coworking-sdk
 !apps
 apps/*
 !apps/relayer
+!apps/coworking-api
 
 # Never ship env files, deps, builds, or local state even from included dirs
 **/.env

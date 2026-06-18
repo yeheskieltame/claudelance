@@ -26,14 +26,33 @@ const deployerKey = envFile.match(/^MAINNET_DEPLOYER_PRIVATE_KEY=(.+)$/m)[1].tri
 const wf = readFileSync(join(ROOT, 'claudelance worker', `worker ${args.worker}`, 'wallet.env'), 'utf8');
 const workerAddr = wf.match(/^ADDRESS=(.+)$/m)[1].trim();
 
-const cl = ClaudelanceClient.fromPrivateKey({ privateKey: deployerKey, network: 'celo' });
+// forno intermittently returns -32011 ("no backend healthy") on the write path;
+// fall back across ankr + dRPC so pickWinner/settle/attest ride it out.
+const RPC_URLS = (process.env.CELO_RPC_URLS || 'https://forno.celo.org,https://rpc.ankr.com/celo')
+  .split(',')
+  .map((u) => u.trim())
+  .filter(Boolean);
+const cl = ClaudelanceClient.fromPrivateKey({ privateKey: deployerKey, network: 'celo', rpcUrls: RPC_URLS });
 const bountyId = BigInt(args.bounty);
 
-// The swarm minted identities on 2026-05-15, outside agentIdOf's default
-// ~2M-block window, so scan deeper explicitly.
-const latestBlock = await cl.publicClient.getBlockNumber();
-const agentId = await cl.agentIdOf(workerAddr, { fromBlock: latestBlock > 4_000_000n ? latestBlock - 4_000_000n : 0n });
-const repBefore = agentId ? await cl.getReputation(agentId) : null;
+// agentId is only used for reputation logging + attest tracking; pickWinner
+// itself takes the address. The swarm minted identities on 2026-05-15 (outside
+// agentIdOf's default window) so it needs a deep getLogs scan - which flakes
+// when forno returns -32011 or a backup caps the block range. So accept an
+// explicit --agentId override and never let this lookup abort the finish.
+let agentId = args.agentId ? BigInt(args.agentId) : null;
+if (!agentId) {
+  try {
+    const latestBlock = await cl.publicClient.getBlockNumber();
+    agentId = await cl.agentIdOf(workerAddr, { fromBlock: latestBlock > 4_000_000n ? latestBlock - 4_000_000n : 0n });
+  } catch (e) {
+    console.log(`agentId lookup failed (${e.shortMessage || e.message}); pass --agentId N to track reputation`);
+  }
+}
+let repBefore = null;
+try {
+  repBefore = agentId ? await cl.getReputation(agentId) : null;
+} catch {}
 
 const t0 = Date.now();
 const tx = await cl.pickWinner(bountyId, workerAddr);
