@@ -2,7 +2,9 @@ import type {
   Activity,
   ApiKeyWithSecret,
   Comment,
+  Member,
   Project,
+  StatusColumn,
   Task,
   Workspace,
 } from '@yeheskieltame/claudelance-coworking-types';
@@ -202,5 +204,28 @@ export class CoworkingClient {
 
   getActivity(query: ActivityQuery = {}): Promise<{ items: Activity[] }> {
     return this.request('GET', `/v1/activity${toQueryString(query)}`);
+  }
+
+  listColumns(projectId: string): Promise<{ items: StatusColumn[] }> {
+    return this.request('GET', `/v1/projects/${projectId}/columns`);
+  }
+
+  listMembers(): Promise<{ items: Member[] }> {
+    return this.request('GET', '/v1/members');
+  }
+
+  /** Tasks assigned to the current key's member that aren't done yet. */
+  myOpenTasks(): Promise<{ items: Task[] }> {
+    return this.request('GET', '/v1/me/tasks');
+  }
+
+  /** The current member's open tasks that are blocked, with their blockers. */
+  whatsBlockingMe(): Promise<{ items: Array<{ task: Task; blockers: Task[] }> }> {
+    return this.request('GET', '/v1/me/blocked');
+  }
+
+  /** Actionable, unblocked tasks in a project, ordered by priority. */
+  whatsNext(projectId: string): Promise<{ items: Task[] }> {
+    return this.request('GET', `/v1/projects/${projectId}/next`);
   }
 }
