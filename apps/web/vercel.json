@@ -1,0 +1,4 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm --filter @yeheskieltame/claudelance-types run build && pnpm --filter @yeheskieltame/claudelance-coworking-types run build && pnpm --filter @yeheskieltame/claudelance-coworking-sdk run build && next build"
+}
