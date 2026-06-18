@@ -7,6 +7,7 @@ import type {
   Activity,
   ApiKeyInfo,
   ApiKeyWithSecret,
+  Automation,
   Comment,
   DependencyType,
   Goal,
@@ -24,12 +25,14 @@ import type {
   TaskPriority,
   TimeEntry,
   TimeEntrySource,
+  Webhook,
   Workspace,
 } from '@yeheskieltame/claudelance-coworking-types';
 
 import type {
   activities,
   apiKeys,
+  automations,
   comments,
   goalLinks,
   goals,
@@ -39,6 +42,7 @@ import type {
   taskDependencies,
   tasks,
   timeEntries,
+  webhooks,
   workspaces,
 } from '../db/schema.js';
 
@@ -212,6 +216,32 @@ export function serializeGoalLink(r: InferSelectModel<typeof goalLinks>): GoalLi
     projectId: r.projectId,
     taskId: r.taskId,
     weight: r.weight,
+    createdAt: iso(r.createdAt),
+  };
+}
+
+export function serializeAutomation(r: InferSelectModel<typeof automations>): Automation {
+  return {
+    id: r.id,
+    projectId: r.projectId,
+    name: r.name,
+    trigger: (r.trigger as Record<string, unknown> | null) ?? {},
+    action: (r.action as Record<string, unknown> | null) ?? {},
+    enabled: r.enabled,
+    createdAt: iso(r.createdAt),
+    updatedAt: iso(r.updatedAt),
+  };
+}
+
+export function serializeWebhook(r: InferSelectModel<typeof webhooks>): Webhook {
+  return {
+    id: r.id,
+    workspaceId: r.workspaceId,
+    url: r.url,
+    events: r.events,
+    enabled: r.enabled,
+    lastDeliveryAt: isoOrNull(r.lastDeliveryAt),
+    lastStatus: r.lastStatus,
     createdAt: iso(r.createdAt),
   };
 }
