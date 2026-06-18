@@ -120,7 +120,12 @@ export class CoworkingClient {
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
 
-    const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+    // Call through a local reference rather than `this.fetchImpl(...)`. The
+    // browser's native fetch must keep its global `this`; invoking it as a
+    // method of this client rebinds `this` to the instance and throws
+    // "Failed to execute 'fetch' on 'Window': Illegal invocation".
+    const doFetch = this.fetchImpl;
+    const response = await doFetch(`${this.baseUrl}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
