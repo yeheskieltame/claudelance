@@ -21,6 +21,7 @@ import {
   serializeTaskDependency,
 } from '../lib/serialize.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { runAutomations } from '../services/automations.js';
 
 function clampLimit(raw: string | undefined, fallback: number, cap: number): number {
   const n = Number(raw ?? fallback) || fallback;
@@ -102,6 +103,12 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
       return task;
     });
 
+    await runAutomations(db, {
+      event: 'task.created',
+      task: created,
+      workspaceId: workspace.id,
+      actorMemberId: member.id,
+    });
     return c.json(serializeTask(created), 201);
   });
 
@@ -231,6 +238,13 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
         payload: { column: column.key },
       });
     }
+    await runAutomations(db, {
+      event: 'task.status_changed',
+      task: updated,
+      workspaceId: workspace.id,
+      actorMemberId: member.id,
+      toColumnKey: column.key,
+    });
     return c.json(serializeTask(updated));
   });
 
