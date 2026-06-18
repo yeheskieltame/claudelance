@@ -6,6 +6,7 @@ import type {
   Project,
   StatusColumn,
   Task,
+  TaskDependency,
   Workspace,
 } from '@yeheskieltame/claudelance-coworking-types';
 
@@ -192,6 +193,11 @@ export class CoworkingClient {
 
   assignTask(id: string, memberId: string): Promise<Task> {
     return this.request('POST', `/v1/tasks/${id}/assign`, { memberId });
+  }
+
+  /** Declare that `taskId` is blocked by `blockerTaskId`. */
+  addDependency(taskId: string, blockerTaskId: string, type?: string): Promise<TaskDependency> {
+    return this.request('POST', `/v1/tasks/${taskId}/dependencies`, { blockerTaskId, type });
   }
 
   listComments(taskId: string): Promise<{ items: Comment[] }> {
