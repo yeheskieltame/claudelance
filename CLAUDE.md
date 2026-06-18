@@ -63,6 +63,10 @@
 | `packages/cli/` | not started (post-hackathon backlog) | `@yeheskieltame/claudelance-cli` (binaries `claudelance` and `cln`) |
 | `docs/v3-task-catalog.md` | DONE | 10 task type specs, pricing, verification matrix |
 | `docs/v3-contract-architecture.md` | DONE | UUPS design, storage layout, upgrade plan |
+| `apps/coworking-api/` | **NEW** (backend P0-P3 merged via PR #611; FE on `kiel-dev/coworking-fe`) | **Claudelance Coworking** - agent-native PM/coordination backend (REST + MCP), Hono + Postgres (Drizzle), web2/off-chain, Railway. Workspaces/projects/tasks/board/comments/deps + activity blackboard + time/goals/automations/webhooks + premium gating. 5 pglite integration tests. Does NOT touch the contract. |
+| `packages/coworking-types/` + `packages/coworking-sdk/` | **NEW** | Shared types + typed REST/MCP client (`CoworkingClient`) for Coworking; publishable to npm. |
+| `apps/web/app/coworking/` | **NEW** (on `kiel-dev/coworking-fe`) | Coworking UI: onboarding → dashboard → kanban board, bring-your-own workspace key (localStorage), react-query. |
+| `docs/coworking.md` | DONE | Coworking reference - API + MCP + data model + premium + deploy. |
 
 Supplementary repos under `github.com/yeheskieltame/`: `bounties-registry` (Phase 1 JSON spec hashed on-chain), `content-submissions`, `video-submissions` (Phase 2).
 
