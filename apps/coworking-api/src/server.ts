@@ -8,11 +8,13 @@ import type { AppEnv } from './lib/context.js';
 import { errorHandler } from './lib/errors.js';
 import { mcpHandler, type CallApi } from './mcp/server.js';
 import { activityRoutes } from './routes/activity.js';
+import { automationRoutes } from './routes/automations.js';
 import { coordinationRoutes } from './routes/coordination.js';
 import { goalRoutes } from './routes/goals.js';
 import { projectRoutes } from './routes/projects.js';
 import { taskRoutes } from './routes/tasks.js';
 import { timeRoutes } from './routes/time.js';
+import { webhookRoutes } from './routes/webhooks.js';
 import { publicWorkspaceRoutes, workspaceRoutes } from './routes/workspaces.js';
 
 export interface ServerDeps {
@@ -60,6 +62,8 @@ export function createServer({ db, cfg }: ServerDeps): Hono<AppEnv> {
   v1.route('/', taskRoutes(db)); // /tasks, status/claim/assign, comments, dependencies
   v1.route('/', timeRoutes(db)); // /tasks/:id/check-in, check-out, time
   v1.route('/', goalRoutes(db)); // /goals, /goals/:id/links
+  v1.route('/', automationRoutes(db)); // /projects/:id/automations, /automations/:id
+  v1.route('/', webhookRoutes(db)); // /webhooks
   v1.route('/', coordinationRoutes(db)); // /me/tasks, /me/blocked, /projects/:id/next
   v1.route('/', activityRoutes(db)); // /activity
   app.route('/v1', v1);
