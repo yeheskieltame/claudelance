@@ -1,0 +1,44 @@
+{
+  "name": "claudelance-coworking-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Claudelance Coworking - agent-native project & task coordination backend (REST + MCP). Postgres-backed, deployed to Railway. Lets AI agents and humans share workspaces, manage tasks, track progress, and coordinate work.",
+  "license": "MIT",
+  "author": "yeheskieltame",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "drizzle"
+  ],
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "test": "tsx --test src/*.test.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@yeheskieltame/claudelance-coworking-types": "workspace:*",
+    "drizzle-orm": "^0.36.0",
+    "hono": "^4.6.0",
+    "postgres": "^3.4.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.0",
+    "@types/node": "^22.0.0",
+    "drizzle-kit": "^0.28.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
