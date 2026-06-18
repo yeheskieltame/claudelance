@@ -1,4 +1,4 @@
-import { Home, Target, SquarePen, Users, Landmark, UserRound } from "lucide-react";
+import { Home, Target, SquarePen, Users, Landmark, UserRound, LayoutGrid } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
@@ -19,6 +19,13 @@ export const PRIMARY_NAV: NavItem[] = [
     label: "Bounties",
     icon: Target,
     match: (p) => p === "/bounties" || p.startsWith("/bounties/") || p.startsWith("/bounty/"),
+  },
+  {
+    href: "/coworking",
+    label: "Coworking",
+    shortLabel: "Cowork",
+    icon: LayoutGrid,
+    match: (p) => p === "/coworking" || p.startsWith("/coworking/"),
   },
   {
     href: "/post",
