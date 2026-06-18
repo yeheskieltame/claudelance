@@ -15,10 +15,12 @@ import type { Database } from './db/client.js';
 import * as schema from './db/schema.js';
 import type { AppEnv } from './lib/context.js';
 import { createServer } from './server.js';
+import { deliverPending } from './services/webhooks.js';
 
 interface Harness {
   app: Hono<AppEnv>;
   client: PGlite;
+  db: Database;
 }
 
 async function setup(): Promise<Harness> {
@@ -33,8 +35,9 @@ async function setup(): Promise<Harness> {
     migrateOnStart: false,
   };
   // pglite + postgres-js share the same Drizzle query API; the cast is test-only.
-  const app = createServer({ db: db as unknown as Database, cfg });
-  return { app, client };
+  const dbHandle = db as unknown as Database;
+  const app = createServer({ db: dbHandle, cfg });
+  return { app, client, db: dbHandle };
 }
 
 interface CallResult {
@@ -298,6 +301,56 @@ test('time tracking and goal progress roll-up', async () => {
     for (const expected of ['goal.created', 'goal.progressed', 'time.checked_in', 'time.checked_out']) {
       assert.ok(verbs.includes(expected), `expected activity verb ${expected}`);
     }
+  } finally {
+    await client.close();
+  }
+});
+
+test('automation fires on status change; webhook delivers matching activity', async () => {
+  const { app, client, db } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Auto Team' });
+    const key: string = boot.body.apiKey.key;
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'A', name: 'Auto' }, key)).body;
+
+    // Rule: when a task moves to "done", auto-comment on it.
+    const automation = await call(
+      app,
+      'POST',
+      `/v1/projects/${project.id}/automations`,
+      {
+        name: 'celebrate done',
+        trigger: { event: 'task.status_changed', to: 'done' },
+        action: { type: 'add_comment', body: 'Auto: nice work!' },
+      },
+      key,
+    );
+    assert.equal(automation.status, 201);
+
+    const task = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Finish me' }, key)).body;
+    await call(app, 'POST', `/v1/tasks/${task.id}/status`, { statusColumnKey: 'done' }, key);
+
+    // Engine added the comment and logged automation.fired.
+    const comments = await call(app, 'GET', `/v1/tasks/${task.id}/comments`, undefined, key);
+    assert.ok(comments.body.items.some((cm: { body: string }) => cm.body === 'Auto: nice work!'));
+    const verbs: string[] = (await call(app, 'GET', '/v1/activity', undefined, key)).body.items.map(
+      (a: { verb: string }) => a.verb,
+    );
+    assert.ok(verbs.includes('automation.fired'));
+
+    // Webhook subscribed to task.created: deliver and verify the signed POST.
+    await call(app, 'POST', '/v1/webhooks', { url: 'https://example.test/hook', events: ['task.created'] }, key);
+    const calls: Array<{ url: string; headers: Record<string, string> }> = [];
+    const mockFetch = (async (url: string | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), headers: (init?.headers ?? {}) as Record<string, string> });
+      return new Response('ok', { status: 200 });
+    }) as unknown as typeof fetch;
+
+    await deliverPending(db, mockFetch, new Date(0));
+    const delivered = calls.find((cc) => cc.headers['x-coworking-event'] === 'task.created');
+    assert.ok(delivered, 'expected a task.created webhook delivery');
+    assert.equal(delivered!.url, 'https://example.test/hook');
+    assert.ok(delivered!.headers['x-coworking-signature']?.startsWith('sha256='));
   } finally {
     await client.close();
   }
