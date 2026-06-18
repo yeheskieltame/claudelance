@@ -26,6 +26,8 @@ export const notFound = (message = 'not found'): HttpError =>
   new HttpError(404, 'not_found', message);
 export const conflict = (message: string, code = 'conflict'): HttpError =>
   new HttpError(409, code, message);
+export const paymentRequired = (message: string): HttpError =>
+  new HttpError(402, 'premium_required', message);
 
 /** Validate `data` against a zod schema, throwing a 400 HttpError on failure. */
 export function parse<T>(schema: ZodType<T>, data: unknown): T {
