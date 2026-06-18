@@ -29,11 +29,18 @@ export function Dashboard() {
 
   const [projName, setProjName] = React.useState("");
   const [projKey, setProjKey] = React.useState("");
+  const [projBounty, setProjBounty] = React.useState("");
   const createProject = useMutation({
-    mutationFn: () => client.createProject({ key: projKey.trim().toUpperCase(), name: projName.trim() }),
+    mutationFn: () =>
+      client.createProject({
+        key: projKey.trim().toUpperCase(),
+        name: projName.trim(),
+        linkedBountyId: projBounty.trim() || undefined,
+      }),
     onSuccess: () => {
       setProjName("");
       setProjKey("");
+      setProjBounty("");
       qc.invalidateQueries({ queryKey: cwKeys.projects });
       qc.invalidateQueries({ queryKey: cwKeys.activity() });
     },
@@ -79,6 +86,14 @@ export function Dashboard() {
                 onChange={(e) => setProjKey(e.target.value)}
                 placeholder="KEY"
                 maxLength={20}
+              />
+              <Input
+                className="w-36"
+                value={projBounty}
+                onChange={(e) => setProjBounty(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="Bounty # (opt)"
+                inputMode="numeric"
+                title="Optionally link this project to a marketplace bounty"
               />
               <Button type="submit" disabled={!projName.trim() || !projKey.trim() || createProject.isPending}>
                 {createProject.isPending ? <Spinner /> : <Plus className="h-4 w-4" />} Create
