@@ -1436,3 +1436,116 @@ test('task-model-v2 reset: Idempotency-Key reused for a DIFFERENT request (diffe
     await client.close();
   }
 });
+
+test('reputation bridge: pending lists approved-agent reviews; excludes agentId-less + already-acked; ack is idempotent', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Rep Bridge', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+
+    // Two assignees: an AGENT with a linked ERC-8004 agentId, and a human (no id).
+    const agent = (
+      await call(
+        app,
+        'POST',
+        '/v1/members',
+        { displayName: 'Worker Agent', kind: 'agent', agentId: '9066' },
+        ownerKey,
+      )
+    ).body;
+    assert.equal(agent.agentId, '9066', 'agentId round-trips as a decimal string');
+    const human = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Human Dev', kind: 'human' }, ownerKey)
+    ).body;
+    assert.equal(human.agentId, null);
+
+    const project = (
+      await call(app, 'POST', '/v1/projects', { key: 'RB', name: 'Rep Board', linkedBountyId: '22' }, ownerKey)
+    ).body;
+
+    // Helper: create a task of a given type, assign it, request-review (owner is
+    // reviewer), then approve. Returns the approved review row.
+    const approveFor = async (title: string, assigneeId: string, type: string, score?: number) => {
+      const t = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title, type }, ownerKey)).body;
+      await call(app, 'POST', `/v1/tasks/${t.id}/assign`, { memberId: assigneeId }, ownerKey);
+      const rr = await call(app, 'POST', `/v1/tasks/${t.id}/request-review`, { reviewerMemberId: boot.body.owner.id }, ownerKey);
+      assert.equal(rr.status, 200);
+      const rev = await call(app, 'POST', `/v1/tasks/${t.id}/review`, { verdict: 'approved', ...(score !== undefined ? { score } : {}) }, ownerKey);
+      assert.equal(rev.status, 201);
+      return { task: t, review: rev.body };
+    };
+
+    // 1) Approved review on an AGENT-assigned task -> appears in pending.
+    const a1 = await approveFor('Agent task one', agent.id, 'code', 5);
+    // 2) Approved review on a HUMAN-assigned task -> must NOT appear (no agentId).
+    await approveFor('Human task', human.id, 'bug');
+    // 3) A changes_requested review on an agent task -> not "approved", excluded.
+    const cr = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Not approved', type: 'research' }, ownerKey)).body;
+    await call(app, 'POST', `/v1/tasks/${cr.id}/assign`, { memberId: agent.id }, ownerKey);
+    await call(app, 'POST', `/v1/tasks/${cr.id}/request-review`, { reviewerMemberId: boot.body.owner.id }, ownerKey);
+    await call(app, 'POST', `/v1/tasks/${cr.id}/review`, { verdict: 'changes_requested' }, ownerKey);
+
+    // --- pending: exactly the one agent-approved review, fully shaped ---
+    const pending = await call(app, 'GET', '/v1/reputation/pending', undefined, ownerKey);
+    assert.equal(pending.status, 200);
+    assert.equal(pending.body.items.length, 1, 'only the agent-approved review is pending');
+    const item = pending.body.items[0];
+    assert.equal(item.reviewId, a1.review.id);
+    assert.equal(item.taskId, a1.task.id);
+    assert.equal(item.taskNumber, a1.task.number);
+    assert.equal(item.taskType, 'code');
+    assert.equal(item.projectId, project.id);
+    assert.equal(item.linkedBountyId, '22', 'linkedBountyId surfaces as a decimal string');
+    assert.equal(item.agentId, '9066', 'agentId is a decimal string');
+    assert.equal(item.assigneeMemberId, agent.id);
+    assert.equal(item.score, 5);
+    assert.ok(item.reviewedAt, 'reviewedAt is populated');
+    assert.ok(pending.body.nextCursor, 'a nextCursor is returned when there are items');
+
+    // --- requireScope('admin'): a read/write-only key is 403 ---
+    const writer = (await call(app, 'POST', '/v1/members', { displayName: 'Writer', role: 'member' }, ownerKey)).body;
+    const writerKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: writer.id, scopes: ['read', 'write'] }, ownerKey)
+    ).body.key;
+    const forbidden = await call(app, 'GET', '/v1/reputation/pending', undefined, writerKey);
+    assert.equal(forbidden.status, 403, 'pending requires the admin scope');
+    const forbiddenAck = await call(app, 'POST', '/v1/reputation/ack', { reviewId: item.reviewId, agentId: '9066' }, writerKey);
+    assert.equal(forbiddenAck.status, 403, 'ack requires the admin scope');
+
+    // --- ack the pending review (dry-run shape: no txHash) ---
+    const ack1 = await call(app, 'POST', '/v1/reputation/ack', { reviewId: item.reviewId, agentId: item.agentId }, ownerKey);
+    assert.equal(ack1.status, 200);
+    assert.equal(ack1.body.ok, true);
+    assert.equal(ack1.body.reviewId, item.reviewId);
+
+    // --- already-acked is excluded from the next pending poll ---
+    const afterAck = await call(app, 'GET', '/v1/reputation/pending', undefined, ownerKey);
+    assert.equal(afterAck.body.items.length, 0, 'an acked review drops out of the pending feed');
+    assert.equal(afterAck.body.nextCursor, null, 'nextCursor is null on an empty page');
+
+    // --- ack is idempotent: re-acking the same reviewId succeeds (now with a tx) ---
+    const ack2 = await call(
+      app,
+      'POST',
+      '/v1/reputation/ack',
+      { reviewId: item.reviewId, agentId: item.agentId, txHash: '0xabc123' },
+      ownerKey,
+    );
+    assert.equal(ack2.status, 200, 're-acking the same review is a no-op (idempotent), not an error');
+    // Still excluded; no duplicate ever re-enters the feed.
+    const afterReAck = await call(app, 'GET', '/v1/reputation/pending', undefined, ownerKey);
+    assert.equal(afterReAck.body.items.length, 0, 'a re-acked review stays out of the feed');
+
+    // --- cursor: since=<reviewedAt of the acked item> would also exclude it ---
+    const sinceFuture = await call(
+      app,
+      'GET',
+      `/v1/reputation/pending?since=${encodeURIComponent(new Date().toISOString())}`,
+      undefined,
+      ownerKey,
+    );
+    assert.equal(sinceFuture.body.items.length, 0, 'a future since-cursor returns nothing');
+  } finally {
+    await client.close();
+  }
+});
