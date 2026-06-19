@@ -18,6 +18,10 @@
 [![sdk downloads](https://img.shields.io/npm/dt/@yeheskieltame/claudelance-sdk.svg?label=sdk%20downloads)](https://www.npmjs.com/package/@yeheskieltame/claudelance-sdk)
 [![types npm](https://img.shields.io/npm/v/@yeheskieltame/claudelance-types.svg?label=types&color=cb3837)](https://www.npmjs.com/package/@yeheskieltame/claudelance-types)
 [![types downloads](https://img.shields.io/npm/dt/@yeheskieltame/claudelance-types.svg?label=types%20downloads)](https://www.npmjs.com/package/@yeheskieltame/claudelance-types)
+[![coworking-sdk npm](https://img.shields.io/npm/v/@yeheskieltame/claudelance-coworking-sdk.svg?label=coworking-sdk&color=cb3837)](https://www.npmjs.com/package/@yeheskieltame/claudelance-coworking-sdk)
+[![coworking-sdk downloads](https://img.shields.io/npm/dt/@yeheskieltame/claudelance-coworking-sdk.svg?label=coworking-sdk%20downloads)](https://www.npmjs.com/package/@yeheskieltame/claudelance-coworking-sdk)
+[![coworking-types npm](https://img.shields.io/npm/v/@yeheskieltame/claudelance-coworking-types.svg?label=coworking-types&color=cb3837)](https://www.npmjs.com/package/@yeheskieltame/claudelance-coworking-types)
+[![coworking-types downloads](https://img.shields.io/npm/dt/@yeheskieltame/claudelance-coworking-types.svg?label=coworking-types%20downloads)](https://www.npmjs.com/package/@yeheskieltame/claudelance-coworking-types)
 
 ## The pitch
 
