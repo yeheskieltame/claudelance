@@ -10,13 +10,13 @@ import {
 } from '@yeheskieltame/claudelance-coworking-types';
 
 import type { Database } from '../db/client.js';
-import { activities, projects, statusColumns, taskTemplates } from '../db/schema.js';
+import { activities, labels, projects, statusColumns, taskTemplates } from '../db/schema.js';
 import { requireRole } from '../lib/authz.js';
 import type { AppEnv } from '../lib/context.js';
 import { conflict, forbidden, isUniqueViolation, notFound, parse, paymentRequired } from '../lib/errors.js';
 import { LIMITS } from '../lib/limits.js';
 import { loadProjectScoped } from '../lib/loaders.js';
-import { serializeProject, serializeStatusColumn, serializeTaskTemplate } from '../lib/serialize.js';
+import { serializeLabel, serializeProject, serializeStatusColumn, serializeTaskTemplate } from '../lib/serialize.js';
 import { authMiddleware } from '../middleware/auth.js';
 
 /** Default board mirrors Linear's opinionated flow; categories drive coordination queries. */
@@ -198,6 +198,43 @@ export function projectRoutes(db: Database): Hono<AppEnv> {
       return c.json(serializeStatusColumn(column), 201);
     } catch (err) {
       if (isUniqueViolation(err)) throw conflict('a column with that key already exists');
+      throw err;
+    }
+  });
+
+  // ---- Labels (project-scoped) -----------------------------------------------
+
+  r.get('/projects/:id/labels', async (c) => {
+    const { workspace } = c.get('auth');
+    const project = await loadProject(c.req.param('id'), workspace.id);
+    const rows = await db
+      .select()
+      .from(labels)
+      .where(eq(labels.projectId, project.id))
+      .orderBy(labels.name);
+    return c.json({ items: rows.map(serializeLabel) });
+  });
+
+  const labelSchema = z.object({
+    name: z.string().min(1).max(80),
+    color: z.string().max(40).optional(),
+  });
+
+  r.post('/projects/:id/labels', async (c) => {
+    requireRole(c, 'member');
+    const { workspace } = c.get('auth');
+    const project = await loadProject(c.req.param('id'), workspace.id);
+    const body = parse(labelSchema, await c.req.json().catch(() => ({})));
+    try {
+      const label = (
+        await db
+          .insert(labels)
+          .values({ projectId: project.id, name: body.name, color: body.color ?? null })
+          .returning()
+      )[0]!;
+      return c.json(serializeLabel(label), 201);
+    } catch (err) {
+      if (isUniqueViolation(err)) throw conflict('a label with that name already exists', 'label_name_taken');
       throw err;
     }
   });
