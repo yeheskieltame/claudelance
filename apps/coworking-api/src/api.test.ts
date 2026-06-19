@@ -15,6 +15,7 @@ import type { CoworkingConfig } from './config.js';
 import type { Database } from './db/client.js';
 import * as schema from './db/schema.js';
 import type { AppEnv } from './lib/context.js';
+import { LIMITS } from './lib/limits.js';
 import { createServer } from './server.js';
 import { deliverPending } from './services/webhooks.js';
 
@@ -472,6 +473,34 @@ test('premium gating: free tier caps projects, premium is unlimited', async () =
   }
 });
 
+test('premium gating: trashed tasks do not consume the free-tier task quota', async () => {
+  const { app, client } = await setup();
+  // Temporarily pin the per-project task cap to 1 so the quota is cheap to hit.
+  const originalCap = LIMITS.freeMaxTasksPerProject;
+  LIMITS.freeMaxTasksPerProject = 1;
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Quota Team' });
+    const key: string = boot.body.apiKey.key;
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'Q', name: 'Quota' }, key)).body;
+
+    // First task fits the cap; a second is blocked while the first is live.
+    const first = await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'One' }, key);
+    assert.equal(first.status, 201);
+    const blocked = await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Two' }, key);
+    assert.equal(blocked.status, 402, 'second task blocked at the cap');
+    assert.equal(blocked.body.error.code, 'premium_required');
+
+    // Trashing the first task frees its quota slot (soft-deleted rows do not count).
+    const trash = await call(app, 'DELETE', `/v1/tasks/${first.body.id}`, undefined, key);
+    assert.equal(trash.status, 200);
+    const afterTrash = await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Two' }, key);
+    assert.equal(afterTrash.status, 201, 'a trashed task no longer consumes quota');
+  } finally {
+    LIMITS.freeMaxTasksPerProject = originalCap;
+    await client.close();
+  }
+});
+
 test('task-model-v2: templates, AC/DoD, review back-edge, watchers, trash, authz', async () => {
   const { app, client } = await setup();
   try {
@@ -547,8 +576,15 @@ test('task-model-v2: templates, AC/DoD, review back-edge, watchers, trash, authz
     assert.equal(list.body.items.length, 1);
     assert.deepEqual(list.body.items[0].acProgress, { done: 0, total: 4 }); // 2 AC + 2 DoD
 
-    // Review loop: request-review moves to in_review; changes_requested moves back.
-    const rr = await call(app, 'POST', `/v1/tasks/${taskId}/request-review`, undefined, key);
+    // Review loop: request-review assigns a reviewer + moves to in_review;
+    // changes_requested moves back. A reviewer must be set before a verdict.
+    const rr = await call(
+      app,
+      'POST',
+      `/v1/tasks/${taskId}/request-review`,
+      { reviewerMemberId: ownerMemberId },
+      key,
+    );
     assert.equal(rr.status, 200);
     const inReview = (await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, key)).body.statusColumnId;
     const review = await call(
@@ -675,6 +711,23 @@ test('task-model-v2 review loop: roles, verdict moves, reviewer authz, /me/revie
     );
     const strangerInbox = await call(app, 'GET', '/v1/me/reviews', undefined, strangerKey);
     assert.ok(!strangerInbox.body.items.some((t: { id: string }) => t.id === task.id));
+
+    // A verdict on a task with NO reviewer assigned is refused (must call
+    // request-review first) - even for the owner/admin, and nothing is recorded.
+    const noReviewer = (
+      await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'No reviewer yet' }, ownerKey)
+    ).body;
+    const premature = await call(
+      app,
+      'POST',
+      `/v1/tasks/${noReviewer.id}/review`,
+      { verdict: 'approved' },
+      ownerKey,
+    );
+    assert.equal(premature.status, 409, 'a verdict needs a reviewer assigned first');
+    assert.equal(premature.body.error.code, 'no_reviewer_assigned');
+    const noReviewerReviews = await call(app, 'GET', `/v1/tasks/${noReviewer.id}/reviews`, undefined, ownerKey);
+    assert.equal(noReviewerReviews.body.items.length, 0, 'no review row is written when refused');
 
     // A non-reviewer, non-admin member is forbidden from recording a verdict.
     const denied = await call(
