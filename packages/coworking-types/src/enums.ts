@@ -185,15 +185,19 @@ export type ActivityVerb =
   | 'review.requested'
   | 'review.approved'
   | 'review.changes_requested'
+  | 'review.rejected'
   | 'task.reopened'
+  | 'task.completed_with_unmet_criteria'
   | 'assignee.changed'
   | 'watcher.added'
   | 'watcher.removed'
   | 'task.from_template'
+  | 'task.labels_set'
   | 'template.created'
   | 'project.reset'
   | 'workspace.cleared'
   | 'workspace.seeded_demo'
+  | 'workspace.updated'
   | 'project.archived'
   | 'project.trashed'
   | 'project.restored'
@@ -223,15 +227,19 @@ export const ACTIVITY_VERBS = [
   'review.requested',
   'review.approved',
   'review.changes_requested',
+  'review.rejected',
   'task.reopened',
+  'task.completed_with_unmet_criteria',
   'assignee.changed',
   'watcher.added',
   'watcher.removed',
   'task.from_template',
+  'task.labels_set',
   'template.created',
   'project.reset',
   'workspace.cleared',
   'workspace.seeded_demo',
+  'workspace.updated',
   'project.archived',
   'project.trashed',
   'project.restored',
