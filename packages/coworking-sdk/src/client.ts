@@ -290,6 +290,11 @@ export class CoworkingClient {
     return this.request('GET', '/v1/workspace');
   }
 
+  /** The member the current API key authenticates as (the caller's own record). */
+  getMe(): Promise<Member> {
+    return this.request('GET', '/v1/me');
+  }
+
   listProjects(): Promise<{ items: Project[] }> {
     return this.request('GET', '/v1/projects');
   }
