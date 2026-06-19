@@ -6,19 +6,28 @@
 //   1. dry-run  -> computeResetPreview() returns the per-entity counts plus a
 //                  server confirmation token bound to a deterministic hash of
 //                  those counts (issueResetToken).
-//   2. commit   -> consumeResetToken() re-checks the hash against the *current*
-//                  counts (409 on drift, 410 if already consumed, 422 if expired)
-//                  then perform{ProjectReset,WorkspaceClear} / seedDemo runs the
-//                  soft-delete inside a single db.transaction.
+//   2. commit   -> perform{ProjectReset,WorkspaceClear} / seedDemo runs the whole
+//                  destructive sequence inside ONE db.transaction: it
+//                  guarded-consumes the token, RE-checks the counts hash against
+//                  the *current* counts, soft-deletes, and stores the idempotent
+//                  response - so any failure rolls back the token consumption too
+//                  and the call stays safely retryable. The handshake surfaces
+//                  409 on drift / scope mismatch, 410 if already consumed, 422 if
+//                  expired.
 //
-// Every commit is additionally guarded by an Idempotency-Key (24h replay window)
-// and writes one workspace-scoped activity row + an append-only audit_log entry.
+// Every commit is additionally guarded by an Idempotency-Key (24h replay window).
+// The idempotency record is bound to the FULL request (endpoint + a sha256 of
+// {scope,targetId,confirmationToken}): replaying the same request returns the
+// stored response, while reusing the key for a structurally different request is
+// rejected (409 idempotency_key_conflict) instead of silently replaying a stale
+// result and skipping the new destructive op. Each commit also writes one
+// workspace-scoped activity row + an append-only audit_log entry.
 
 import { createHash, randomUUID } from 'node:crypto';
 
 import { and, count, eq, inArray, isNull } from 'drizzle-orm';
 
-import type { ResetScope } from '@yeheskieltame/claudelance-coworking-types';
+import type { ResetResult, ResetScope } from '@yeheskieltame/claudelance-coworking-types';
 
 import type { Database } from '../db/client.js';
 import {
@@ -57,6 +66,22 @@ export function hashCounts(counts: ResetCounts): string {
     .sort()
     .map((k) => `${k}=${counts[k]}`)
     .join('&');
+  return createHash('sha256').update(stable).digest('hex');
+}
+
+/**
+ * Deterministically hash the request identity an Idempotency-Key is bound to.
+ * Reusing a key for the SAME logical request (same scope/target/token) is a retry
+ * and replays the stored response; reusing it for a DIFFERENT request must be
+ * rejected (409) rather than silently replaying a stale result and skipping the
+ * new destructive op. Uses SHA-256 from node:crypto (NEVER Math.random).
+ */
+export function hashResetRequest(req: {
+  scope: ResetScope;
+  targetId: string | null;
+  confirmationToken: string;
+}): string {
+  const stable = `scope=${req.scope}&targetId=${req.targetId ?? ''}&confirmationToken=${req.confirmationToken}`;
   return createHash('sha256').update(stable).digest('hex');
 }
 
@@ -201,28 +226,32 @@ export async function issueResetToken(
 }
 
 /**
- * Validate + consume a confirmation token for a commit. Re-derives the current
- * counts and enforces the handshake:
+ * Validate + guarded-consume a confirmation token, then re-check the counts hash,
+ * ALL on the supplied transaction handle so a later failure rolls the consumption
+ * back (the token is NOT burned if the perform/store step throws). Enforces the
+ * handshake:
  *   - 404 token_not_found if the id is unknown / not in this workspace,
- *   - 409 reset_counts_changed if the bound hash no longer matches,
- *   - 410 reset_token_consumed if it was already used,
- *   - 422 reset_token_expired if past its TTL.
- * On success the token is marked consumed (single-use) and the live counts are
- * returned so the caller can run the soft-delete against the same set.
+ *   - 409 reset_scope_mismatch if it was issued for a different scope/target,
+ *   - 410 reset_token_consumed if it was already used (incl. the concurrent race),
+ *   - 422 reset_token_expired if past its TTL,
+ *   - 409 reset_counts_changed if the bound hash no longer matches the *current*
+ *         counts recomputed INSIDE the same tx (so the confirmed counts and the
+ *         actually-trashed set are validated atomically).
+ * MUST be called inside a db.transaction: pass the tx handle as `tx`.
  */
-export async function consumeResetToken(
-  db: Database,
+async function consumeResetTokenInTx(
+  tx: Database,
   params: {
     workspaceId: string;
     tokenId: string;
     scope: ResetScope;
     targetId: string | null;
-    now?: Date;
+    now: Date;
   },
 ): Promise<{ counts: ResetCounts }> {
-  const now = params.now ?? new Date();
+  const now = params.now;
   const row = (
-    await db
+    await tx
       .select()
       .from(resetTokens)
       .where(and(eq(resetTokens.id, params.tokenId), eq(resetTokens.workspaceId, params.workspaceId)))
@@ -242,20 +271,24 @@ export async function consumeResetToken(
     throw new HttpError(422, 'reset_token_expired', 'confirmation token expired; request a new dry-run');
   }
 
-  const { willDelete } = await computeResetPreview(db, params.workspaceId, params.scope, params.targetId);
-  if (hashCounts(willDelete) !== row.countsHash) {
-    throw new HttpError(409, 'reset_counts_changed', 'workspace changed since the dry-run; request a new dry-run');
-  }
-
-  // Single-use: stamp consumedAt. A concurrent commit racing on the same token
-  // is guarded by re-reading consumedAt under the WHERE clause.
-  const consumed = await db
+  // Single-use: guarded-consume FIRST (UPDATE ... WHERE consumedAt IS NULL
+  // RETURNING) so a concurrent commit racing on the same token loses the row and
+  // gets 410 instead of double-applying. Because this runs inside the caller's
+  // tx, a later throw rolls the consumption back and the call stays retryable.
+  const consumed = await tx
     .update(resetTokens)
     .set({ consumedAt: now })
     .where(and(eq(resetTokens.id, row.id), isNull(resetTokens.consumedAt)))
     .returning();
   if (consumed.length === 0) {
     throw new HttpError(410, 'reset_token_consumed', 'confirmation token already used');
+  }
+
+  // Drift re-check INSIDE the tx, against the counts that perform is about to
+  // trash, so the confirmed counts and the trashed set are validated atomically.
+  const { willDelete } = await computeResetPreview(tx, params.workspaceId, params.scope, params.targetId);
+  if (hashCounts(willDelete) !== row.countsHash) {
+    throw new HttpError(409, 'reset_counts_changed', 'workspace changed since the dry-run; request a new dry-run');
   }
   return { counts: willDelete };
 }
@@ -319,6 +352,46 @@ export interface PerformContext {
 }
 
 /**
+ * Extra context a *committing* reset needs to run the whole destructive sequence
+ * (token consume + drift re-check + soft-delete + idempotency store) inside ONE
+ * transaction. `endpoint` + `requestHash` bind the idempotency record to the full
+ * request; `buildResponse` shapes the stored/returned ResetResult from the counts
+ * actually applied, so the response persisted for replay is exactly the one
+ * returned to the caller.
+ */
+export interface CommitContext extends PerformContext {
+  scope: ResetScope;
+  targetId: string | null;
+  endpoint: string;
+  requestHash: string;
+  buildResponse: (counts: ResetCounts) => ResetResult;
+}
+
+/**
+ * Store the idempotency record on the supplied tx handle so it commits/rolls back
+ * atomically with the destructive write. The stored envelope binds the request
+ * identity (endpoint + requestHash) alongside the response, so a later lookup can
+ * tell a genuine retry from a key reused for a different request. Best-effort on
+ * the unique PK: a concurrent commit that already inserted the row wins.
+ */
+async function storeIdempotentResponseInTx(
+  tx: Database,
+  ctx: CommitContext,
+  response: ResetResult,
+): Promise<void> {
+  if (!ctx.idempotencyKey) return;
+  await tx
+    .insert(idempotencyKeys)
+    .values({
+      workspaceId: ctx.workspaceId,
+      key: ctx.idempotencyKey,
+      endpoint: ctx.endpoint,
+      responseJson: { requestHash: ctx.requestHash, response } as Record<string, unknown>,
+    })
+    .onConflictDoNothing({ target: [idempotencyKeys.workspaceId, idempotencyKeys.key] });
+}
+
+/**
  * Soft-delete every live task in one project (recoverable). When
  * restoreDefaultColumns is set, the board is rebuilt to the default columns. The
  * tasks are trashed first, then the board is rebuilt FK-safely: every task (live
@@ -333,13 +406,36 @@ export async function performProjectReset(
   db: Database,
   project: { id: string; workspaceId: string },
   opts: { restoreDefaultColumns?: boolean } = {},
-  ctx: PerformContext,
-): Promise<ResetCounts> {
+  ctx: CommitContext,
+): Promise<ResetResult> {
   assertNoIdentityImpact(['tasks', 'projects']);
   const now = ctx.now ?? new Date();
   return db.transaction(async (tx) => {
     const txdb = tx as unknown as Database;
-    const { willDelete } = await computeResetPreview(txdb, project.workspaceId, 'project', project.id);
+
+    // Guard (LOW): refuse to re-stamp an already-trashed target. Re-read inside
+    // the tx so the check is consistent with the soft-delete that follows.
+    const target = (
+      await txdb
+        .select({ trashedAt: projects.trashedAt })
+        .from(projects)
+        .where(and(eq(projects.id, project.id), eq(projects.workspaceId, project.workspaceId)))
+        .limit(1)
+    )[0];
+    if (!target) throw notFound('project not found');
+    if (target.trashedAt) {
+      throw conflict('project is already trashed; restore it before resetting', 'project_already_trashed');
+    }
+
+    // Atomically consume the token + re-check the counts hash against the live
+    // set we are about to trash. Any later throw rolls this consumption back.
+    const { counts: willDelete } = await consumeResetTokenInTx(txdb, {
+      workspaceId: project.workspaceId,
+      tokenId: ctx.tokenId!,
+      scope: 'project',
+      targetId: project.id,
+      now,
+    });
 
     // 1) Trash the live tasks.
     await txdb
@@ -363,7 +459,12 @@ export async function performProjectReset(
       tokenId: ctx.tokenId,
       idempotencyKey: ctx.idempotencyKey,
     });
-    return willDelete;
+
+    // 3) Store the idempotent response inside the same tx so consume+perform+store
+    //    commit (or roll back) together.
+    const out = ctx.buildResponse(willDelete);
+    await storeIdempotentResponseInTx(txdb, ctx, out);
+    return out;
   });
 }
 
@@ -376,13 +477,22 @@ export async function performProjectReset(
 export async function performWorkspaceClear(
   db: Database,
   workspaceId: string,
-  ctx: PerformContext,
-): Promise<ResetCounts> {
+  ctx: CommitContext,
+): Promise<ResetResult> {
   assertNoIdentityImpact(['tasks', 'projects']);
   const now = ctx.now ?? new Date();
   return db.transaction(async (tx) => {
     const txdb = tx as unknown as Database;
-    const { willDelete } = await computeResetPreview(txdb, workspaceId, 'workspace', null);
+
+    // Atomically consume the token + re-check the counts hash against the live
+    // set we are about to trash. Any later throw rolls this consumption back.
+    const { counts: willDelete } = await consumeResetTokenInTx(txdb, {
+      workspaceId,
+      tokenId: ctx.tokenId!,
+      scope: 'workspace',
+      targetId: null,
+      now,
+    });
 
     const projectIds = (
       await txdb
@@ -415,7 +525,12 @@ export async function performWorkspaceClear(
       tokenId: ctx.tokenId,
       idempotencyKey: ctx.idempotencyKey,
     });
-    return willDelete;
+
+    // 3) Store the idempotent response inside the same tx (consume+perform+store
+    //    commit or roll back together).
+    const out = ctx.buildResponse(willDelete);
+    await storeIdempotentResponseInTx(txdb, ctx, out);
+    return out;
   });
 }
 
@@ -526,25 +641,38 @@ export async function seedDemo(
   db: Database,
   workspaceId: string,
   opts: { force?: boolean } = {},
-  ctx: PerformContext,
-): Promise<ResetCounts> {
+  ctx: CommitContext,
+): Promise<ResetResult> {
   const now = ctx.now ?? new Date();
-  // Guard: refuse on a non-empty workspace unless forced.
-  const liveProjects = num(
-    await db
-      .select({ value: count() })
-      .from(projects)
-      .where(and(eq(projects.workspaceId, workspaceId), isNull(projects.trashedAt))),
-  );
-  if (liveProjects > 0 && !opts.force) {
-    throw conflict(
-      'workspace already has projects; pass force:true to seed the demo anyway',
-      'workspace_not_empty',
-    );
-  }
 
   return db.transaction(async (tx) => {
     const txdb = tx as unknown as Database;
+
+    // Atomically consume the token + re-check the counts hash (binds the pre-seed
+    // workspace state). Any later throw - including the not-empty guard below -
+    // rolls this consumption back, so the caller can retry (e.g. with force:true).
+    await consumeResetTokenInTx(txdb, {
+      workspaceId,
+      tokenId: ctx.tokenId!,
+      scope: 'demo',
+      targetId: null,
+      now,
+    });
+
+    // Guard: refuse on a non-empty workspace unless forced.
+    const liveProjects = num(
+      await txdb
+        .select({ value: count() })
+        .from(projects)
+        .where(and(eq(projects.workspaceId, workspaceId), isNull(projects.trashedAt))),
+    );
+    if (liveProjects > 0 && !opts.force) {
+      throw conflict(
+        'workspace already has projects; pass force:true to seed the demo anyway',
+        'workspace_not_empty',
+      );
+    }
+
     // Unique-ish key so a forced re-seed doesn't collide with an existing DEMO.
     const suffix = randomUUID().slice(0, 4).toUpperCase();
     const key = liveProjects > 0 ? `DEMO-${suffix}` : 'DEMO';
@@ -651,21 +779,50 @@ export async function seedDemo(
       tokenId: ctx.tokenId,
       idempotencyKey: ctx.idempotencyKey,
     });
-    return counts;
+
+    // Store the idempotent response inside the same tx so consume+seed+store
+    // commit or roll back together.
+    const out = ctx.buildResponse(counts);
+    await storeIdempotentResponseInTx(txdb, ctx, out);
+    return out;
   });
 }
 
+/** Stored idempotency envelope: the request identity bound to its response. */
+interface IdempotencyEnvelope {
+  requestHash: string;
+  response: ResetResult;
+}
+
+/** Type guard for the request-bound envelope shape. */
+function isIdempotencyEnvelope(v: unknown): v is IdempotencyEnvelope {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as { requestHash?: unknown }).requestHash === 'string' &&
+    'response' in (v as object)
+  );
+}
+
 /**
- * Idempotency helper: if this (workspace, key) was already processed, return the
- * stored response to replay. The TTL bounds replay so stale keys eventually fall
- * through to a fresh run.
+ * Idempotency lookup, bound to the FULL request. If a row exists for
+ * (workspaceId, key):
+ *   - same endpoint AND same requestHash  -> replay the stored response (the
+ *     intended retry),
+ *   - different endpoint OR requestHash    -> throw 409 idempotency_key_conflict
+ *     (the key was reused for a structurally different request; NEVER replay a
+ *     stale result for it, which would silently skip the new destructive op).
+ * Returns `undefined` (no usable replay) when there is no row or it has expired,
+ * in which case the caller proceeds to run + store under the same key. The TTL
+ * bounds replay so stale keys eventually fall through to a fresh run.
  */
 export async function findIdempotentResponse(
   db: Database,
   workspaceId: string,
   key: string,
+  expected: { endpoint: string; requestHash: string },
   now: Date = new Date(),
-): Promise<unknown | undefined> {
+): Promise<ResetResult | undefined> {
   const row = (
     await db
       .select()
@@ -681,28 +838,19 @@ export async function findIdempotentResponse(
       .where(and(eq(idempotencyKeys.workspaceId, workspaceId), eq(idempotencyKeys.key, key)));
     return undefined;
   }
-  return row.responseJson ?? undefined;
-}
 
-/**
- * Persist a commit response under (workspace, key) for replay. Best-effort: if a
- * concurrent request already inserted the row (unique PK), the stored value wins
- * and we swallow the conflict.
- */
-export async function storeIdempotentResponse(
-  db: Database,
-  workspaceId: string,
-  key: string,
-  endpoint: string,
-  response: unknown,
-): Promise<void> {
-  await db
-    .insert(idempotencyKeys)
-    .values({
-      workspaceId,
-      key,
-      endpoint,
-      responseJson: response as Record<string, unknown>,
-    })
-    .onConflictDoNothing({ target: [idempotencyKeys.workspaceId, idempotencyKeys.key] });
+  // Reusing the same key for a different endpoint is always a conflict.
+  if (row.endpoint !== expected.endpoint) {
+    throw conflict('Idempotency-Key reused for a different request', 'idempotency_key_conflict');
+  }
+  const env = row.responseJson;
+  if (!isIdempotencyEnvelope(env)) {
+    // No bound request identity to compare against -> we cannot prove this is the
+    // same request, so refuse to replay rather than risk skipping a new op.
+    throw conflict('Idempotency-Key reused for a different request', 'idempotency_key_conflict');
+  }
+  if (env.requestHash !== expected.requestHash) {
+    throw conflict('Idempotency-Key reused for a different request', 'idempotency_key_conflict');
+  }
+  return env.response;
 }
