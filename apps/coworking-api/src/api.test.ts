@@ -259,6 +259,96 @@ test('mcp server: initialize, tools/list, tools/call bridges to REST', async () 
   }
 });
 
+test('task-model-v2 P4: MCP tools + label endpoints; destructive reset stays REST-only', async () => {
+  const { app, client } = await setup();
+  const mcp = (id: number, name: string, args: Record<string, unknown>, key?: string) =>
+    call(app, 'POST', '/mcp', { jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args } }, key);
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'P4 Team' });
+    const key: string = boot.body.apiKey.key;
+    const ownerId: string = boot.body.owner.id;
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'P4', name: 'P4' }, key)).body;
+
+    // tools/list advertises the new P4 tools but NOT any destructive reset tool.
+    const list = await call(app, 'POST', '/mcp', { jsonrpc: '2.0', id: 1, method: 'tools/list' });
+    const names: string[] = list.body.result.tools.map((t: { name: string }) => t.name);
+    for (const expected of [
+      'list_templates', 'create_task_from_template', 'request_review', 'submit_review',
+      'add_watcher', 'remove_watcher', 'list_unmet_criteria', 'my_reviews', 'list_labels', 'preview_reset',
+    ]) {
+      assert.ok(names.includes(expected), `tools/list should include ${expected}`);
+    }
+    for (const forbidden of ['commit_reset', 'reset_project', 'clear_workspace', 'seed_demo']) {
+      assert.ok(!names.includes(forbidden), `tools/list must NOT expose ${forbidden}`);
+    }
+
+    // Label REST endpoints back the SDK/MCP label surface.
+    const label = (await call(app, 'POST', `/v1/projects/${project.id}/labels`, { name: 'backend', color: '#0af' }, key)).body;
+    assert.equal(label.name, 'backend');
+    const dupe = await call(app, 'POST', `/v1/projects/${project.id}/labels`, { name: 'backend' }, key);
+    assert.equal(dupe.status, 409); // label_name_taken
+    const labelList = await mcp(2, 'list_labels', { projectId: project.id }, key);
+    assert.equal(JSON.parse(labelList.body.result.content[0].text).items.length, 1);
+
+    // create_task via MCP with the rich fields, then PUT /tasks/:id/labels.
+    const ct = await mcp(3, 'create_task', {
+      projectId: project.id,
+      title: 'Rich task',
+      type: 'code',
+      acceptanceCriteria: [{ text: 'compiles' }, { text: 'tests pass' }],
+      fields: { repo: 'acme/widgets' },
+    }, key);
+    const task = JSON.parse(ct.body.result.content[0].text);
+    assert.equal(task.type, 'code');
+    assert.equal(task.acceptanceCriteria.length, 2);
+    assert.equal((task.fields as { repo: string }).repo, 'acme/widgets');
+
+    const setLabels = await call(app, 'PUT', `/v1/tasks/${task.id}/labels`, { labelIds: [label.id] }, key);
+    assert.equal(setLabels.status, 200);
+    assert.equal(setLabels.body.labels[0].id, label.id);
+    // A label from another project is rejected.
+    const other = (await call(app, 'POST', '/v1/projects', { key: 'OTHER', name: 'Other' }, key)).body;
+    const foreign = (await call(app, 'POST', `/v1/projects/${other.id}/labels`, { name: 'x' }, key)).body;
+    const badSet = await call(app, 'PUT', `/v1/tasks/${task.id}/labels`, { labelIds: [foreign.id] }, key);
+    assert.equal(badSet.status, 400);
+
+    // list_unmet_criteria returns the task so the agent can read unmet AC.
+    const unmet = await mcp(4, 'list_unmet_criteria', { taskId: task.id }, key);
+    const unmetTask = JSON.parse(unmet.body.result.content[0].text);
+    assert.equal(unmetTask.acceptanceCriteria.filter((c: { done: boolean }) => !c.done).length, 2);
+
+    // add_watcher (defaults to caller), then request_review + submit_review loop.
+    const watch = await mcp(5, 'add_watcher', { taskId: task.id }, key);
+    assert.equal(watch.body.result.isError, false);
+    const rr = await mcp(6, 'request_review', { taskId: task.id, reviewerMemberId: ownerId }, key);
+    assert.equal(rr.body.result.isError, false);
+    assert.equal(JSON.parse(rr.body.result.content[0].text).reviewerMemberId, ownerId);
+    const myReviews = await mcp(7, 'my_reviews', {}, key);
+    assert.equal(JSON.parse(myReviews.body.result.content[0].text).items.length, 1);
+    const sr = await mcp(8, 'submit_review', { taskId: task.id, verdict: 'approved', score: 5 }, key);
+    assert.equal(sr.body.result.isError, false);
+
+    // list_templates surfaces the seeded builtins; create_task_from_template works.
+    const tmpls = await mcp(9, 'list_templates', {}, key);
+    const tmplItems = JSON.parse(tmpls.body.result.content[0].text).items as Array<{ id: string; builtin: boolean }>;
+    assert.ok(tmplItems.length >= 1 && tmplItems.every((t) => t.builtin));
+    const fromTmpl = await mcp(10, 'create_task_from_template', { templateId: tmplItems[0]!.id, projectId: project.id }, key);
+    assert.equal(fromTmpl.body.result.isError, false);
+
+    // preview_reset is a pure dry-run: returns counts + token, deletes nothing.
+    const preview = await mcp(11, 'preview_reset', { projectId: project.id }, key);
+    assert.equal(preview.body.result.isError, false);
+    const pv = JSON.parse(preview.body.result.content[0].text);
+    assert.ok(typeof pv.confirmationToken === 'string' && pv.confirmationToken.length > 0);
+    assert.equal(pv.scope, 'project');
+    const stillThere = await call(app, 'GET', `/v1/tasks/${task.id}`, undefined, key);
+    assert.equal(stillThere.status, 200);
+    assert.equal(stillThere.body.trashedAt, null); // dry-run did not delete
+  } finally {
+    await client.close();
+  }
+});
+
 test('time tracking and goal progress roll-up', async () => {
   const { app, client } = await setup();
   try {
