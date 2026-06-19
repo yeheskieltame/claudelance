@@ -159,7 +159,7 @@ export function Board({ projectId }: { projectId: string }) {
       </div>
 
       {selectedTaskId ? (
-        <TaskDetail taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} />
+        <TaskDetail taskId={selectedTaskId} projectId={projectId} onClose={() => setSelectedTaskId(null)} />
       ) : null}
     </div>
   );
