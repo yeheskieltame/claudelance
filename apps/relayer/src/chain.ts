@@ -2,6 +2,8 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  keccak256,
+  toBytes,
   type Account,
   type Address,
   type Chain,
@@ -58,9 +60,6 @@ const REPUTATION_GIVE_FEEDBACK_ABI = [
     outputs: [],
   },
 ] as const;
-
-// bytes32 zero: the bridge records no content hash for a coworking feedback signal.
-const BYTES32_ZERO: `0x${string}` = `0x${'0'.repeat(64)}`;
 
 /** Optional per-send overrides used by the keeper's pipelined tick. */
 export type SendOpts = { nonce?: number; gasPrice?: bigint };
@@ -364,7 +363,10 @@ export class ChainClient {
    * the Reputation Registry (NOT the core). This is the bridge's only on-chain
    * write: it mirrors the keeper's attestReputation effect but targets any
    * Identity NFT directly (no bountyId). Fixed value=1, valueDecimals=0,
-   * empty endpoint, zero feedbackHash. Simulate-first like the core sends.
+   * empty endpoint. feedbackHash binds the signal to the review by hashing its
+   * feedbackURI (keccak256(toBytes(feedbackURI))) instead of an all-zero hash,
+   * giving the on-chain record verifiable provenance. Simulate-first like the
+   * core sends.
    */
   async giveFeedback(
     agentId: bigint,
@@ -372,6 +374,7 @@ export class ChainClient {
     opts: SendOpts = {},
   ): Promise<`0x${string}`> {
     const wallet = this.requireWallet();
+    const feedbackHash = keccak256(toBytes(feedback.feedbackURI));
     const args = [
       agentId,
       1n,
@@ -380,7 +383,7 @@ export class ChainClient {
       feedback.tag2,
       '',
       feedback.feedbackURI,
-      BYTES32_ZERO,
+      feedbackHash,
     ] as const;
     await this.publicClient.simulateContract({
       address: this.reputationRegistry,
