@@ -7,6 +7,7 @@ import { Eye, EyeOff, GitBranch, Link2, MessageSquare, Plus, Save, X } from "luc
 import {
   TASK_PRIORITY_LABELS,
   TASK_TYPE_LABELS,
+  type AcceptanceCriterion,
   type AcceptanceCriterionInput,
   type DoDItemInput,
   type Label,
@@ -110,14 +111,16 @@ export function TaskDetail({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Move initial focus into the drawer when it opens.
+  // Move initial focus into the drawer when it opens, and restore focus to the
+  // element that triggered it (e.g. the task card) when it closes.
   React.useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     const root = dialogRef.current;
-    if (!root) return;
-    const focusable = root.querySelector<HTMLElement>(
+    const focusable = root?.querySelector<HTMLElement>(
       'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
     );
     focusable?.focus();
+    return () => previouslyFocused?.focus();
   }, []);
 
   const memberName = React.useMemo(() => {
@@ -302,8 +305,8 @@ function TaskDetailBody({
         type,
         fields: Object.keys(cleanFields).length > 0 ? cleanFields : null,
         priority,
-        startDate: startDate || null,
-        dueDate: dueDate || null,
+        startDate: toIsoOrNull(startDate),
+        dueDate: toIsoOrNull(dueDate),
         estimateMinutes: minutes != null && Number.isFinite(minutes) ? minutes : null,
         estimatePoints: points != null && Number.isFinite(points) ? points : null,
         acceptanceCriteria: ac,
@@ -413,6 +416,7 @@ function TaskDetailBody({
             id="detail-description"
             className="min-h-28"
             value={description}
+            maxLength={20000}
             placeholder="Markdown supported"
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -1006,10 +1010,23 @@ function toDateInput(iso: string | null): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Map stored acceptance criteria (with ids + done) into the editor input shape. */
-function toAcInput(
-  rows: { id: string; kind: "rule" | "scenario"; text: string; done: boolean; verification?: string; evidenceUrl?: string }[],
-): AcceptanceCriterionInput[] {
+/**
+ * <input type="date"> value ("yyyy-mm-dd") -> full ISO-8601 datetime, or null
+ * when cleared. The PATCH endpoint validates startDate/dueDate with
+ * z.string().datetime() and 400s on a date-only string; null clears the field.
+ */
+function toIsoOrNull(d: string): string | null {
+  return d ? new Date(`${d}T00:00:00.000Z`).toISOString() : null;
+}
+
+/**
+ * Map stored acceptance criteria into the editor input shape. Carries through the
+ * audit metadata (evidenceHash, checkedBy, checkedAt) as well as the editable
+ * fields: the save mutation always re-sends the full acceptanceCriteria array and
+ * the backend PATCH does a FULL replace, so dropping these here would erase the
+ * audit trail on already-checked criteria whenever any field is edited.
+ */
+function toAcInput(rows: AcceptanceCriterion[]): AcceptanceCriterionInput[] {
   return rows.map((r) => ({
     id: r.id,
     kind: r.kind,
@@ -1017,6 +1034,9 @@ function toAcInput(
     done: r.done,
     verification: r.verification,
     evidenceUrl: r.evidenceUrl,
+    evidenceHash: r.evidenceHash,
+    checkedBy: r.checkedBy,
+    checkedAt: r.checkedAt,
   }));
 }
 
