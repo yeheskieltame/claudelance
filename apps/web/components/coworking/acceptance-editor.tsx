@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Plus, ThumbsUp, Trash2, X } from "lucide-react";
+import { Plus, RotateCcw, ThumbsUp, Trash2, X } from "lucide-react";
 import type {
   AcceptanceCriterionInput,
   DoDItemInput,
@@ -347,7 +347,7 @@ export function ReviewControls({
           onClick={() => submit("changes_requested")}
           className="h-9 px-3 text-xs"
         >
-          <Check className="h-3.5 w-3.5" /> Request changes
+          <RotateCcw className="h-3.5 w-3.5" /> Request changes
         </Button>
         <Button
           type="button"
