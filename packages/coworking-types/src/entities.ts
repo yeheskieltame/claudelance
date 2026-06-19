@@ -3,13 +3,18 @@
 // strings so they survive JSON without bigint precision loss.
 
 import type {
+  AcceptanceCriterionKind,
+  CompletionReason,
   DependencyType,
   GoalStatus,
   MemberKind,
   MemberRole,
   ProjectStatus,
+  ResetScope,
+  ReviewVerdict,
   StatusCategory,
   TaskPriority,
+  TaskType,
   TimeEntrySource,
   ActivityVerb,
 } from './enums.js';
@@ -20,6 +25,10 @@ export interface Workspace {
   name: string;
   ownerAddress: string | null;
   isPremium: boolean;
+  /** When false, destructive reset endpoints are disabled for this workspace. */
+  allowReset: boolean;
+  /** Workspace-level Definition of Done template applied to new tasks. */
+  definitionOfDone: DoDItem[];
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +74,9 @@ export interface Project {
   /** Optional link to a Claudelance marketplace bounty id (decimal string). */
   linkedBountyId: string | null;
   createdByMemberId: string | null;
+  /** Soft-delete timestamp; non-null means the project is in the trash. */
+  trashedAt: string | null;
+  trashedByMemberId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,22 +91,71 @@ export interface StatusColumn {
   createdAt: string;
 }
 
+/**
+ * An acceptance-criterion item - the authoritative completion signal for a task
+ * in the v2 task model. `rule` items are flat assertions; `scenario` items are
+ * Gherkin-ish given/when/then strings. Evidence + reviewer fields are filled in
+ * when the item is checked off.
+ */
+export interface AcceptanceCriterion {
+  id: string;
+  kind: AcceptanceCriterionKind;
+  text: string;
+  done: boolean;
+  verification?: string;
+  evidenceUrl?: string;
+  evidenceHash?: string;
+  checkedBy?: string;
+  checkedAt?: string;
+}
+
+/** A Definition-of-Done checklist item (lighter-weight than acceptance criteria). */
+export interface DoDItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export interface Task {
   id: string;
   projectId: string;
   number: number;
   title: string;
   description: string | null;
+  /** Task type taxonomy (default 'generic'); 11 of these map to bounty types. */
+  type: TaskType;
+  /** Per-type advisory field bag - accepts any keys, never rejects unknowns. */
+  fields: Record<string, unknown> | null;
+  /** Authoritative completion criteria. Empty array on legacy tasks. */
+  acceptanceCriteria: AcceptanceCriterion[];
+  acceptanceNotes: string | null;
+  definitionOfDone: DoDItem[];
   statusColumnId: string;
   assigneeMemberId: string | null;
+  /** Accountable reviewer (RACI). May equal the assignee in v2. */
+  reviewerMemberId: string | null;
+  /** Reporter = the creating member, surfaced under a RACI-friendly name. */
+  reporterMemberId: string | null;
   priority: TaskPriority;
   parentTaskId: string | null;
   estimateMinutes: number | null;
+  /** Story-point style estimate (real number), distinct from estimateMinutes. */
+  estimatePoints: number | null;
+  startDate: string | null;
   dueDate: string | null;
+  /** Why the task reached a terminal state, if it did. */
+  completionReason: CompletionReason | null;
   createdByMemberId: string | null;
+  /** Soft-delete timestamp; non-null means the task is in the trash. */
+  trashedAt: string | null;
+  trashedByMemberId: string | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+  /** Inlined on the GET /tasks list view to avoid an N+1 round-trip. */
+  labels?: Label[];
+  /** Acceptance-criteria progress, inlined on the GET /tasks list view. */
+  acProgress?: { done: number; total: number };
 }
 
 export interface TaskDependency {
@@ -188,5 +249,81 @@ export interface Label {
   projectId: string;
   name: string;
   color: string | null;
+  createdAt: string;
+}
+
+/** A recorded review verdict on a task (the request-review loop). */
+export interface TaskReview {
+  id: string;
+  taskId: string;
+  reviewerMemberId: string | null;
+  verdict: ReviewVerdict;
+  comment: string | null;
+  /** Optional 1-5 quality score; mirrors the ERC-8004 feedback scale. */
+  score: number | null;
+  createdAt: string;
+}
+
+/** A reusable task scaffold (builtin or workspace-authored). */
+export interface TaskTemplate {
+  id: string;
+  workspaceId: string;
+  /** When set, the template is scoped to a single project. */
+  projectId: string | null;
+  name: string;
+  taskType: TaskType;
+  descriptionMarkdown: string | null;
+  acceptanceCriteria: AcceptanceCriterion[];
+  defaultPriority: TaskPriority | null;
+  defaultLabels: string[] | null;
+  defaultEstimateMinutes: number | null;
+  fieldDefaults: Record<string, unknown> | null;
+  requiredFields: string[] | null;
+  /** True for the ~15 seeded built-in templates (one per type). */
+  builtin: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Junction row: a member watching a task (the RACI "Informed" set). */
+export interface TaskWatcher {
+  taskId: string;
+  memberId: string;
+  createdAt: string;
+}
+
+/**
+ * Dry-run output of a reset: what WOULD be soft-deleted, plus the server
+ * confirmation token to replay on the destructive commit call.
+ */
+export interface ResetPreview {
+  scope: ResetScope;
+  targetId: string | null;
+  /** Per-entity counts that the destructive call will affect. */
+  counts: Record<string, number>;
+  /** Opaque confirmation token, bound to a hash of the current counts. */
+  confirmationToken: string;
+  /** ISO timestamp after which the token is rejected (422). */
+  expiresAt: string;
+}
+
+/** Result of a committed reset. */
+export interface ResetResult {
+  scope: ResetScope;
+  targetId: string | null;
+  /** Per-entity counts that were actually soft-deleted / created. */
+  counts: Record<string, number>;
+  performedAt: string;
+}
+
+/** An immutable audit-log entry for sensitive (esp. destructive) actions. */
+export interface AuditEvent {
+  id: string;
+  workspaceId: string;
+  actorMemberId: string | null;
+  apiKeyId: string | null;
+  action: string;
+  scope: string | null;
+  payload: Record<string, unknown> | null;
   createdAt: string;
 }
