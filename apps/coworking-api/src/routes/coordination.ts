@@ -8,7 +8,7 @@ import { projects } from '../db/schema.js';
 import type { AppEnv } from '../lib/context.js';
 import { notFound } from '../lib/errors.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { myOpenTasks, whatsBlockingMe, whatsNext } from '../services/coordination.js';
+import { awaitingMyReview, myOpenTasks, whatsBlockingMe, whatsNext } from '../services/coordination.js';
 
 /** Coerce a `?type` query param to a known TaskType, else undefined (no filter). */
 function typeFilter(raw: string | undefined): TaskType | undefined {
@@ -29,6 +29,14 @@ export function coordinationRoutes(db: Database): Hono<AppEnv> {
     const { workspace, member } = c.get('auth');
     return c.json({
       items: await whatsBlockingMe(db, workspace.id, member.id, typeFilter(c.req.query('type'))),
+    });
+  });
+
+  // The reviewer-side inbox: tasks awaiting the caller's review verdict.
+  r.get('/me/reviews', async (c) => {
+    const { workspace, member } = c.get('auth');
+    return c.json({
+      items: await awaitingMyReview(db, workspace.id, member.id, typeFilter(c.req.query('type'))),
     });
   });
 
