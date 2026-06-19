@@ -768,7 +768,7 @@ async function commit(
 }
 
 test('task-model-v2 reset: project dry-run -> commit soft-deletes (recoverable) + authz + idempotency', async () => {
-  const { app, client } = await setup();
+  const { app, client, db } = await setup();
   try {
     const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Reset Team', ownerName: 'Lead' });
     const ownerKey: string = boot.body.apiKey.key;
@@ -853,6 +853,18 @@ test('task-model-v2 reset: project dry-run -> commit soft-deletes (recoverable) 
     assert.equal(replay.status, 200);
     assert.equal(replay.body.counts.tasks, 2, 'idempotent replay returns the original result');
 
+    // Reusing the SAME idempotency key for a DIFFERENT request (different token)
+    // must 409 - never silently replay the stale result and skip the new op.
+    const keyConflict = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: 'a-different-token' },
+      ownerKey,
+      'idem-project-1',
+    );
+    assert.equal(keyConflict.status, 409, 'reusing a key for a different request is rejected');
+    assert.equal(keyConflict.body.error.code, 'idempotency_key_conflict');
+
     // A fresh commit with a NEW idempotency key but the consumed token -> 410.
     const consumed = await commit(
       app,
@@ -877,6 +889,20 @@ test('task-model-v2 reset: project dry-run -> commit soft-deletes (recoverable) 
     assert.equal(drift.status, 409, 'counts changed since the dry-run');
     assert.equal(drift.body.error.code, 'reset_counts_changed');
     assert.ok(t3.id);
+
+    // Resetting an already-trashed project is refused (no silent re-stamp). Trash
+    // the project row directly, then a fresh dry-run -> commit must 409.
+    await db.update(schema.projects).set({ trashedAt: new Date() }).where(eq(schema.projects.id, project.id));
+    const dryTrashed = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, ownerKey);
+    const onTrashed = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dryTrashed.body.confirmationToken },
+      ownerKey,
+      'idem-project-trashed',
+    );
+    assert.equal(onTrashed.status, 409, 'cannot reset an already-trashed project');
+    assert.equal(onTrashed.body.error.code, 'project_already_trashed');
 
     // The blackboard + audit trail recorded the project.reset.
     const verbs: string[] = (await call(app, 'GET', '/v1/activity', undefined, ownerKey)).body.items.map(
