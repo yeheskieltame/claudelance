@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FolderKanban, LogOut, Plus } from "lucide-react";
+import { ChevronDown, FolderKanban, LogOut, Plus, Settings2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle, GlassCard } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { cwKeys } from "@/lib/coworking";
 
 import { ActivityFeed } from "./activity-feed";
 import { useCoworking } from "./provider";
+import { ResetPanel } from "./reset";
 import { EmptyState, Input, PriorityDot, Spinner } from "./ui";
 
 export function Dashboard() {
@@ -30,6 +31,7 @@ export function Dashboard() {
   const [projName, setProjName] = React.useState("");
   const [projKey, setProjKey] = React.useState("");
   const [projBounty, setProjBounty] = React.useState("");
+  const [showSettings, setShowSettings] = React.useState(false);
   const createProject = useMutation({
     mutationFn: () =>
       client.createProject({
@@ -165,6 +167,25 @@ export function Dashboard() {
             </div>
           </GlassCard>
         </div>
+      </div>
+
+      <div className="border-t border-border pt-4">
+        <button
+          type="button"
+          onClick={() => setShowSettings((o) => !o)}
+          aria-expanded={showSettings}
+          aria-controls="workspace-settings"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:text-foreground"
+        >
+          <Settings2 className="h-4 w-4" />
+          Workspace settings
+          <ChevronDown className={"h-4 w-4 transition-transform " + (showSettings ? "rotate-180" : "")} />
+        </button>
+        {showSettings ? (
+          <div id="workspace-settings" className="mt-4">
+            <ResetPanel allowReset={workspace.data?.allowReset ?? false} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

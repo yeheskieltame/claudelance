@@ -37,8 +37,13 @@ export const cwKeys = {
   tasks: (projectId: string) => ["coworking", "tasks", projectId] as const,
   task: (id: string) => ["coworking", "task", id] as const,
   comments: (taskId: string) => ["coworking", "comments", taskId] as const,
+  reviews: (taskId: string) => ["coworking", "reviews", taskId] as const,
+  watchers: (taskId: string) => ["coworking", "watchers", taskId] as const,
+  templates: (projectId?: string) => ["coworking", "templates", projectId ?? "all"] as const,
+  labels: (projectId: string) => ["coworking", "labels", projectId] as const,
   members: ["coworking", "members"] as const,
   myTasks: ["coworking", "me", "tasks"] as const,
+  myReviews: ["coworking", "me", "reviews"] as const,
   whatsNext: (projectId: string) => ["coworking", "next", projectId] as const,
   activity: (projectId?: string) => ["coworking", "activity", projectId ?? "all"] as const,
 };
