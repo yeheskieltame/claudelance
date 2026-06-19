@@ -106,6 +106,11 @@ export function workspaceRoutes(db: Database): Hono<AppEnv> {
 
   r.get('/workspace', (c) => c.json(serializeWorkspace(c.get('auth').workspace)));
 
+  // The authenticated caller's own member record. Returns ONLY the caller (from
+  // the auth context resolved by the API key) - never other members, never the
+  // api-key secret.
+  r.get('/me', (c) => c.json(serializeMember(c.get('auth').member)));
+
   const dodItemInput = z.object({
     id: z.string().optional(),
     text: z.string().min(1).max(2000),

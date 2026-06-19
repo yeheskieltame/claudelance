@@ -20,6 +20,7 @@ export function Dashboard() {
   const enabled = Boolean(apiKey);
 
   const workspace = useQuery({ queryKey: cwKeys.workspace, queryFn: () => client.getWorkspace(), enabled });
+  const me = useQuery({ queryKey: cwKeys.me, queryFn: () => client.getMe(), enabled });
   const projects = useQuery({ queryKey: cwKeys.projects, queryFn: () => client.listProjects(), enabled });
   const myTasks = useQuery({
     queryKey: cwKeys.myTasks,
@@ -183,7 +184,9 @@ export function Dashboard() {
         </button>
         {showSettings ? (
           <div id="workspace-settings" className="mt-4">
-            <ResetPanel allowReset={workspace.data?.allowReset ?? false} />
+            {/* Treat an unknown role as below-admin so the destructive actions
+                never flash as enabled before getMe() resolves. */}
+            <ResetPanel allowReset={workspace.data?.allowReset ?? false} role={me.data?.role ?? "viewer"} />
           </div>
         ) : null}
       </div>

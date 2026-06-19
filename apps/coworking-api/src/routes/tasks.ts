@@ -718,45 +718,55 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
     }
 
     const reviewerChanged = reviewerMemberId !== task.reviewerMemberId;
-    const updated = (
-      await db
-        .update(tasks)
-        .set({
-          reviewerMemberId: reviewerMemberId ?? null,
-          statusColumnId: column.id,
-          updatedAt: new Date(),
-        })
-        .where(eq(tasks.id, task.id))
-        .returning()
-    )[0]!;
+    // Move the task, set the reviewer, subscribe the reviewer, and log the
+    // reviewer.assigned/review.requested activity atomically - so an infra
+    // failure mid-sequence rolls back rather than leaving the task moved with no
+    // matching activity (or a reviewer set but no watcher row).
+    const updated = await db.transaction(async (tx) => {
+      const moved = (
+        await tx
+          .update(tasks)
+          .set({
+            reviewerMemberId: reviewerMemberId ?? null,
+            statusColumnId: column.id,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, task.id))
+          .returning()
+      )[0]!;
 
-    // Reviewer becomes a watcher (RACI "Informed" while accountable for review).
-    if (reviewerMemberId) {
-      await db
-        .insert(taskWatchers)
-        .values({ taskId: task.id, memberId: reviewerMemberId })
-        .onConflictDoNothing();
-    }
+      // Reviewer becomes a watcher (RACI "Informed" while accountable for review).
+      if (reviewerMemberId) {
+        await tx
+          .insert(taskWatchers)
+          .values({ taskId: task.id, memberId: reviewerMemberId })
+          .onConflictDoNothing();
+      }
 
-    if (reviewerChanged && reviewerMemberId) {
-      await db.insert(activities).values({
+      if (reviewerChanged && reviewerMemberId) {
+        await tx.insert(activities).values({
+          workspaceId: workspace.id,
+          projectId: task.projectId,
+          taskId: task.id,
+          actorMemberId: member.id,
+          verb: 'reviewer.assigned',
+          payload: { reviewerMemberId },
+        });
+      }
+      await tx.insert(activities).values({
         workspaceId: workspace.id,
         projectId: task.projectId,
         taskId: task.id,
         actorMemberId: member.id,
-        verb: 'reviewer.assigned',
-        payload: { reviewerMemberId },
+        verb: 'review.requested',
+        payload: { reviewerMemberId: reviewerMemberId ?? null, column: column.key },
       });
-    }
-    await db.insert(activities).values({
-      workspaceId: workspace.id,
-      projectId: task.projectId,
-      taskId: task.id,
-      actorMemberId: member.id,
-      verb: 'review.requested',
-      payload: { reviewerMemberId: reviewerMemberId ?? null, column: column.key },
+      return moved;
     });
-    // Surface to subscribers (webhook/automation) as a status change.
+
+    // Surface to subscribers (webhook/automation) as a status change. Kept
+    // OUTSIDE the transaction: it is best-effort and must never roll back a
+    // committed review request.
     await runAutomations(db, {
       event: 'task.status_changed',
       task: updated,
@@ -834,56 +844,62 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
       move = { completedAt: null, completionReason: 'canceled' };
     }
 
-    // The move is guaranteed: apply it, then record the verdict + activity.
-    await db
-      .update(tasks)
-      .set({
-        statusColumnId: destCol.id,
-        completedAt: move.completedAt,
-        ...(move.completionReason !== undefined ? { completionReason: move.completionReason } : {}),
-        updatedAt: new Date(),
-      })
-      .where(eq(tasks.id, task.id));
+    // The move is guaranteed: apply it, record the verdict, and log the activity
+    // atomically. An infra failure mid-sequence must roll back the whole verdict
+    // rather than leave the task moved with no taskReviews row (or vice versa).
     const movedTo = destCol.key;
-
-    const review = (
-      await db
-        .insert(taskReviews)
-        .values({
-          taskId: task.id,
-          reviewerMemberId: member.id,
-          verdict: body.verdict,
-          comment: body.comment ?? null,
-          score: body.score ?? null,
-        })
-        .returning()
-    )[0]!;
-
     const verb =
       body.verdict === 'approved'
         ? 'review.approved'
         : body.verdict === 'changes_requested'
           ? 'review.changes_requested'
           : 'review.rejected';
-    await db.insert(activities).values({
-      workspaceId: workspace.id,
-      projectId: task.projectId,
-      taskId: task.id,
-      actorMemberId: member.id,
-      verb,
-      payload: { verdict: body.verdict, score: body.score ?? null, movedTo },
-    });
-    // changes_requested re-opens the task for the assignee.
-    if (body.verdict === 'changes_requested') {
-      await db.insert(activities).values({
+    const review = await db.transaction(async (tx) => {
+      await tx
+        .update(tasks)
+        .set({
+          statusColumnId: destCol.id,
+          completedAt: move.completedAt,
+          ...(move.completionReason !== undefined ? { completionReason: move.completionReason } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(tasks.id, task.id));
+
+      const inserted = (
+        await tx
+          .insert(taskReviews)
+          .values({
+            taskId: task.id,
+            reviewerMemberId: member.id,
+            verdict: body.verdict,
+            comment: body.comment ?? null,
+            score: body.score ?? null,
+          })
+          .returning()
+      )[0]!;
+
+      await tx.insert(activities).values({
         workspaceId: workspace.id,
         projectId: task.projectId,
         taskId: task.id,
         actorMemberId: member.id,
-        verb: 'task.reopened',
-        payload: { column: movedTo },
+        verb,
+        payload: { verdict: body.verdict, score: body.score ?? null, movedTo },
       });
-    }
+      // changes_requested re-opens the task for the assignee.
+      if (body.verdict === 'changes_requested') {
+        await tx.insert(activities).values({
+          workspaceId: workspace.id,
+          projectId: task.projectId,
+          taskId: task.id,
+          actorMemberId: member.id,
+          verb: 'task.reopened',
+          payload: { column: movedTo },
+        });
+      }
+      return inserted;
+    });
+
     return c.json(serializeTaskReview(review), 201);
   });
 
