@@ -381,3 +381,151 @@ test('premium gating: free tier caps projects, premium is unlimited', async () =
     await client.close();
   }
 });
+
+test('task-model-v2: templates, AC/DoD, review back-edge, watchers, trash, authz', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'V2 Team', ownerName: 'Lead' });
+    const key: string = boot.body.apiKey.key;
+    const ownerMemberId: string = boot.body.owner.id;
+
+    // Bootstrap seeds the builtin templates (one per meaningful type).
+    const templates = await call(app, 'GET', '/v1/templates', undefined, key);
+    assert.equal(templates.status, 200);
+    assert.ok(templates.body.items.length >= 15, 'expected builtin templates to be seeded');
+    const codeTpl = templates.body.items.find((t: { taskType: string }) => t.taskType === 'code');
+    assert.ok(codeTpl, 'expected a builtin code template');
+    const legalTpl = templates.body.items.find((t: { taskType: string }) => t.taskType === 'legal');
+    assert.ok(
+      legalTpl.acceptanceCriteria.some((ac: { text: string }) => /disclaimer/i.test(ac.text)),
+      'legal template must carry a disclaimer AC item',
+    );
+    assert.equal(codeTpl.builtin, true);
+
+    // Owner-only PATCH /workspace sets the DoD template; new tasks snapshot it.
+    const patchWs = await call(
+      app,
+      'PATCH',
+      '/v1/workspace',
+      { definitionOfDone: [{ text: 'CI green' }, { text: 'Docs updated' }] },
+      key,
+    );
+    assert.equal(patchWs.status, 200);
+    assert.equal(patchWs.body.definitionOfDone.length, 2);
+
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'V2', name: 'V2' }, key)).body;
+
+    // Column management is admin-gated; the owner passes.
+    const addCol = await call(
+      app,
+      'POST',
+      `/v1/projects/${project.id}/columns`,
+      { key: 'extra', name: 'Extra' },
+      key,
+    );
+    assert.equal(addCol.status, 201);
+
+    // A typed task with acceptance criteria + an advisory field bag.
+    const richTask = await call(
+      app,
+      'POST',
+      '/v1/tasks',
+      {
+        projectId: project.id,
+        title: 'Implement parser',
+        type: 'code',
+        fields: { repo: 'acme/parser', anything: 123 }, // unknown keys accepted
+        acceptanceCriteria: [{ text: 'Handles empty input' }, { kind: 'scenario', text: 'Given X when Y then Z' }],
+        acceptanceNotes: 'see RFC',
+      },
+      key,
+    );
+    assert.equal(richTask.status, 201);
+    assert.equal(richTask.body.type, 'code');
+    assert.equal(richTask.body.acceptanceCriteria.length, 2);
+    assert.equal(richTask.body.acceptanceCriteria[0].done, false);
+    assert.ok(richTask.body.acceptanceCriteria[0].id, 'AC items get server ids');
+    assert.equal(richTask.body.definitionOfDone.length, 2, 'workspace DoD is snapshotted');
+    assert.deepEqual(richTask.body.fields, { repo: 'acme/parser', anything: 123 });
+    const taskId: string = richTask.body.id;
+
+    // Reporter auto-watches; the list view inlines labels + AC progress.
+    const watchers = await call(app, 'GET', `/v1/tasks/${taskId}/watchers`, undefined, key);
+    assert.ok(watchers.body.items.some((w: { memberId: string }) => w.memberId === ownerMemberId));
+
+    const list = await call(app, 'GET', `/v1/tasks?projectId=${project.id}&type=code`, undefined, key);
+    assert.equal(list.body.items.length, 1);
+    assert.deepEqual(list.body.items[0].acProgress, { done: 0, total: 4 }); // 2 AC + 2 DoD
+
+    // Review loop: request-review moves to in_review; changes_requested moves back.
+    const rr = await call(app, 'POST', `/v1/tasks/${taskId}/request-review`, undefined, key);
+    assert.equal(rr.status, 200);
+    const inReview = (await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, key)).body.statusColumnId;
+    const review = await call(
+      app,
+      'POST',
+      `/v1/tasks/${taskId}/review`,
+      { verdict: 'changes_requested', comment: 'fix edge case', score: 3 },
+      key,
+    );
+    assert.equal(review.status, 201);
+    assert.equal(review.body.verdict, 'changes_requested');
+    const afterReview = (await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, key)).body.statusColumnId;
+    assert.notEqual(afterReview, inReview, 'changes_requested moves the task back off the review column');
+
+    // Move to done with unmet AC/DoD -> WARNs (comment + activity) but does NOT block.
+    const done = await call(app, 'POST', `/v1/tasks/${taskId}/status`, { statusColumnKey: 'done' }, key);
+    assert.equal(done.status, 200);
+    assert.ok(done.body.completedAt, 'task still closes despite unmet criteria');
+    const comments = await call(app, 'GET', `/v1/tasks/${taskId}/comments`, undefined, key);
+    assert.ok(
+      comments.body.items.some((cm: { body: string }) => /unmet/i.test(cm.body)),
+      'a warning comment is posted on completing with unmet criteria',
+    );
+
+    // Instantiate a task from the code builtin; its AC is materialized fresh.
+    const fromTpl = await call(
+      app,
+      'POST',
+      `/v1/tasks/from-template/${codeTpl.id}`,
+      { projectId: project.id, vars: { goal: 'build the thing' } },
+      key,
+    );
+    assert.equal(fromTpl.status, 201);
+    assert.equal(fromTpl.body.type, 'code');
+    assert.ok(fromTpl.body.acceptanceCriteria.length >= 1);
+    assert.ok(fromTpl.body.description.includes('build the thing'), 'placeholder substituted');
+
+    // Soft-delete (trash) removes the task from the default list; restore brings it back.
+    const trash = await call(app, 'DELETE', `/v1/tasks/${taskId}`, undefined, key);
+    assert.equal(trash.status, 200);
+    assert.ok(trash.body.trashedAt);
+    const afterTrash = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, key);
+    assert.ok(!afterTrash.body.items.some((t: { id: string }) => t.id === taskId), 'trashed task is hidden');
+    await call(app, 'POST', `/v1/tasks/${taskId}/restore`, undefined, key);
+    const afterRestore = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, key);
+    assert.ok(afterRestore.body.items.some((t: { id: string }) => t.id === taskId), 'restored task reappears');
+
+    // authz: a viewer (read-scoped key) may read + comment but not create tasks.
+    const viewer = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Watcher', role: 'viewer' }, key)
+    ).body;
+    const viewerKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: viewer.id, scopes: ['read'] }, key)
+    ).body.key;
+    const denied = await call(
+      app,
+      'POST',
+      '/v1/tasks',
+      { projectId: project.id, title: 'nope' },
+      viewerKey,
+    );
+    assert.equal(denied.status, 403);
+    const canComment = await call(app, 'POST', `/v1/tasks/${taskId}/comments`, { body: 'lgtm' }, viewerKey);
+    assert.equal(canComment.status, 201, 'viewers may comment');
+    const canRead = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, viewerKey);
+    assert.equal(canRead.status, 200, 'viewers may read');
+  } finally {
+    await client.close();
+  }
+});
