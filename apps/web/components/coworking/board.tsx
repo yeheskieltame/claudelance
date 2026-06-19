@@ -17,10 +17,11 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { CardTitle, GlassCard } from "@/components/ui/card";
-import { cwKeys } from "@/lib/coworking";
+import { COWORKING_API_URL, cwKeys } from "@/lib/coworking";
 
 import { AcceptanceCriteriaEditor } from "./acceptance-editor";
 import { ActivityFeed } from "./activity-feed";
+import { ConnectAgent } from "./connect-agent";
 import { useCoworking } from "./provider";
 import { TaskDetail } from "./task-detail";
 import { PerTypeFields, TaskTypePicker } from "./task-fields";
@@ -106,6 +107,16 @@ export function Board({ projectId }: { projectId: string }) {
           </div>
         </div>
       </div>
+
+      {apiKey && project.data ? (
+        <ConnectAgent
+          apiUrl={COWORKING_API_URL}
+          apiKey={apiKey}
+          projectId={project.data.id}
+          projectKey={project.data.key}
+          projectName={project.data.name}
+        />
+      ) : null}
 
       <CreateTaskForm
         projectId={projectId}
