@@ -4,25 +4,34 @@
 import type { InferSelectModel } from 'drizzle-orm';
 
 import type {
+  AcceptanceCriterion,
   Activity,
   ApiKeyInfo,
   ApiKeyWithSecret,
+  AuditEvent,
   Automation,
   Comment,
+  CompletionReason,
   DependencyType,
+  DoDItem,
   Goal,
   GoalLink,
   GoalStatus,
+  Label,
   Member,
   MemberKind,
   MemberRole,
   Project,
   ProjectStatus,
+  ReviewVerdict,
   StatusCategory,
   StatusColumn,
   Task,
   TaskDependency,
   TaskPriority,
+  TaskReview,
+  TaskTemplate,
+  TaskType,
   TimeEntry,
   TimeEntrySource,
   Webhook,
@@ -32,15 +41,19 @@ import type {
 import type {
   activities,
   apiKeys,
+  auditLog,
   automations,
   comments,
   goalLinks,
   goals,
+  labels,
   members,
   projects,
   statusColumns,
   taskDependencies,
+  taskReviews,
   tasks,
+  taskTemplates,
   timeEntries,
   webhooks,
   workspaces,
@@ -49,6 +62,10 @@ import type {
 const iso = (d: Date): string => d.toISOString();
 const isoOrNull = (d: Date | null): string | null => (d === null ? null : d.toISOString());
 
+// jsonb columns come back as `unknown`; coerce array-shaped columns to a typed
+// array, tolerating null/non-array (legacy rows) by falling back to [].
+const jsonArray = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+
 export function serializeWorkspace(r: InferSelectModel<typeof workspaces>): Workspace {
   return {
     id: r.id,
@@ -56,6 +73,8 @@ export function serializeWorkspace(r: InferSelectModel<typeof workspaces>): Work
     name: r.name,
     ownerAddress: r.ownerAddress,
     isPremium: r.isPremium,
+    allowReset: r.allowReset,
+    definitionOfDone: jsonArray<DoDItem>(r.definitionOfDone),
     createdAt: iso(r.createdAt),
     updatedAt: iso(r.updatedAt),
   };
@@ -106,6 +125,8 @@ export function serializeProject(r: InferSelectModel<typeof projects>): Project 
     status: r.status as ProjectStatus,
     linkedBountyId: r.linkedBountyId === null ? null : r.linkedBountyId.toString(),
     createdByMemberId: r.createdByMemberId,
+    trashedAt: isoOrNull(r.trashedAt),
+    trashedByMemberId: r.trashedByMemberId,
     createdAt: iso(r.createdAt),
     updatedAt: iso(r.updatedAt),
   };
@@ -123,23 +144,47 @@ export function serializeStatusColumn(r: InferSelectModel<typeof statusColumns>)
   };
 }
 
-export function serializeTask(r: InferSelectModel<typeof tasks>): Task {
+/**
+ * Extra fields inlined on the GET /tasks list view (the route resolves them in a
+ * single batched query to avoid N+1). Omitted on single-task reads.
+ */
+interface TaskExtras {
+  labels?: Label[];
+  acProgress?: { done: number; total: number };
+}
+
+export function serializeTask(r: InferSelectModel<typeof tasks>, extras?: TaskExtras): Task {
   return {
     id: r.id,
     projectId: r.projectId,
     number: r.number,
     title: r.title,
     description: r.description,
+    type: r.type as TaskType,
+    fields: (r.fields as Record<string, unknown> | null) ?? null,
+    acceptanceCriteria: jsonArray<AcceptanceCriterion>(r.acceptanceCriteria),
+    acceptanceNotes: r.acceptanceNotes,
+    definitionOfDone: jsonArray<DoDItem>(r.definitionOfDone),
     statusColumnId: r.statusColumnId,
     assigneeMemberId: r.assigneeMemberId,
+    reviewerMemberId: r.reviewerMemberId,
+    // Reporter is the creating member, surfaced under a RACI-friendly alias.
+    reporterMemberId: r.createdByMemberId,
     priority: r.priority as TaskPriority,
     parentTaskId: r.parentTaskId,
     estimateMinutes: r.estimateMinutes,
+    estimatePoints: r.estimatePoints,
+    startDate: isoOrNull(r.startDate),
     dueDate: isoOrNull(r.dueDate),
+    completionReason: (r.completionReason as CompletionReason | null) ?? null,
     createdByMemberId: r.createdByMemberId,
+    trashedAt: isoOrNull(r.trashedAt),
+    trashedByMemberId: r.trashedByMemberId,
     createdAt: iso(r.createdAt),
     updatedAt: iso(r.updatedAt),
     completedAt: isoOrNull(r.completedAt),
+    ...(extras?.labels !== undefined ? { labels: extras.labels } : {}),
+    ...(extras?.acProgress !== undefined ? { acProgress: extras.acProgress } : {}),
   };
 }
 
@@ -242,6 +287,61 @@ export function serializeWebhook(r: InferSelectModel<typeof webhooks>): Webhook 
     enabled: r.enabled,
     lastDeliveryAt: isoOrNull(r.lastDeliveryAt),
     lastStatus: r.lastStatus,
+    createdAt: iso(r.createdAt),
+  };
+}
+
+export function serializeLabel(r: InferSelectModel<typeof labels>): Label {
+  return {
+    id: r.id,
+    projectId: r.projectId,
+    name: r.name,
+    color: r.color,
+    createdAt: iso(r.createdAt),
+  };
+}
+
+export function serializeTaskReview(r: InferSelectModel<typeof taskReviews>): TaskReview {
+  return {
+    id: r.id,
+    taskId: r.taskId,
+    reviewerMemberId: r.reviewerMemberId,
+    verdict: r.verdict as ReviewVerdict,
+    comment: r.comment,
+    score: r.score,
+    createdAt: iso(r.createdAt),
+  };
+}
+
+export function serializeTaskTemplate(r: InferSelectModel<typeof taskTemplates>): TaskTemplate {
+  return {
+    id: r.id,
+    workspaceId: r.workspaceId,
+    projectId: r.projectId,
+    name: r.name,
+    taskType: r.taskType as TaskType,
+    descriptionMarkdown: r.descriptionMarkdown,
+    acceptanceCriteria: jsonArray<AcceptanceCriterion>(r.acceptanceCriteria),
+    defaultPriority: r.defaultPriority === null ? null : (r.defaultPriority as TaskPriority),
+    defaultLabels: r.defaultLabels,
+    defaultEstimateMinutes: r.defaultEstimateMinutes,
+    fieldDefaults: (r.fieldDefaults as Record<string, unknown> | null) ?? null,
+    requiredFields: r.requiredFields,
+    builtin: r.builtin,
+    createdAt: iso(r.createdAt),
+    updatedAt: iso(r.updatedAt),
+  };
+}
+
+export function serializeAuditEvent(r: InferSelectModel<typeof auditLog>): AuditEvent {
+  return {
+    id: r.id,
+    workspaceId: r.workspaceId,
+    actorMemberId: r.actorMemberId,
+    apiKeyId: r.apiKeyId,
+    action: r.action,
+    scope: r.scope,
+    payload: (r.payload as Record<string, unknown> | null) ?? null,
     createdAt: iso(r.createdAt),
   };
 }
