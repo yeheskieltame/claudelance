@@ -8,6 +8,10 @@
 [![sdk downloads](https://img.shields.io/npm/dt/@yeheskieltame/claudelance-sdk.svg?label=sdk%20downloads)](https://www.npmjs.com/package/@yeheskieltame/claudelance-sdk)
 [![types npm](https://img.shields.io/npm/v/@yeheskieltame/claudelance-types.svg?label=types&color=cb3837)](https://www.npmjs.com/package/@yeheskieltame/claudelance-types)
 [![types downloads](https://img.shields.io/npm/dt/@yeheskieltame/claudelance-types.svg?label=types%20downloads)](https://www.npmjs.com/package/@yeheskieltame/claudelance-types)
+[![coworking-sdk npm](https://img.shields.io/npm/v/@yeheskieltame/claudelance-coworking-sdk.svg?label=coworking-sdk&color=cb3837)](https://www.npmjs.com/package/@yeheskieltame/claudelance-coworking-sdk)
+[![coworking-sdk downloads](https://img.shields.io/npm/dt/@yeheskieltame/claudelance-coworking-sdk.svg?label=coworking-sdk%20downloads)](https://www.npmjs.com/package/@yeheskieltame/claudelance-coworking-sdk)
+[![coworking-types npm](https://img.shields.io/npm/v/@yeheskieltame/claudelance-coworking-types.svg?label=coworking-types&color=cb3837)](https://www.npmjs.com/package/@yeheskieltame/claudelance-coworking-types)
+[![coworking-types downloads](https://img.shields.io/npm/dt/@yeheskieltame/claudelance-coworking-types.svg?label=coworking-types%20downloads)](https://www.npmjs.com/package/@yeheskieltame/claudelance-coworking-types)
 
 > The universal onchain marketplace for AI agent labor - code, research, analysis, content, and more - settled in cUSD, CELO, or USDC on Celo.
 > Hackathon: Celo Proof of Ship #8 (May 4-29, 2026). Submission Day 7 (May 21).
@@ -64,7 +68,7 @@
 | `docs/v3-task-catalog.md` | DONE | 10 task type specs, pricing, verification matrix |
 | `docs/v3-contract-architecture.md` | DONE | UUPS design, storage layout, upgrade plan |
 | `apps/coworking-api/` | **NEW** (backend P0-P3 merged via PR #611; FE on `kiel-dev/coworking-fe`) | **Claudelance Coworking** - agent-native PM/coordination backend (REST + MCP), Hono + Postgres (Drizzle), web2/off-chain, Railway. Workspaces/projects/tasks/board/comments/deps + activity blackboard + time/goals/automations/webhooks + premium gating. 5 pglite integration tests. Does NOT touch the contract. |
-| `packages/coworking-types/` + `packages/coworking-sdk/` | **NEW** | Shared types + typed REST/MCP client (`CoworkingClient`) for Coworking; publishable to npm. |
+| `packages/coworking-types/` + `packages/coworking-sdk/` | **v0.2.0 LIVE on npmjs** | `@yeheskieltame/claudelance-coworking-types` (shared types/enums) + `@yeheskieltame/claudelance-coworking-sdk` (`CoworkingClient` typed REST/MCP client). Published 2026-06-19 with the Task Model v2 surface (19 task types, acceptance criteria, review loop, templates, reset, reputation-bridge methods, `getMe`). GH Packages mirror pending. |
 | `apps/web/app/coworking/` | **NEW** (on `kiel-dev/coworking-fe`) | Coworking UI: onboarding → dashboard → kanban board, bring-your-own workspace key (localStorage), react-query. |
 | `docs/coworking.md` | DONE | Coworking reference - covers Task Model v2 (19 task types, per-type fields, acceptance criteria + DoD, RACI + review loop, labels, templates, reset handshake/guardrails), REST + MCP + SDK surfaces, "Using the board" (FE), data model, premium + deploy. |
 
