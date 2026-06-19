@@ -16,9 +16,15 @@ const defaultLogger: Logger = (message, meta) =>
 // the bridge never broadcasts a send the wallet cannot afford.
 const LOW_BALANCE_WEI = 300_000_000_000_000_000n;
 
-// How many pending items to drain per workspace per tick. One page keeps the
-// tick bounded; the 5-min interval drains any backlog over a few ticks.
+// How many pending items to fetch per page. Each tick drains ALL pages for a
+// workspace (paginating within the tick via the response cursor), so this only
+// bounds a single HTTP round trip, not the total work per tick.
 const PAGE_LIMIT = 100;
+
+// Hard cap on pages drained per workspace per tick. The server set-minus shrinks
+// as we ack, so pagination terminates well before this; the cap is a belt-and-
+// suspenders guard against an unexpected non-advancing cursor.
+const MAX_PAGES_PER_TICK = 1_000;
 
 const DEFAULT_TAG2 = '10';
 const TAG1 = 'claudelance-coworking';
@@ -55,20 +61,25 @@ function taskFeedbackUri(item: PendingReputationItem): string {
 }
 
 /**
- * Cross-tick bridge state. `cursors` is the per-workspace `since` watermark
- * (review createdAt) advanced only after a successful live ack. `processed` is
- * a Layer-2 in-memory dedup set keyed by reviewId, guarding against a duplicate
- * giveFeedback inside a single process run even before the server-side ack
- * lands. In-memory by design: a restart re-reads from the durable ledger
- * (acked reviews never reappear in the pending feed) so nothing is double-sent.
+ * Cross-tick bridge state. `processed` is an in-memory dedup set keyed by
+ * reviewId, guarding against a duplicate giveFeedback inside a single process
+ * run before the server-side ack is observable in a later pending page.
+ *
+ * There is deliberately NO persisted `since` cursor: /v1/reputation/pending is
+ * an authoritative server-side set-minus (acked reviews are excluded by the
+ * ledger anti-join), so each tick re-fetches the OLDEST un-acked page from the
+ * start. A skipped / dry-run / ack-failed review therefore always re-lists on
+ * the next tick instead of being stranded behind an advanced watermark.
+ *
+ * In-memory by design: a restart re-reads from the durable ledger (acked
+ * reviews never reappear in the pending feed) so nothing is double-sent.
  */
 export type BridgeState = {
-  cursors: Map<string, string>;
   processed: Set<string>;
 };
 
 export function createBridgeState(): BridgeState {
-  return { cursors: new Map(), processed: new Set() };
+  return { processed: new Set() };
 }
 
 /**
@@ -90,14 +101,25 @@ export type BridgeTickSummary = {
 
 /**
  * One bridge pass, on its own clock (NOT inside the keeper tick). For each
- * configured Coworking key (one per workspace): fetch one page of pending
- * approved reviews, and for each owed item record a positive ERC-8004 signal
- * for the assignee's agentId - exactly once.
+ * configured Coworking key (one per workspace): drain ALL pages of pending
+ * approved reviews, oldest first, and for each owed item record a positive
+ * ERC-8004 signal for the assignee's agentId.
+ *
+ * No cross-tick cursor is kept. Each tick starts from the OLDEST un-acked page
+ * (no `since`); the response `nextCursor` is used ONLY as an ephemeral local
+ * variable to walk subsequent pages WITHIN this tick until a page comes back
+ * empty. Because /v1/reputation/pending is an authoritative server set-minus
+ * (acked reviews are excluded by the ledger anti-join), this guarantees no
+ * approved review is ever permanently skipped:
+ *   - Normal operation is exactly-once: the server ledger drops an item the
+ *     instant its ack lands, so it never re-lists.
+ *   - The only at-least-once window is send-succeeded-but-ack-failed THEN a
+ *     process restart (which clears the in-memory `processed` Set): the item
+ *     re-lists and gets a second, benign +1. No restart => the Set dedups it.
  *
  * Dry-run (REPUTATION_BRIDGE_DRY_RUN, default TRUE, INDEPENDENT of the keeper's
- * DRY_RUN): log the intended giveFeedback, send nothing, ack nothing, and do
- * NOT advance the durable cursor - so the same items re-list next tick. Going
- * live is an explicit env flip.
+ * DRY_RUN): log the intended giveFeedback, send nothing, ack nothing - so the
+ * same items re-list next tick. Going live is an explicit env flip.
  */
 export async function runReputationBridgeTick(
   deps: BridgeDeps,
@@ -127,104 +149,121 @@ export async function runReputationBridgeTick(
 
   for (let i = 0; i < cfg.coworkingApiKeys.length; i++) {
     const key = cfg.coworkingApiKeys[i] as string;
-    // The since cursor is per workspace; key index is its stable handle.
-    const cursorKey = String(i);
-    const since = state.cursors.get(cursorKey);
+    const workspace = String(i);
 
-    let page;
-    try {
-      page = await deps.listPending(baseUrl, key, { since, limit: PAGE_LIMIT });
-    } catch (err) {
-      summary.failed++;
-      log('bridge.fetch-error', { workspace: cursorKey, error: errorMessage(err) });
-      continue;
-    }
-    summary.fetched += page.items.length;
-
-    for (const item of page.items) {
-      // Layer-2 dedup: a duplicate inside this run, before the server-side ack
-      // is observable in a later pending page.
-      if (state.processed.has(item.reviewId)) {
-        summary.skipped++;
-        continue;
-      }
-
-      const agentId = parseAgentId(item.agentId);
-      if (agentId === null) {
-        summary.skipped++;
-        log('bridge.bad-agent-id', { reviewId: item.reviewId, agentId: item.agentId });
-        continue;
-      }
-
-      // Validate the id still resolves to a live Identity NFT. Owner null =>
-      // the id does not exist; skip + log, do NOT ack (the review stays owed).
-      const owner = await deps.chain.identityOwnerOf(agentId);
-      if (owner === null) {
-        summary.skipped++;
-        log('bridge.agent-unresolvable', {
-          reviewId: item.reviewId,
-          agentId: item.agentId,
-        });
-        continue;
-      }
-
-      const tag2 = bountyTypeTag(item.taskType);
-      const feedbackURI = taskFeedbackUri(item);
-
-      if (cfg.reputationBridgeDryRun) {
-        // Observational only: no send, no ack, no cursor advance. The item
-        // re-lists next tick until an operator flips REPUTATION_BRIDGE_DRY_RUN.
-        log('bridge.dry-run', {
-          reviewId: item.reviewId,
-          agentId: item.agentId,
-          taskType: item.taskType,
-          tag1: TAG1,
-          tag2,
-          feedbackURI,
-        });
-        continue;
-      }
-
-      let tx: `0x${string}`;
+    // Within-tick pagination ONLY: start with no `since` (oldest un-acked page)
+    // and advance via the response cursor until a page comes back empty. This
+    // cursor is a local of this tick - never persisted across ticks - so an
+    // un-acked review always re-lists from the start on the next pass.
+    let since: string | undefined;
+    for (let pageNum = 0; pageNum < MAX_PAGES_PER_TICK; pageNum++) {
+      let page;
       try {
-        tx = await deps.chain.giveFeedback(agentId, { tag1: TAG1, tag2, feedbackURI });
+        page = await deps.listPending(baseUrl, key, { since, limit: PAGE_LIMIT });
       } catch (err) {
         summary.failed++;
-        log('bridge.attest-error', {
-          reviewId: item.reviewId,
-          agentId: item.agentId,
-          error: errorMessage(err),
-        });
-        continue;
+        log('bridge.fetch-error', { workspace, since, error: errorMessage(err) });
+        break;
       }
+      if (page.items.length === 0) break;
+      summary.fetched += page.items.length;
 
-      const ackBody: AckReputationBody = { reviewId: item.reviewId, txHash: tx, agentId: item.agentId };
-      try {
-        await deps.ack(baseUrl, key, ackBody);
-      } catch (err) {
-        // The signal landed on-chain but the ack failed. Mark it processed in
-        // memory so this run does not re-send; the operator can re-ack out of
-        // band, and the durable cursor stays put so it is retried next start.
+      for (const item of page.items) {
+        // In-memory dedup: a duplicate inside this run, before the server-side
+        // ack is observable in a later pending page.
+        if (state.processed.has(item.reviewId)) {
+          summary.skipped++;
+          continue;
+        }
+
+        const agentId = parseAgentId(item.agentId);
+        if (agentId === null) {
+          summary.skipped++;
+          log('bridge.bad-agent-id', { reviewId: item.reviewId, agentId: item.agentId });
+          continue;
+        }
+
+        // Validate the id still resolves to a live Identity NFT. Owner null =>
+        // the id does not exist; skip + log, do NOT ack (the review stays owed
+        // and re-lists next tick since no cursor advances past it).
+        const owner = await deps.chain.identityOwnerOf(agentId);
+        if (owner === null) {
+          summary.skipped++;
+          log('bridge.agent-unresolvable', {
+            reviewId: item.reviewId,
+            agentId: item.agentId,
+          });
+          continue;
+        }
+
+        const tag2 = bountyTypeTag(item.taskType);
+        const feedbackURI = taskFeedbackUri(item);
+
+        if (cfg.reputationBridgeDryRun) {
+          // Observational only: no send, no ack. The item re-lists next tick
+          // until an operator flips REPUTATION_BRIDGE_DRY_RUN.
+          summary.skipped++;
+          log('bridge.dry-run', {
+            reviewId: item.reviewId,
+            agentId: item.agentId,
+            taskType: item.taskType,
+            tag1: TAG1,
+            tag2,
+            feedbackURI,
+          });
+          continue;
+        }
+
+        let tx: `0x${string}`;
+        try {
+          tx = await deps.chain.giveFeedback(agentId, { tag1: TAG1, tag2, feedbackURI });
+        } catch (err) {
+          summary.failed++;
+          log('bridge.attest-error', {
+            reviewId: item.reviewId,
+            agentId: item.agentId,
+            error: errorMessage(err),
+          });
+          continue;
+        }
+
+        const ackBody: AckReputationBody = {
+          reviewId: item.reviewId,
+          txHash: tx,
+          agentId: item.agentId,
+        };
+        try {
+          await deps.ack(baseUrl, key, ackBody);
+        } catch (err) {
+          // The signal landed on-chain but the ack failed. Mark it processed in
+          // memory so this run does not re-send. With no persisted cursor it
+          // will re-list (and get a benign duplicate +1) only after a restart
+          // clears this Set; the operator can also re-ack out of band.
+          state.processed.add(item.reviewId);
+          summary.failed++;
+          log('bridge.ack-error', {
+            reviewId: item.reviewId,
+            agentId: item.agentId,
+            tx,
+            error: errorMessage(err),
+          });
+          continue;
+        }
+
         state.processed.add(item.reviewId);
-        summary.failed++;
-        log('bridge.ack-error', {
+        summary.attested++;
+        log('bridge.attested', {
           reviewId: item.reviewId,
           agentId: item.agentId,
+          tag2,
           tx,
-          error: errorMessage(err),
         });
-        continue;
       }
 
-      state.processed.add(item.reviewId);
-      state.cursors.set(cursorKey, item.reviewedAt);
-      summary.attested++;
-      log('bridge.attested', {
-        reviewId: item.reviewId,
-        agentId: item.agentId,
-        tag2,
-        tx,
-      });
+      // Walk to the next page within this tick. A null cursor (or one that does
+      // not advance) means there is nothing more to drain right now.
+      if (!page.nextCursor || page.nextCursor === since) break;
+      since = page.nextCursor;
     }
   }
 
