@@ -23,14 +23,13 @@ import { loadProjectScoped } from '../lib/loaders.js';
 import { authMiddleware } from '../middleware/auth.js';
 import {
   computeResetPreview,
-  consumeResetToken,
   findIdempotentResponse,
+  hashResetRequest,
   issueResetToken,
   performProjectReset,
   performWorkspaceClear,
   seedDemo,
-  storeIdempotentResponse,
-  type PerformContext,
+  type CommitContext,
 } from '../services/reset.js';
 
 /** Request body shared by all reset endpoints; a discriminated dry-run/commit. */
@@ -96,30 +95,35 @@ export function resetRoutes(db: Database): Hono<AppEnv> {
     // Commit: requires a confirmation token + an Idempotency-Key header.
     if (!body.confirmationToken) throw badRequest('confirmationToken is required to commit', 'confirmation_required');
     const idempotencyKey = requireIdempotencyKey(c);
-    const replay = await findIdempotentResponse(db, workspace.id, idempotencyKey);
-    if (replay !== undefined) return c.json(replay as ResetResult);
-
-    await consumeResetToken(db, {
-      workspaceId: workspace.id,
-      tokenId: body.confirmationToken,
+    const endpoint = 'projects/:id/reset';
+    const requestHash = hashResetRequest({
       scope: 'project',
       targetId: project.id,
+      confirmationToken: body.confirmationToken,
     });
-    const ctx: PerformContext = {
+    const replay = await findIdempotentResponse(db, workspace.id, idempotencyKey, { endpoint, requestHash });
+    if (replay !== undefined) return c.json(replay);
+
+    // Token consume + drift re-check + soft-delete + idempotency store run inside
+    // ONE transaction in performProjectReset (atomic + retry-safe).
+    const ctx: CommitContext = {
       workspaceId: workspace.id,
       actorMemberId: member.id,
       apiKeyId: apiKey?.id ?? null,
       tokenId: body.confirmationToken,
       idempotencyKey,
+      scope: 'project',
+      targetId: project.id,
+      endpoint,
+      requestHash,
+      buildResponse: (counts) => result('project', project.id, counts),
     };
-    const counts = await performProjectReset(
+    const out = await performProjectReset(
       db,
       { id: project.id, workspaceId: workspace.id },
       { restoreDefaultColumns: body.restoreDefaultColumns },
       ctx,
     );
-    const out = result('project', project.id, counts);
-    await storeIdempotentResponse(db, workspace.id, idempotencyKey, 'projects/:id/reset', out);
     return c.json(out);
   });
 
@@ -143,25 +147,30 @@ export function resetRoutes(db: Database): Hono<AppEnv> {
 
     if (!body.confirmationToken) throw badRequest('confirmationToken is required to commit', 'confirmation_required');
     const idempotencyKey = requireIdempotencyKey(c);
-    const replay = await findIdempotentResponse(db, workspace.id, idempotencyKey);
-    if (replay !== undefined) return c.json(replay as ResetResult);
-
-    await consumeResetToken(db, {
-      workspaceId: workspace.id,
-      tokenId: body.confirmationToken,
+    const endpoint = 'workspaces/current/reset';
+    const requestHash = hashResetRequest({
       scope: 'workspace',
       targetId: null,
+      confirmationToken: body.confirmationToken,
     });
-    const ctx: PerformContext = {
+    const replay = await findIdempotentResponse(db, workspace.id, idempotencyKey, { endpoint, requestHash });
+    if (replay !== undefined) return c.json(replay);
+
+    // Token consume + drift re-check + soft-delete + idempotency store run inside
+    // ONE transaction in performWorkspaceClear (atomic + retry-safe).
+    const ctx: CommitContext = {
       workspaceId: workspace.id,
       actorMemberId: member.id,
       apiKeyId: apiKey?.id ?? null,
       tokenId: body.confirmationToken,
       idempotencyKey,
+      scope: 'workspace',
+      targetId: null,
+      endpoint,
+      requestHash,
+      buildResponse: (counts) => result('workspace', null, counts),
     };
-    const counts = await performWorkspaceClear(db, workspace.id, ctx);
-    const out = result('workspace', null, counts);
-    await storeIdempotentResponse(db, workspace.id, idempotencyKey, 'workspaces/current/reset', out);
+    const out = await performWorkspaceClear(db, workspace.id, ctx);
     return c.json(out);
   });
 
@@ -189,25 +198,30 @@ export function resetRoutes(db: Database): Hono<AppEnv> {
 
     if (!body.confirmationToken) throw badRequest('confirmationToken is required to commit', 'confirmation_required');
     const idempotencyKey = requireIdempotencyKey(c);
-    const replay = await findIdempotentResponse(db, workspace.id, idempotencyKey);
-    if (replay !== undefined) return c.json(replay as ResetResult);
-
-    await consumeResetToken(db, {
-      workspaceId: workspace.id,
-      tokenId: body.confirmationToken,
+    const endpoint = 'workspaces/current/seed-demo';
+    const requestHash = hashResetRequest({
       scope: 'demo',
       targetId: null,
+      confirmationToken: body.confirmationToken,
     });
-    const ctx: PerformContext = {
+    const replay = await findIdempotentResponse(db, workspace.id, idempotencyKey, { endpoint, requestHash });
+    if (replay !== undefined) return c.json(replay);
+
+    // Token consume + drift re-check + seed + idempotency store run inside ONE
+    // transaction in seedDemo (atomic + retry-safe).
+    const ctx: CommitContext = {
       workspaceId: workspace.id,
       actorMemberId: member.id,
       apiKeyId: apiKey?.id ?? null,
       tokenId: body.confirmationToken,
       idempotencyKey,
+      scope: 'demo',
+      targetId: null,
+      endpoint,
+      requestHash,
+      buildResponse: (counts) => result('demo', null, counts),
     };
-    const counts = await seedDemo(db, workspace.id, { force: body.force }, ctx);
-    const out = result('demo', null, counts);
-    await storeIdempotentResponse(db, workspace.id, idempotencyKey, 'workspaces/current/seed-demo', out);
+    const out = await seedDemo(db, workspace.id, { force: body.force }, ctx);
     return c.json(out);
   });
 
