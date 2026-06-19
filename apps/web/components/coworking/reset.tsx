@@ -159,19 +159,44 @@ function ResetModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Close on Escape + trap initial focus, mirroring the task-detail drawer.
+  // Close on Escape; trap Tab focus inside the modal while it is open, mirroring
+  // the task-detail drawer.
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const root = dialogRef.current;
+      if (!root) return;
+      const focusable = root.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // Move initial focus into the modal when it opens, and restore focus to the
+  // element that triggered it (e.g. the Danger Zone button) when it closes.
   React.useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     dialogRef.current
       ?.querySelector<HTMLElement>('input:not([disabled]), button:not([disabled])')
       ?.focus();
+    return () => previouslyFocused?.focus();
   }, []);
 
   const commit = useMutation<ResetResult, unknown, void>({
