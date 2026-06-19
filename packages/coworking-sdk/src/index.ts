@@ -15,6 +15,8 @@ export {
   type CommitSeedDemoInput,
   type ListTasksQuery,
   type ActivityQuery,
+  type ListPendingReputationQuery,
+  type AckReputationInput,
 } from './client.js';
 
 // Re-export the shared entity + enum types for convenience so consumers only
