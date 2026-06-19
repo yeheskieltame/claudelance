@@ -320,11 +320,14 @@ export interface PerformContext {
 
 /**
  * Soft-delete every live task in one project (recoverable). When
- * restoreDefaultColumns is set, the board is reset to the default columns AFTER
- * the tasks are trashed - tasks.statusColumnId is onDelete:'restrict', so the
- * old columns can only be removed once no live task references them. Trashed
- * tasks keep their (now-deleted) column id; that's fine because restore is a
- * manual, deliberate action and a restored task can be re-triaged.
+ * restoreDefaultColumns is set, the board is rebuilt to the default columns. The
+ * tasks are trashed first, then the board is rebuilt FK-safely: every task (live
+ * or trashed) still references its column (tasks.statusColumnId is
+ * onDelete:'restrict', and trashing does NOT release that reference), so old
+ * columns can't simply be deleted. Instead we re-point each task onto the new
+ * default column matching its old column's category before removing the old
+ * ones. Old keys are temporarily suffixed to dodge the (project_id, key) unique
+ * index while both sets coexist.
  */
 export async function performProjectReset(
   db: Database,
@@ -338,24 +341,15 @@ export async function performProjectReset(
     const txdb = tx as unknown as Database;
     const { willDelete } = await computeResetPreview(txdb, project.workspaceId, 'project', project.id);
 
-    // 1) Trash the live tasks (must happen before touching columns).
+    // 1) Trash the live tasks.
     await txdb
       .update(tasks)
       .set({ trashedAt: now, trashedByMemberId: ctx.actorMemberId, updatedAt: now })
       .where(and(eq(tasks.projectId, project.id), isNull(tasks.trashedAt)));
 
-    // 2) Optionally rebuild the board to the default columns.
+    // 2) Optionally rebuild the board to the default columns, FK-safely.
     if (opts.restoreDefaultColumns) {
-      await txdb.delete(statusColumns).where(eq(statusColumns.projectId, project.id));
-      await txdb.insert(statusColumns).values(
-        DEFAULT_COLUMNS.map((col, i) => ({
-          projectId: project.id,
-          key: col.key,
-          name: col.name,
-          category: col.category,
-          position: i,
-        })),
-      );
+      await rebuildDefaultColumns(txdb, project.id);
     }
 
     await recordReset(txdb, {
@@ -434,6 +428,73 @@ const DEFAULT_COLUMNS = [
   { key: 'done', name: 'Done', category: 'completed' },
   { key: 'canceled', name: 'Canceled', category: 'canceled' },
 ] as const;
+
+/** Canonical default column key a given category maps onto when rebuilding. */
+const CATEGORY_TO_DEFAULT_KEY: Record<string, string> = {
+  backlog: 'backlog',
+  unstarted: 'todo',
+  started: 'in_progress',
+  completed: 'done',
+  canceled: 'canceled',
+};
+
+/**
+ * Rebuild a project's board to the default columns without violating the
+ * onDelete:'restrict' FK on tasks.statusColumnId. Every task (live or trashed)
+ * still points at its current column, so we cannot drop the old columns first.
+ * Instead: insert the new defaults (after suffix-renaming the old keys to dodge
+ * the (project_id, key) unique index), re-point every task onto the new column
+ * matching its old column's category, then delete the orphaned old columns.
+ * Runs inside the caller's transaction.
+ */
+async function rebuildDefaultColumns(tx: Database, projectId: string): Promise<void> {
+  const oldCols = await tx
+    .select()
+    .from(statusColumns)
+    .where(eq(statusColumns.projectId, projectId));
+  const oldIds = oldCols.map((c) => c.id);
+
+  // Free the unique keys so the fresh defaults can be inserted alongside.
+  for (const c of oldCols) {
+    await tx
+      .update(statusColumns)
+      .set({ key: `__old_${c.id}` })
+      .where(eq(statusColumns.id, c.id));
+  }
+
+  // Insert the canonical default columns; map key -> new id.
+  const newCols = await tx
+    .insert(statusColumns)
+    .values(
+      DEFAULT_COLUMNS.map((col, i) => ({
+        projectId,
+        key: col.key,
+        name: col.name,
+        category: col.category,
+        position: i,
+      })),
+    )
+    .returning();
+  const newKeyToId = newCols.reduce<Record<string, string>>((acc, c) => {
+    acc[c.key] = c.id;
+    return acc;
+  }, {});
+
+  // Re-point each old column's tasks onto the matching new column (by category).
+  for (const c of oldCols) {
+    const targetKey = CATEGORY_TO_DEFAULT_KEY[c.category] ?? 'backlog';
+    const targetId = newKeyToId[targetKey] ?? newCols[0]!.id;
+    await tx
+      .update(tasks)
+      .set({ statusColumnId: targetId })
+      .where(eq(tasks.statusColumnId, c.id));
+  }
+
+  // Now nothing references the old columns; remove them.
+  if (oldIds.length > 0) {
+    await tx.delete(statusColumns).where(inArray(statusColumns.id, oldIds));
+  }
+}
 
 /** A canned demo task spec (column key + ordinal + AC count). */
 interface DemoTaskSpec {
