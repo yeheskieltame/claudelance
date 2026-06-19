@@ -12,6 +12,7 @@ export {
   type CreateTemplateInput,
   type TemplateOverrides,
   type CommitResetInput,
+  type CommitSeedDemoInput,
   type ListTasksQuery,
   type ActivityQuery,
 } from './client.js';
