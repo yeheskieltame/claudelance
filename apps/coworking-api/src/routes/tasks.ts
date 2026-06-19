@@ -114,19 +114,33 @@ async function warnIfIncomplete(
   const dod = Array.isArray(task.definitionOfDone) ? (task.definitionOfDone as DoDItem[]) : [];
   const unmet = [...ac, ...dod].filter((i) => !i.done);
   if (unmet.length === 0) return;
-  await db.insert(comments).values({
-    taskId: task.id,
-    authorMemberId: null,
-    body: `Warning: moved to "${columnKey}" with ${unmet.length} unmet acceptance/DoD item(s).`,
-  });
-  await db.insert(activities).values({
-    workspaceId,
-    projectId: task.projectId,
-    taskId: task.id,
-    actorMemberId,
-    verb: 'task.completed_with_unmet_criteria',
-    payload: { column: columnKey, unmet: unmet.length },
-  });
+  // The status move already committed; this advisory comment + activity is
+  // strictly best-effort and must never turn a successful move into a 500.
+  // Swallow + log any write failure instead of rethrowing.
+  try {
+    await db.insert(comments).values({
+      taskId: task.id,
+      authorMemberId: null,
+      body: `Warning: moved to "${columnKey}" with ${unmet.length} unmet acceptance/DoD item(s).`,
+    });
+    await db.insert(activities).values({
+      workspaceId,
+      projectId: task.projectId,
+      taskId: task.id,
+      actorMemberId,
+      verb: 'task.completed_with_unmet_criteria',
+      payload: { column: columnKey, unmet: unmet.length },
+    });
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        message: 'coworking.warnIfIncomplete.failed',
+        taskId: task.id,
+        column: columnKey,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  }
 }
 
 export function taskRoutes(db: Database): Hono<AppEnv> {
@@ -185,10 +199,11 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
     if (!project) throw notFound('project not found');
 
     if (LIMITS.enforce && !workspace.isPremium) {
+      // Trashed (soft-deleted) tasks must not consume the free-tier quota.
       const rows = await db
         .select({ value: count() })
         .from(tasks)
-        .where(eq(tasks.projectId, project.id));
+        .where(and(eq(tasks.projectId, project.id), isNull(tasks.trashedAt)));
       if ((rows[0]?.value ?? 0) >= LIMITS.freeMaxTasksPerProject) {
         throw paymentRequired(
           `Free workspaces are limited to ${LIMITS.freeMaxTasksPerProject} tasks per project. Upgrade to Premium.`,
@@ -609,8 +624,10 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
 
   /**
    * Find the in-review column for a project (a started-category column flagged
-   * "review"), creating a canonical `in_review` one if none exists. Falls back
-   * to any started column only when creation is impossible (none should be).
+   * "review"), creating a canonical `in_review` one if none exists. After the
+   * insert (even when it no-ops on conflict) we re-select the `in_review` row,
+   * so the onConflict path resolves to the existing column rather than silently
+   * returning null. Falls back to any started column as a last resort.
    */
   const findOrCreateReviewColumn = async (projectId: string) => {
     const cols = await db
@@ -637,15 +654,18 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
         position: lastStartedPos + 1,
       })
       .onConflictDoNothing();
-    const created = (
+    // Re-select the in_review row whether we created it or it already existed
+    // (onConflictDoNothing). Only if the project has no in_review column AND no
+    // started column at all do we return null - the caller turns that into a
+    // clear 400 rather than a partial (reviewer-set-but-not-moved) update.
+    const resolved = (
       await db
         .select()
         .from(statusColumns)
         .where(and(eq(statusColumns.projectId, projectId), eq(statusColumns.key, 'in_review')))
         .limit(1)
     )[0];
-    // If the key collided with a non-review column, fall back to any started one.
-    return created ?? cols.find((col) => col.category === 'started') ?? null;
+    return resolved ?? cols.find((col) => col.category === 'started') ?? null;
   };
 
   const requestReviewSchema = z.object({
@@ -688,6 +708,14 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
     } else {
       column = await findOrCreateReviewColumn(task.projectId);
     }
+    // Never do a partial update (reviewer set but task not moved): if no review
+    // or started column can be resolved, the board is misconfigured.
+    if (!column) {
+      throw badRequest(
+        'no review or started column on this board to move the task into; configure a started-category column (e.g. "in_review")',
+        'no_review_column',
+      );
+    }
 
     const reviewerChanged = reviewerMemberId !== task.reviewerMemberId;
     const updated = (
@@ -695,7 +723,7 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
         .update(tasks)
         .set({
           reviewerMemberId: reviewerMemberId ?? null,
-          ...(column ? { statusColumnId: column.id } : {}),
+          statusColumnId: column.id,
           updatedAt: new Date(),
         })
         .where(eq(tasks.id, task.id))
@@ -726,7 +754,7 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
       taskId: task.id,
       actorMemberId: member.id,
       verb: 'review.requested',
-      payload: { reviewerMemberId: reviewerMemberId ?? null, column: column?.key ?? null },
+      payload: { reviewerMemberId: reviewerMemberId ?? null, column: column.key },
     });
     // Surface to subscribers (webhook/automation) as a status change.
     await runAutomations(db, {
@@ -734,7 +762,7 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
       task: updated,
       workspaceId: workspace.id,
       actorMemberId: member.id,
-      toColumnKey: column?.key,
+      toColumnKey: column.key,
     });
     return c.json(serializeTask(updated));
   });
@@ -749,11 +777,74 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
     requireRole(c, 'member');
     const { workspace, member } = c.get('auth');
     const task = await loadTask(c.req.param('id'), workspace.id);
+    // A reviewer must be assigned first (via request-review). Without one, any
+    // member could drive a task to completed/canceled - reject before any write.
+    if (!task.reviewerMemberId) {
+      throw conflict('no reviewer assigned; call request-review first', 'no_reviewer_assigned');
+    }
     // Only the accountable reviewer (or an admin) may record a verdict.
-    if (task.reviewerMemberId && task.reviewerMemberId !== member.id) {
+    if (task.reviewerMemberId !== member.id) {
       requireRole(c, 'admin');
     }
     const body = parse(reviewSchema, await c.req.json().catch(() => ({})));
+
+    const cols = await db
+      .select()
+      .from(statusColumns)
+      .where(eq(statusColumns.projectId, task.projectId))
+      .orderBy(statusColumns.position);
+
+    // Resolve the destination column BEFORE recording the verdict. Each verdict
+    // drives the task to a terminal/back column:
+    //  approved           -> completed column (completedAt + reason 'completed')
+    //  changes_requested  -> back to a started, non-review column (the back-edge)
+    //  rejected           -> canceled column (reason 'canceled')
+    // If the board has no such column the move would silently no-op, leaving the
+    // task where it is while callers/watchers believe it moved. Refuse instead so
+    // the verdict + activity are only written when the move actually happens.
+    let destCol;
+    let move: { completedAt: Date | null; completionReason?: 'completed' | 'canceled' };
+    if (body.verdict === 'approved') {
+      destCol = cols.find((col) => col.category === 'completed');
+      if (!destCol) {
+        throw conflict(
+          'no completed-category column on this board; configure one to approve tasks',
+          'no_completed_column',
+        );
+      }
+      move = { completedAt: new Date(), completionReason: 'completed' };
+    } else if (body.verdict === 'changes_requested') {
+      destCol = cols.find((col) => col.category === 'started' && !/review/i.test(col.key + col.name));
+      if (!destCol) {
+        throw conflict(
+          'no started-category (non-review) column on this board to send the task back to; configure one (e.g. "in_progress")',
+          'no_in_progress_column',
+        );
+      }
+      move = { completedAt: null };
+    } else {
+      // rejected
+      destCol = cols.find((col) => col.category === 'canceled');
+      if (!destCol) {
+        throw conflict(
+          'no canceled-category column on this board; configure one to reject tasks',
+          'no_canceled_column',
+        );
+      }
+      move = { completedAt: null, completionReason: 'canceled' };
+    }
+
+    // The move is guaranteed: apply it, then record the verdict + activity.
+    await db
+      .update(tasks)
+      .set({
+        statusColumnId: destCol.id,
+        completedAt: move.completedAt,
+        ...(move.completionReason !== undefined ? { completionReason: move.completionReason } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, task.id));
+    const movedTo = destCol.key;
 
     const review = (
       await db
@@ -767,59 +858,6 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
         })
         .returning()
     )[0]!;
-
-    const cols = await db
-      .select()
-      .from(statusColumns)
-      .where(eq(statusColumns.projectId, task.projectId))
-      .orderBy(statusColumns.position);
-
-    // Each verdict drives the task to a terminal/back column:
-    //  approved           -> completed column (completedAt + reason 'completed')
-    //  changes_requested  -> back to a started, non-review column (the back-edge)
-    //  rejected           -> canceled column (reason 'canceled')
-    let movedTo: string | null = null;
-    if (body.verdict === 'approved') {
-      const doneCol = cols.find((col) => col.category === 'completed');
-      if (doneCol) {
-        await db
-          .update(tasks)
-          .set({
-            statusColumnId: doneCol.id,
-            completedAt: new Date(),
-            completionReason: 'completed',
-            updatedAt: new Date(),
-          })
-          .where(eq(tasks.id, task.id));
-        movedTo = doneCol.key;
-      }
-    } else if (body.verdict === 'changes_requested') {
-      const backCol = cols.find(
-        (col) => col.category === 'started' && !/review/i.test(col.key + col.name),
-      );
-      if (backCol) {
-        await db
-          .update(tasks)
-          .set({ statusColumnId: backCol.id, completedAt: null, updatedAt: new Date() })
-          .where(eq(tasks.id, task.id));
-        movedTo = backCol.key;
-      }
-    } else {
-      // rejected
-      const canceledCol = cols.find((col) => col.category === 'canceled');
-      if (canceledCol) {
-        await db
-          .update(tasks)
-          .set({
-            statusColumnId: canceledCol.id,
-            completedAt: null,
-            completionReason: 'canceled',
-            updatedAt: new Date(),
-          })
-          .where(eq(tasks.id, task.id));
-        movedTo = canceledCol.key;
-      }
-    }
 
     const verb =
       body.verdict === 'approved'
@@ -1015,10 +1053,11 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
     }
 
     if (LIMITS.enforce && !workspace.isPremium) {
+      // Trashed (soft-deleted) tasks must not consume the free-tier quota.
       const rows = await db
         .select({ value: count() })
         .from(tasks)
-        .where(eq(tasks.projectId, project.id));
+        .where(and(eq(tasks.projectId, project.id), isNull(tasks.trashedAt)));
       if ((rows[0]?.value ?? 0) >= LIMITS.freeMaxTasksPerProject) {
         throw paymentRequired(
           `Free workspaces are limited to ${LIMITS.freeMaxTasksPerProject} tasks per project. Upgrade to Premium.`,
