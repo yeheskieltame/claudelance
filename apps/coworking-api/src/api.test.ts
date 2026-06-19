@@ -799,6 +799,43 @@ test('task-model-v2 review loop: roles, verdict moves, reviewer authz, /me/revie
   }
 });
 
+test('GET /v1/me returns only the caller own member and never an api-key secret', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Me Team', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+    const owner = boot.body.owner;
+
+    // Unauthenticated -> 401.
+    assert.equal((await call(app, 'GET', '/v1/me')).status, 401);
+
+    // The owner key resolves to the owner member.
+    const meOwner = await call(app, 'GET', '/v1/me', undefined, ownerKey);
+    assert.equal(meOwner.status, 200);
+    assert.equal(meOwner.body.id, owner.id);
+    assert.equal(meOwner.body.role, 'owner');
+    assert.equal(meOwner.body.workspaceId, boot.body.workspace.id);
+    // The member DTO must never carry the api-key secret or its hash/prefix.
+    for (const leak of ['key', 'keyHash', 'prefix', 'scopes']) {
+      assert.ok(!(leak in meOwner.body), `GET /v1/me must not expose ${leak}`);
+    }
+
+    // A second member + key resolves to THAT member, not the owner.
+    const other = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Other', role: 'member' }, ownerKey)
+    ).body;
+    const otherKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: other.id, scopes: ['read'] }, ownerKey)
+    ).body.key;
+    const meOther = await call(app, 'GET', '/v1/me', undefined, otherKey);
+    assert.equal(meOther.status, 200);
+    assert.equal(meOther.body.id, other.id, 'each key returns its own member');
+    assert.notEqual(meOther.body.id, owner.id);
+  } finally {
+    await client.close();
+  }
+});
+
 // Commit a reset with an Idempotency-Key header (the plain `call` helper omits it).
 async function commit(
   app: Hono<AppEnv>,
