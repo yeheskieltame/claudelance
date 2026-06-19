@@ -1028,3 +1028,134 @@ test('task-model-v2 reset: project reset with restoreDefaultColumns rebuilds the
     await client.close();
   }
 });
+
+test('task-model-v2: labelIds+reviewer on create inline in list; single-task review back-edge -> approve; reset soft-delete keeps the row', async () => {
+  const { app, client, db } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Inline Team', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+    const ownerId: string = boot.body.owner.id;
+
+    // A reviewer member (role=member) with their own key.
+    const reviewer = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Reviewer', role: 'member' }, ownerKey)
+    ).body;
+    const reviewerKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: reviewer.id, scopes: ['read', 'write'] }, ownerKey)
+    ).body.key;
+
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'INL', name: 'Inline' }, ownerKey)).body;
+    const label = (
+      await call(app, 'POST', `/v1/projects/${project.id}/labels`, { name: 'backend', color: '#0af' }, ownerKey)
+    ).body;
+
+    // --- Rich create: type + acceptanceCriteria + labelIds + reviewerMemberId ---
+    const created = await call(
+      app,
+      'POST',
+      '/v1/tasks',
+      {
+        projectId: project.id,
+        title: 'Build with all the fixings',
+        type: 'code',
+        acceptanceCriteria: [{ text: 'Compiles' }, { kind: 'scenario', text: 'Given X when Y then Z' }],
+        labelIds: [label.id],
+        reviewerMemberId: reviewer.id,
+      },
+      ownerKey,
+    );
+    assert.equal(created.status, 201);
+    assert.equal(created.body.type, 'code');
+    assert.equal(created.body.reviewerMemberId, reviewer.id, 'reviewer is set on create');
+    assert.equal(created.body.acceptanceCriteria.length, 2);
+    const taskId: string = created.body.id;
+
+    // GET /tasks inlines BOTH labels and AC progress in one shot.
+    const list = await call(app, 'GET', `/v1/tasks?projectId=${project.id}&type=code`, undefined, ownerKey);
+    assert.equal(list.body.items.length, 1);
+    const listed = list.body.items[0];
+    assert.equal(listed.labels.length, 1, 'labels are inlined on the list view');
+    assert.equal(listed.labels[0].id, label.id);
+    assert.deepEqual(listed.acProgress, { done: 0, total: 2 }, 'AC progress is inlined on the list view');
+
+    // Filtering by that label returns the task (label-join EXISTS path).
+    const byLabel = await call(app, 'GET', `/v1/tasks?projectId=${project.id}&label=backend`, undefined, ownerKey);
+    assert.ok(byLabel.body.items.some((t: { id: string }) => t.id === taskId), 'label filter matches');
+
+    // --- Single-task full review loop: request-review -> changes_requested -> approved ---
+    const rr = await call(
+      app,
+      'POST',
+      `/v1/tasks/${taskId}/request-review`,
+      { reviewerMemberId: reviewer.id },
+      ownerKey,
+    );
+    assert.equal(rr.status, 200);
+    const inReviewColId: string = rr.body.statusColumnId;
+
+    // changes_requested: the reviewer sends it BACK to a started, non-review column.
+    const changes = await call(
+      app,
+      'POST',
+      `/v1/tasks/${taskId}/review`,
+      { verdict: 'changes_requested', comment: 'fix the edge case' },
+      reviewerKey,
+    );
+    assert.equal(changes.status, 201);
+    assert.equal(changes.body.verdict, 'changes_requested');
+    const afterChanges = (await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, ownerKey)).body;
+    assert.notEqual(afterChanges.statusColumnId, inReviewColId, 'changes_requested moves the task off review');
+    assert.equal(afterChanges.completedAt, null, 'a re-opened task is not completed');
+
+    // The back-edge writes a task.reopened activity verb.
+    const midVerbs: string[] = (await call(app, 'GET', '/v1/activity', undefined, ownerKey)).body.items.map(
+      (a: { verb: string }) => a.verb,
+    );
+    assert.ok(midVerbs.includes('task.reopened'), 'changes_requested writes task.reopened');
+    assert.ok(midVerbs.includes('review.changes_requested'), 'changes_requested writes review.changes_requested');
+
+    // The same task goes back to review, then the reviewer approves it.
+    await call(app, 'POST', `/v1/tasks/${taskId}/request-review`, { reviewerMemberId: reviewer.id }, ownerKey);
+    const approve = await call(
+      app,
+      'POST',
+      `/v1/tasks/${taskId}/review`,
+      { verdict: 'approved', score: 5 },
+      reviewerKey,
+    );
+    assert.equal(approve.status, 201);
+    const afterApprove = (await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, ownerKey)).body;
+    assert.ok(afterApprove.completedAt, 'approve sets completedAt on the same task');
+    assert.equal(afterApprove.completionReason, 'completed');
+
+    // --- Reset soft-delete keeps the physical row (trashedAt set, not a hard DELETE) ---
+    const dry = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, ownerKey);
+    assert.equal(dry.status, 200);
+    assert.equal(dry.body.counts.tasks, 1);
+    const committed = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+      'idem-inline-reset',
+    );
+    assert.equal(committed.status, 200);
+
+    // Vanishes from GET /tasks ...
+    const afterReset = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, ownerKey);
+    assert.equal(afterReset.body.items.length, 0, 'trashed task is hidden from the list');
+
+    // ... but the row is STILL THERE in the DB with trashedAt stamped (recoverable).
+    const rows = await db.select().from(schema.tasks).where(eq(schema.tasks.id, taskId));
+    assert.equal(rows.length, 1, 'soft-delete keeps the physical row');
+    assert.notEqual(rows[0]!.trashedAt, null, 'trashedAt is set by the reset commit');
+    assert.equal(rows[0]!.trashedByMemberId, ownerId, 'the committing member is recorded as trasher');
+
+    // And the direct single-task read still returns it with trashedAt populated.
+    const direct = await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, ownerKey);
+    assert.equal(direct.status, 200);
+    assert.ok(direct.body.trashedAt, 'single-task read exposes the trashedAt timestamp');
+  } finally {
+    await client.close();
+  }
+});
