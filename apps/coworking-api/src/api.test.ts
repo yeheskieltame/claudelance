@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
 import { PGlite } from '@electric-sql/pglite';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import type { Hono } from 'hono';
@@ -1234,6 +1234,167 @@ test('task-model-v2: labelIds+reviewer on create inline in list; single-task rev
     const direct = await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, ownerKey);
     assert.equal(direct.status, 200);
     assert.ok(direct.body.trashedAt, 'single-task read exposes the trashedAt timestamp');
+  } finally {
+    await client.close();
+  }
+});
+
+test('task-model-v2 review loop: approve with no completed column is a loud no-op; null reviewer -> 409', async () => {
+  const { app, client, db } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Loud Review', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+
+    const reviewer = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Reviewer', role: 'member' }, ownerKey)
+    ).body;
+
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'NC', name: 'No Completed' }, ownerKey)).body;
+
+    // --- Fix B: reviewerMemberId null -> conflict no_reviewer_assigned (no write) ---
+    const noReviewerTask = (
+      await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Unassigned reviewer' }, ownerKey)
+    ).body;
+    const nullReviewer = await call(
+      app,
+      'POST',
+      `/v1/tasks/${noReviewerTask.id}/review`,
+      { verdict: 'approved' },
+      ownerKey,
+    );
+    assert.equal(nullReviewer.status, 409, 'a verdict with no reviewer assigned is refused');
+    assert.equal(nullReviewer.body.error.code, 'no_reviewer_assigned');
+    const noReviewerRows = await call(app, 'GET', `/v1/tasks/${noReviewerTask.id}/reviews`, undefined, ownerKey);
+    assert.equal(noReviewerRows.body.items.length, 0, 'no review row is recorded when there is no reviewer');
+
+    // --- Fix B: approve verdict on a board with NO completed column is a loud
+    // no-op: clear error, AND nothing recorded / moved. Drop the default
+    // completed-category column(s) directly; the task sits in `in_review`
+    // (started), so the restrict FK on statusColumnId is not violated. ---
+    const task = (
+      await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Approve me' }, ownerKey)
+    ).body;
+    // Move into review first (this assigns the reviewer + a started review column).
+    const rr = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task.id}/request-review`,
+      { reviewerMemberId: reviewer.id },
+      ownerKey,
+    );
+    assert.equal(rr.status, 200);
+    const reviewColId: string = rr.body.statusColumnId;
+
+    // Now physically remove the completed-category column(s) from the board.
+    await db
+      .delete(schema.statusColumns)
+      .where(and(eq(schema.statusColumns.projectId, project.id), eq(schema.statusColumns.category, 'completed')));
+    const colsAfter = await call(app, 'GET', `/v1/projects/${project.id}/columns`, undefined, ownerKey);
+    assert.ok(
+      !colsAfter.body.items.some((col: { category: string }) => col.category === 'completed'),
+      'the board now has no completed-category column',
+    );
+
+    // The reviewer approves -> clear error, NOT a silent success.
+    const approve = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task.id}/review`,
+      { verdict: 'approved', score: 5 },
+      ownerKey,
+    );
+    assert.equal(approve.status, 409, 'approve with no completed column fails loud');
+    assert.equal(approve.body.error.code, 'no_completed_column');
+
+    // The task did NOT move and was NOT completed (the move/verdict are written
+    // only after the destination column is resolved).
+    const afterTry = (await call(app, 'GET', `/v1/tasks/${task.id}`, undefined, ownerKey)).body;
+    assert.equal(afterTry.statusColumnId, reviewColId, 'task stays on the review column');
+    assert.equal(afterTry.completedAt, null, 'task is not marked completed');
+    assert.equal(afterTry.completionReason, null, 'no completion reason recorded');
+
+    // No review row was recorded for the rejected verdict.
+    const reviewRows = await call(app, 'GET', `/v1/tasks/${task.id}/reviews`, undefined, ownerKey);
+    assert.equal(reviewRows.body.items.length, 0, 'no review row is recorded when the move would no-op');
+
+    // No review.approved activity leaked onto the blackboard for this task.
+    const verbs: string[] = (await call(app, 'GET', '/v1/activity', undefined, ownerKey)).body.items
+      .filter((a: { taskId: string | null }) => a.taskId === task.id)
+      .map((a: { verb: string }) => a.verb);
+    assert.ok(!verbs.includes('review.approved'), 'no review.approved activity is written on the failed approve');
+  } finally {
+    await client.close();
+  }
+});
+
+test('task-model-v2 reset: Idempotency-Key reused for a DIFFERENT request (different project/scope) -> 409; same request replays', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Idem Conflict', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+
+    // Two distinct projects so a reuse can target a structurally different request.
+    const pA = (await call(app, 'POST', '/v1/projects', { key: 'A', name: 'Alpha' }, ownerKey)).body;
+    const pB = (await call(app, 'POST', '/v1/projects', { key: 'B', name: 'Beta' }, ownerKey)).body;
+    await call(app, 'POST', '/v1/tasks', { projectId: pA.id, title: 'A1' }, ownerKey);
+    await call(app, 'POST', '/v1/tasks', { projectId: pB.id, title: 'B1' }, ownerKey);
+
+    const sharedKey = 'idem-shared-1';
+
+    // Commit a reset of project A under the shared idempotency key.
+    const dryA = await call(app, 'POST', `/v1/projects/${pA.id}/reset`, { dryRun: true }, ownerKey);
+    const committedA = await commit(
+      app,
+      `/v1/projects/${pA.id}/reset`,
+      { confirm: true, confirmationToken: dryA.body.confirmationToken },
+      ownerKey,
+      sharedKey,
+    );
+    assert.equal(committedA.status, 200);
+    assert.equal(committedA.body.targetId, pA.id);
+    const aEmpty = await call(app, 'GET', `/v1/tasks?projectId=${pA.id}`, undefined, ownerKey);
+    assert.equal(aEmpty.body.items.length, 0, 'project A tasks are trashed');
+
+    // Reuse the SAME key for a DIFFERENT request (project B reset) -> 409 conflict,
+    // NOT a stale replay of A's result. Crucially, project B is NOT touched.
+    const dryB = await call(app, 'POST', `/v1/projects/${pB.id}/reset`, { dryRun: true }, ownerKey);
+    const crossProject = await commit(
+      app,
+      `/v1/projects/${pB.id}/reset`,
+      { confirm: true, confirmationToken: dryB.body.confirmationToken },
+      ownerKey,
+      sharedKey,
+    );
+    assert.equal(crossProject.status, 409, 'reusing a key for a different project is a conflict');
+    assert.equal(crossProject.body.error.code, 'idempotency_key_conflict');
+    const bStillThere = await call(app, 'GET', `/v1/tasks?projectId=${pB.id}`, undefined, ownerKey);
+    assert.equal(bStillThere.body.items.length, 1, 'project B was NOT reset by the stale-key replay');
+
+    // Reuse the SAME key for a DIFFERENT scope (workspace clear) -> 409 conflict
+    // too (different endpoint binds the request identity).
+    const dryWs = await call(app, 'POST', '/v1/workspaces/current/reset', { dryRun: true }, ownerKey);
+    const crossScope = await commit(
+      app,
+      '/v1/workspaces/current/reset',
+      { confirm: true, confirmationToken: dryWs.body.confirmationToken },
+      ownerKey,
+      sharedKey,
+    );
+    assert.equal(crossScope.status, 409, 'reusing a key for a different scope is a conflict');
+    assert.equal(crossScope.body.error.code, 'idempotency_key_conflict');
+
+    // Replaying the ORIGINAL request (same project A, same token, same key) still
+    // returns the committed ResetResult verbatim (single-use token + retry-safe).
+    const replayA = await commit(
+      app,
+      `/v1/projects/${pA.id}/reset`,
+      { confirm: true, confirmationToken: dryA.body.confirmationToken },
+      ownerKey,
+      sharedKey,
+    );
+    assert.equal(replayA.status, 200, 'the original request replays under its own key');
+    assert.equal(replayA.body.targetId, pA.id);
+    assert.deepEqual(replayA.body.counts, committedA.body.counts, 'replay returns the original ResetResult');
   } finally {
     await client.close();
   }
