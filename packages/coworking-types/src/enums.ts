@@ -41,8 +41,115 @@ export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
   4: 'Low',
 };
 
-export type DependencyType = 'blocks' | 'relates_to' | 'duplicates';
-export const DEPENDENCY_TYPES = ['blocks', 'relates_to', 'duplicates'] as const;
+/**
+ * Task type taxonomy. The first 11 values are aligned with the on-chain
+ * Claudelance bounty types (0-10, see CW_TASKTYPE_TO_BOUNTYTYPE), the rest are
+ * PM-native types that have no marketplace analogue. Stored as a free text
+ * column (default 'generic'); this is the well-known set validated app-side.
+ */
+export type TaskType =
+  | 'generic'
+  | 'code'
+  | 'bug'
+  | 'content'
+  | 'design'
+  | 'research'
+  | 'data_analysis'
+  | 'marketing'
+  | 'event'
+  | 'documentation'
+  | 'devops'
+  | 'qa'
+  | 'code_audit'
+  | 'doc_review'
+  | 'translation'
+  | 'education'
+  | 'legal'
+  | 'finance'
+  | 'custom';
+
+export const TASK_TYPES = [
+  'generic',
+  'code',
+  'bug',
+  'content',
+  'design',
+  'research',
+  'data_analysis',
+  'marketing',
+  'event',
+  'documentation',
+  'devops',
+  'qa',
+  'code_audit',
+  'doc_review',
+  'translation',
+  'education',
+  'legal',
+  'finance',
+  'custom',
+] as const;
+
+export const TASK_TYPE_LABELS: Record<TaskType, string> = {
+  generic: 'Generic',
+  code: 'Code',
+  bug: 'Bug',
+  content: 'Content',
+  design: 'Design',
+  research: 'Research',
+  data_analysis: 'Data Analysis',
+  marketing: 'Marketing',
+  event: 'Event',
+  documentation: 'Documentation',
+  devops: 'DevOps',
+  qa: 'QA',
+  code_audit: 'Code Audit',
+  doc_review: 'Doc Review',
+  translation: 'Translation',
+  education: 'Education',
+  legal: 'Legal',
+  finance: 'Finance',
+  custom: 'Custom',
+};
+
+/**
+ * Maps a Coworking task type to its on-chain Claudelance bounty type id (0-10,
+ * see docs/v3-task-catalog.md). Only the 11 marketplace-aligned types map;
+ * PM-native types (bug, design, marketing, event, devops, qa, generic) are
+ * intentionally omitted (undefined) - they have no bounty analogue.
+ */
+export const CW_TASKTYPE_TO_BOUNTYTYPE: Partial<Record<TaskType, number>> = {
+  code: 0,
+  data_analysis: 1,
+  research: 2,
+  content: 3,
+  doc_review: 4,
+  code_audit: 5,
+  translation: 6,
+  education: 7,
+  legal: 8,
+  finance: 9,
+  custom: 10,
+};
+
+/** Kind of an acceptance-criterion item: a flat rule or a Gherkin-ish scenario. */
+export type AcceptanceCriterionKind = 'rule' | 'scenario';
+export const ACCEPTANCE_CRITERION_KINDS = ['rule', 'scenario'] as const;
+
+/** Verdict recorded when a reviewer acts on a review request. */
+export type ReviewVerdict = 'approved' | 'changes_requested' | 'rejected';
+export const REVIEW_VERDICTS = ['approved', 'changes_requested', 'rejected'] as const;
+
+/** Why a task reached a terminal state (mirrors GitHub-style close reasons). */
+export type CompletionReason = 'completed' | 'canceled' | 'not_planned' | 'duplicate';
+export const COMPLETION_REASONS = ['completed', 'canceled', 'not_planned', 'duplicate'] as const;
+
+/** Scope of a destructive reset: a single project, the whole workspace, or demo seeding. */
+export type ResetScope = 'project' | 'workspace' | 'demo';
+export const RESET_SCOPES = ['project', 'workspace', 'demo'] as const;
+
+export type DependencyType = 'blocks' | 'blocked_by' | 'relates_to' | 'duplicates';
+export const DEPENDENCY_TYPES = ['blocks', 'blocked_by', 'relates_to', 'duplicates'] as const;
 
 export type GoalStatus = 'on_track' | 'at_risk' | 'off_track' | 'done';
 export const GOAL_STATUSES = ['on_track', 'at_risk', 'off_track', 'done'] as const;
@@ -73,7 +180,25 @@ export type ActivityVerb =
   | 'time.checked_out'
   | 'goal.created'
   | 'goal.progressed'
-  | 'automation.fired';
+  | 'automation.fired'
+  | 'reviewer.assigned'
+  | 'review.requested'
+  | 'review.approved'
+  | 'review.changes_requested'
+  | 'task.reopened'
+  | 'assignee.changed'
+  | 'watcher.added'
+  | 'watcher.removed'
+  | 'task.from_template'
+  | 'template.created'
+  | 'project.reset'
+  | 'workspace.cleared'
+  | 'workspace.seeded_demo'
+  | 'project.archived'
+  | 'project.trashed'
+  | 'project.restored'
+  | 'task.trashed'
+  | 'task.restored';
 
 export const ACTIVITY_VERBS = [
   'workspace.created',
@@ -94,4 +219,22 @@ export const ACTIVITY_VERBS = [
   'goal.created',
   'goal.progressed',
   'automation.fired',
+  'reviewer.assigned',
+  'review.requested',
+  'review.approved',
+  'review.changes_requested',
+  'task.reopened',
+  'assignee.changed',
+  'watcher.added',
+  'watcher.removed',
+  'task.from_template',
+  'template.created',
+  'project.reset',
+  'workspace.cleared',
+  'workspace.seeded_demo',
+  'project.archived',
+  'project.trashed',
+  'project.restored',
+  'task.trashed',
+  'task.restored',
 ] as const;
