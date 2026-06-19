@@ -551,6 +551,11 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
         .where(eq(tasks.id, task.id))
         .returning()
     )[0]!;
+    // The assignee (Responsible) auto-watches the task.
+    await db
+      .insert(taskWatchers)
+      .values({ taskId: task.id, memberId: member.id })
+      .onConflictDoNothing();
     await db.insert(activities).values({
       workspaceId: workspace.id,
       projectId: task.projectId,
@@ -584,6 +589,11 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
         .where(eq(tasks.id, task.id))
         .returning()
     )[0]!;
+    // The assignee (Responsible) auto-watches the task.
+    await db
+      .insert(taskWatchers)
+      .values({ taskId: task.id, memberId: assignee.id })
+      .onConflictDoNothing();
     await db.insert(activities).values({
       workspaceId: workspace.id,
       projectId: task.projectId,
@@ -597,39 +607,134 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
 
   // ---- Review loop -----------------------------------------------------------
 
+  /**
+   * Find the in-review column for a project (a started-category column flagged
+   * "review"), creating a canonical `in_review` one if none exists. Falls back
+   * to any started column only when creation is impossible (none should be).
+   */
+  const findOrCreateReviewColumn = async (projectId: string) => {
+    const cols = await db
+      .select()
+      .from(statusColumns)
+      .where(eq(statusColumns.projectId, projectId))
+      .orderBy(statusColumns.position);
+    const existing =
+      cols.find((col) => col.category === 'started' && /review/i.test(col.key + col.name)) ??
+      cols.find((col) => col.key === 'in_review');
+    if (existing) return existing;
+    // Slot it just after the last started column (or at the end of the board).
+    const lastStartedPos = cols.reduce(
+      (max, col) => (col.category === 'started' ? Math.max(max, col.position) : max),
+      cols.length > 0 ? cols[cols.length - 1]!.position : 0,
+    );
+    await db
+      .insert(statusColumns)
+      .values({
+        projectId,
+        key: 'in_review',
+        name: 'In Review',
+        category: 'started',
+        position: lastStartedPos + 1,
+      })
+      .onConflictDoNothing();
+    const created = (
+      await db
+        .select()
+        .from(statusColumns)
+        .where(and(eq(statusColumns.projectId, projectId), eq(statusColumns.key, 'in_review')))
+        .limit(1)
+    )[0];
+    // If the key collided with a non-review column, fall back to any started one.
+    return created ?? cols.find((col) => col.category === 'started') ?? null;
+  };
+
+  const requestReviewSchema = z.object({
+    reviewerMemberId: z.string().optional(),
+    statusColumnKey: z.string().optional(),
+  });
+
   r.post('/tasks/:id/request-review', async (c) => {
     requireRole(c, 'member');
     const { workspace, member } = c.get('auth');
     const task = await loadTask(c.req.param('id'), workspace.id);
+    const body = parse(requestReviewSchema, await c.req.json().catch(() => ({})));
 
-    // Move into the first started, review-ish column if one exists (a column
-    // named/keyed "review"), else any started column; leave as-is otherwise.
-    const cols = await db
-      .select()
-      .from(statusColumns)
-      .where(eq(statusColumns.projectId, task.projectId))
-      .orderBy(statusColumns.position);
-    const reviewCol =
-      cols.find((col) => col.category === 'started' && /review/i.test(col.key + col.name)) ??
-      cols.find((col) => col.category === 'started');
+    // Resolve the reviewer: explicit > existing > assignee. Validate ownership.
+    const reviewerMemberId = body.reviewerMemberId ?? task.reviewerMemberId ?? task.assigneeMemberId;
+    if (body.reviewerMemberId) {
+      const reviewer = (
+        await db
+          .select({ id: members.id })
+          .from(members)
+          .where(and(eq(members.id, body.reviewerMemberId), eq(members.workspaceId, workspace.id)))
+          .limit(1)
+      )[0];
+      if (!reviewer) throw notFound('reviewer member not found');
+    }
 
-    const updated = reviewCol
-      ? (
-          await db
-            .update(tasks)
-            .set({ statusColumnId: reviewCol.id, updatedAt: new Date() })
-            .where(eq(tasks.id, task.id))
-            .returning()
-        )[0]!
-      : task;
+    // Resolve the target column: explicit key if given, else find/create review.
+    let column;
+    if (body.statusColumnKey) {
+      column = (
+        await db
+          .select()
+          .from(statusColumns)
+          .where(
+            and(eq(statusColumns.projectId, task.projectId), eq(statusColumns.key, body.statusColumnKey)),
+          )
+          .limit(1)
+      )[0];
+      if (!column) throw notFound(`status column not found: ${body.statusColumnKey}`);
+    } else {
+      column = await findOrCreateReviewColumn(task.projectId);
+    }
 
+    const reviewerChanged = reviewerMemberId !== task.reviewerMemberId;
+    const updated = (
+      await db
+        .update(tasks)
+        .set({
+          reviewerMemberId: reviewerMemberId ?? null,
+          ...(column ? { statusColumnId: column.id } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(tasks.id, task.id))
+        .returning()
+    )[0]!;
+
+    // Reviewer becomes a watcher (RACI "Informed" while accountable for review).
+    if (reviewerMemberId) {
+      await db
+        .insert(taskWatchers)
+        .values({ taskId: task.id, memberId: reviewerMemberId })
+        .onConflictDoNothing();
+    }
+
+    if (reviewerChanged && reviewerMemberId) {
+      await db.insert(activities).values({
+        workspaceId: workspace.id,
+        projectId: task.projectId,
+        taskId: task.id,
+        actorMemberId: member.id,
+        verb: 'reviewer.assigned',
+        payload: { reviewerMemberId },
+      });
+    }
     await db.insert(activities).values({
       workspaceId: workspace.id,
       projectId: task.projectId,
       taskId: task.id,
       actorMemberId: member.id,
       verb: 'review.requested',
-      payload: { reviewerMemberId: task.reviewerMemberId, column: reviewCol?.key ?? null },
+      payload: { reviewerMemberId: reviewerMemberId ?? null, column: column?.key ?? null },
+    });
+    // Surface to subscribers (webhook/automation) as a status change.
+    await runAutomations(db, {
+      event: 'task.status_changed',
+      task: updated,
+      workspaceId: workspace.id,
+      actorMemberId: member.id,
+      toColumnKey: column?.key,
     });
     return c.json(serializeTask(updated));
   });
@@ -644,6 +749,10 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
     requireRole(c, 'member');
     const { workspace, member } = c.get('auth');
     const task = await loadTask(c.req.param('id'), workspace.id);
+    // Only the accountable reviewer (or an admin) may record a verdict.
+    if (task.reviewerMemberId && task.reviewerMemberId !== member.id) {
+      requireRole(c, 'admin');
+    }
     const body = parse(reviewSchema, await c.req.json().catch(() => ({})));
 
     const review = (
@@ -659,15 +768,32 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
         .returning()
     )[0]!;
 
-    // changes_requested is the load-bearing back-edge: move the task back to an
-    // in-progress (started, non-review) column so the assignee picks it up again.
+    const cols = await db
+      .select()
+      .from(statusColumns)
+      .where(eq(statusColumns.projectId, task.projectId))
+      .orderBy(statusColumns.position);
+
+    // Each verdict drives the task to a terminal/back column:
+    //  approved           -> completed column (completedAt + reason 'completed')
+    //  changes_requested  -> back to a started, non-review column (the back-edge)
+    //  rejected           -> canceled column (reason 'canceled')
     let movedTo: string | null = null;
-    if (body.verdict === 'changes_requested') {
-      const cols = await db
-        .select()
-        .from(statusColumns)
-        .where(eq(statusColumns.projectId, task.projectId))
-        .orderBy(statusColumns.position);
+    if (body.verdict === 'approved') {
+      const doneCol = cols.find((col) => col.category === 'completed');
+      if (doneCol) {
+        await db
+          .update(tasks)
+          .set({
+            statusColumnId: doneCol.id,
+            completedAt: new Date(),
+            completionReason: 'completed',
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, task.id));
+        movedTo = doneCol.key;
+      }
+    } else if (body.verdict === 'changes_requested') {
       const backCol = cols.find(
         (col) => col.category === 'started' && !/review/i.test(col.key + col.name),
       );
@@ -677,6 +803,21 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
           .set({ statusColumnId: backCol.id, completedAt: null, updatedAt: new Date() })
           .where(eq(tasks.id, task.id));
         movedTo = backCol.key;
+      }
+    } else {
+      // rejected
+      const canceledCol = cols.find((col) => col.category === 'canceled');
+      if (canceledCol) {
+        await db
+          .update(tasks)
+          .set({
+            statusColumnId: canceledCol.id,
+            completedAt: null,
+            completionReason: 'canceled',
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, task.id));
+        movedTo = canceledCol.key;
       }
     }
 
@@ -694,6 +835,17 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
       verb,
       payload: { verdict: body.verdict, score: body.score ?? null, movedTo },
     });
+    // changes_requested re-opens the task for the assignee.
+    if (body.verdict === 'changes_requested') {
+      await db.insert(activities).values({
+        workspaceId: workspace.id,
+        projectId: task.projectId,
+        taskId: task.id,
+        actorMemberId: member.id,
+        verb: 'task.reopened',
+        payload: { column: movedTo },
+      });
+    }
     return c.json(serializeTaskReview(review), 201);
   });
 
@@ -994,6 +1146,11 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
         .values({ taskId: task.id, authorMemberId: member.id, body })
         .returning()
     )[0]!;
+    // Commenting on a task subscribes you to it (the "Informed" set).
+    await db
+      .insert(taskWatchers)
+      .values({ taskId: task.id, memberId: member.id })
+      .onConflictDoNothing();
     await db.insert(activities).values({
       workspaceId: workspace.id,
       projectId: task.projectId,
