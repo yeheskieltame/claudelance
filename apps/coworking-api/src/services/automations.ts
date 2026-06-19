@@ -55,7 +55,9 @@ async function executeAction(
   }
 
   // Non-blocking AC/DoD check: post a warning comment when the task still has
-  // unmet acceptance-criteria or DoD items. Never blocks, never recurses.
+  // unmet acceptance-criteria or DoD items. Never blocks, never recurses. The
+  // triggering status move has already committed, so this advisory write must
+  // never turn a successful move into a 500 - swallow + log any failure.
   if (action.type === 'warn_if_incomplete') {
     const ac = Array.isArray(ctx.task.acceptanceCriteria)
       ? (ctx.task.acceptanceCriteria as AcceptanceCriterion[])
@@ -65,14 +67,25 @@ async function executeAction(
       : [];
     const unmet = [...ac, ...dod].filter((i) => !i.done);
     if (unmet.length > 0) {
-      await db.insert(comments).values({
-        taskId: ctx.task.id,
-        authorMemberId: null,
-        body:
-          action.body ??
-          `Automation: this task has ${unmet.length} unmet acceptance/DoD item(s) still open.`,
-      });
-      await recordFired(db, automationId, name, ctx, 'warn_if_incomplete');
+      try {
+        await db.insert(comments).values({
+          taskId: ctx.task.id,
+          authorMemberId: null,
+          body:
+            action.body ??
+            `Automation: this task has ${unmet.length} unmet acceptance/DoD item(s) still open.`,
+        });
+        await recordFired(db, automationId, name, ctx, 'warn_if_incomplete');
+      } catch (err) {
+        console.error(
+          JSON.stringify({
+            message: 'coworking.automation.warn_if_incomplete.failed',
+            automationId,
+            taskId: ctx.task.id,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      }
     }
     return;
   }
