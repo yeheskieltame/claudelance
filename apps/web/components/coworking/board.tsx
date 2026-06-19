@@ -28,6 +28,13 @@ import { EmptyState, Input, PriorityDot, Spinner, Textarea, timeAgo } from "./ui
 
 const PRIORITIES: TaskPriority[] = [0, 1, 2, 3, 4];
 
+/**
+ * Convert a <input type="date"> value ("yyyy-mm-dd") into a full ISO-8601 datetime.
+ * The backend validates startDate/dueDate with z.string().datetime() and rejects
+ * date-only strings, so the bare input value must be widened before submit.
+ */
+const toIso = (d?: string) => (d ? new Date(`${d}T00:00:00.000Z`).toISOString() : undefined);
+
 export function Board({ projectId }: { projectId: string }) {
   const { client, apiKey } = useCoworking();
   const qc = useQueryClient();
@@ -237,8 +244,8 @@ function CreateTaskForm({
         priority: priority || undefined,
         assigneeMemberId: assigneeMemberId || undefined,
         reviewerMemberId: reviewerMemberId || undefined,
-        startDate: startDate || undefined,
-        dueDate: dueDate || undefined,
+        startDate: toIso(startDate || undefined),
+        dueDate: toIso(dueDate || undefined),
         estimateMinutes: Number.isFinite(minutes) ? minutes : undefined,
         statusColumnKey: statusColumnKey || undefined,
         labelIds: labelIds.length > 0 ? labelIds : undefined,
@@ -307,6 +314,7 @@ function CreateTaskForm({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What needs to happen?"
+                maxLength={20000}
               />
             </div>
 
