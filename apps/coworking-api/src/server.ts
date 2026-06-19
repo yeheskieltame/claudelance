@@ -12,6 +12,7 @@ import { automationRoutes } from './routes/automations.js';
 import { coordinationRoutes } from './routes/coordination.js';
 import { goalRoutes } from './routes/goals.js';
 import { projectRoutes } from './routes/projects.js';
+import { reputationRoutes } from './routes/reputation.js';
 import { resetRoutes } from './routes/reset.js';
 import { taskRoutes } from './routes/tasks.js';
 import { timeRoutes } from './routes/time.js';
@@ -67,6 +68,7 @@ export function createServer({ db, cfg }: ServerDeps): Hono<AppEnv> {
   v1.route('/', webhookRoutes(db)); // /webhooks
   v1.route('/', coordinationRoutes(db)); // /me/tasks, /me/blocked, /projects/:id/next
   v1.route('/', activityRoutes(db)); // /activity
+  v1.route('/', reputationRoutes(db)); // /reputation/pending, /reputation/ack (off-chain bridge)
   v1.route('/', resetRoutes(db)); // /projects/:id/reset, /workspaces/current/reset, seed-demo
   app.route('/v1', v1);
 
