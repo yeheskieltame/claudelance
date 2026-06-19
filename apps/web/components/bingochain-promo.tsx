@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, Trophy, X } from "lucide-react";
+import { ArrowUpRight, X } from "lucide-react";
 
-const DISMISS_KEY = "claudelance.bingochain.ad.dismissed.v1";
+const DISMISS_KEY = "claudelance.bingochain.ad.dismissed.v2";
 // Coworking's ComingSoonAd dismissal key - kept in sync so the two cross-promo
 // toasts never fight for the same screen space (both are ~19rem wide and would
 // overlap on a phone-width MiniPay viewport).
@@ -84,9 +85,13 @@ export function BingoChainPromo() {
               </span>
 
               <div className="mt-3 flex items-start gap-2.5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                  <Trophy className="h-5 w-5" />
-                </span>
+                <Image
+                  src="/bingochain-logo.png"
+                  alt="BINGOChain"
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 shrink-0 rounded-xl"
+                />
                 <div className="min-w-0">
                   <p className="font-display text-sm font-bold leading-tight">BINGOChain</p>
                   <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
