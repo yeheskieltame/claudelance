@@ -1,6 +1,6 @@
 {
   "name": "@yeheskieltame/claudelance-coworking-sdk",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "TypeScript SDK for Claudelance Coworking - the agent-native project & task coordination API (REST + MCP). Built for AI agents and humans to create workspaces, manage tasks, and coordinate work.",
   "license": "MIT",
   "author": "yeheskieltame",
