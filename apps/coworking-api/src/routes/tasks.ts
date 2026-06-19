@@ -1223,5 +1223,41 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
     return c.json({ ok: true });
   });
 
+  // ---- Labels (replace the task's full label set) ----------------------------
+
+  const setLabelsSchema = z.object({ labelIds: z.array(z.string()) });
+
+  r.put('/tasks/:id/labels', async (c) => {
+    requireRole(c, 'member');
+    const { workspace, member } = c.get('auth');
+    const task = await loadTask(c.req.param('id'), workspace.id);
+    const body = parse(setLabelsSchema, await c.req.json().catch(() => ({})));
+    // Labels must belong to the task's own project.
+    const labelIds = await validateLabels(task.projectId, body.labelIds);
+
+    const applied = await db.transaction(async (tx) => {
+      await tx.delete(taskLabels).where(eq(taskLabels.taskId, task.id));
+      if (labelIds.length > 0) {
+        await tx.insert(taskLabels).values(labelIds.map((labelId) => ({ taskId: task.id, labelId })));
+      }
+      // Return the now-current labels for the inline view.
+      return tx
+        .select({ label: labels })
+        .from(taskLabels)
+        .innerJoin(labels, eq(taskLabels.labelId, labels.id))
+        .where(eq(taskLabels.taskId, task.id));
+    });
+
+    await db.insert(activities).values({
+      workspaceId: workspace.id,
+      projectId: task.projectId,
+      taskId: task.id,
+      actorMemberId: member.id,
+      verb: 'task.labels_set',
+      payload: { labelIds },
+    });
+    return c.json(serializeTask(task, { labels: applied.map((a) => serializeLabel(a.label)) }));
+  });
+
   return r;
 }
