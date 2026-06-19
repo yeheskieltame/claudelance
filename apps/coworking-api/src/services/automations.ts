@@ -4,6 +4,8 @@
 
 import { and, eq, max, type InferSelectModel } from 'drizzle-orm';
 
+import type { AcceptanceCriterion, DoDItem } from '@yeheskieltame/claudelance-coworking-types';
+
 import type { Database } from '../db/client.js';
 import { activities, automations, comments, statusColumns, tasks } from '../db/schema.js';
 
@@ -30,9 +32,11 @@ export async function runAutomations(db: Database, ctx: AutomationContext): Prom
     .where(and(eq(automations.projectId, ctx.task.projectId), eq(automations.enabled, true)));
 
   for (const rule of rules) {
-    const trigger = (rule.trigger ?? {}) as { event?: string; to?: string };
+    const trigger = (rule.trigger ?? {}) as { event?: string; to?: string; taskType?: string };
     if (trigger.event !== ctx.event) continue;
     if (ctx.event === 'task.status_changed' && trigger.to && trigger.to !== ctx.toColumnKey) continue;
+    // Optional task-type matcher: a rule may scope itself to one task type.
+    if (trigger.taskType && trigger.taskType !== ctx.task.type) continue;
     await executeAction(db, rule.id, rule.name, (rule.action ?? {}) as ActionSpec, ctx);
   }
 }
@@ -47,6 +51,29 @@ async function executeAction(
   if (action.type === 'add_comment' && action.body) {
     await db.insert(comments).values({ taskId: ctx.task.id, authorMemberId: null, body: action.body });
     await recordFired(db, automationId, name, ctx, 'add_comment');
+    return;
+  }
+
+  // Non-blocking AC/DoD check: post a warning comment when the task still has
+  // unmet acceptance-criteria or DoD items. Never blocks, never recurses.
+  if (action.type === 'warn_if_incomplete') {
+    const ac = Array.isArray(ctx.task.acceptanceCriteria)
+      ? (ctx.task.acceptanceCriteria as AcceptanceCriterion[])
+      : [];
+    const dod = Array.isArray(ctx.task.definitionOfDone)
+      ? (ctx.task.definitionOfDone as DoDItem[])
+      : [];
+    const unmet = [...ac, ...dod].filter((i) => !i.done);
+    if (unmet.length > 0) {
+      await db.insert(comments).values({
+        taskId: ctx.task.id,
+        authorMemberId: null,
+        body:
+          action.body ??
+          `Automation: this task has ${unmet.length} unmet acceptance/DoD item(s) still open.`,
+      });
+      await recordFired(db, automationId, name, ctx, 'warn_if_incomplete');
+    }
     return;
   }
 
