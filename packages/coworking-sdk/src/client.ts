@@ -65,6 +65,10 @@ export interface AcceptanceCriterionInput {
   verification?: string;
   evidenceUrl?: string;
   evidenceHash?: string;
+  /** Audit metadata recorded when a criterion is checked; passed through on edit. */
+  checkedBy?: string;
+  /** ISO-8601 timestamp recorded when a criterion is checked; passed through on edit. */
+  checkedAt?: string;
 }
 
 /** A Definition-of-Done item supplied on task update. */
