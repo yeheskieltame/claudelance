@@ -176,6 +176,16 @@ export interface CommitResetInput {
   restoreDefaultColumns?: boolean;
 }
 
+/** Body for committing a demo seed (dry-run -> commit handshake). */
+export interface CommitSeedDemoInput {
+  confirmationToken: string;
+  confirm: true;
+  /** Sent as the required `Idempotency-Key` header on the commit call. */
+  idempotencyKey: string;
+  /** Seed the demo even when the workspace already has live projects. */
+  force?: boolean;
+}
+
 export type ActivityQuery = {
   projectId?: string;
   /** ISO timestamp - only activity strictly after this is returned. */
@@ -464,8 +474,20 @@ export class CoworkingClient {
     });
   }
 
-  /** Seed a canned demo project. Dry-run first (no token) to preview the counts. */
-  seedDemo(input: { force?: boolean } = {}): Promise<ResetPreview | ResetResult> {
-    return this.request('POST', '/v1/workspaces/current/seed-demo', input);
+  /** Dry-run seeding a canned demo project: returns the create counts + a commit token. */
+  previewSeedDemo(): Promise<ResetPreview> {
+    return this.request('POST', '/v1/workspaces/current/seed-demo', { dryRun: true });
+  }
+
+  /**
+   * Commit the demo seed (creates a sample project + tasks + deps + goal). Pass the
+   * `confirmationToken` from previewSeedDemo(); the idempotencyKey is sent as the
+   * required `Idempotency-Key` header, same as commitProjectReset/commitWorkspaceClear.
+   */
+  commitSeedDemo(input: CommitSeedDemoInput): Promise<ResetResult> {
+    const { idempotencyKey, ...body } = input;
+    return this.request('POST', '/v1/workspaces/current/seed-demo', body, {
+      'idempotency-key': idempotencyKey,
+    });
   }
 }
