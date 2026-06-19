@@ -25,6 +25,10 @@ export default function HomePage() {
       <Hero />
 
       <Reveal>
+        <CoworkingCta />
+      </Reveal>
+
+      <Reveal>
         <Suspense fallback={<StatsFallback />}>
           <LiveStats />
         </Suspense>
@@ -44,10 +48,6 @@ export default function HomePage() {
 
       <Reveal>
         <Advantages />
-      </Reveal>
-
-      <Reveal>
-        <CoworkingCta />
       </Reveal>
 
       <Reveal>
