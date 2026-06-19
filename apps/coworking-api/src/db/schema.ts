@@ -3,6 +3,7 @@
 // layer (zod) rather than as pg enums, so columns can evolve without ALTER TYPE.
 
 import { randomUUID } from 'node:crypto';
+import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
@@ -29,6 +30,10 @@ export const workspaces = pgTable('workspaces', {
   name: text('name').notNull(),
   ownerAddress: text('owner_address'),
   isPremium: boolean('is_premium').default(false).notNull(),
+  // When false, the destructive reset endpoints are disabled for this workspace.
+  allowReset: boolean('allow_reset').default(true).notNull(),
+  // Workspace-level Definition of Done template (array of { id, text, done }).
+  definitionOfDone: jsonb('definition_of_done'),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -95,6 +100,11 @@ export const projects = pgTable(
     createdByMemberId: text('created_by_member_id').references(() => members.id, {
       onDelete: 'set null',
     }),
+    // Soft-delete: non-null means the project is in the trash (recoverable).
+    trashedAt: timestamp('trashed_at', { withTimezone: true }),
+    trashedByMemberId: text('trashed_by_member_id').references(() => members.id, {
+      onDelete: 'set null',
+    }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -131,10 +141,26 @@ export const tasks = pgTable(
     number: integer('number').notNull(),
     title: text('title').notNull(),
     description: text('description'),
+    // Task type taxonomy (see TASK_TYPES); validated app-side, not a pg enum.
+    type: text('type').notNull().default('generic'),
+    // Per-type advisory field bag - accepts any keys, never rejects unknowns.
+    fields: jsonb('fields'),
+    // Authoritative completion criteria; empty array on legacy/existing tasks.
+    acceptanceCriteria: jsonb('acceptance_criteria')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    acceptanceNotes: text('acceptance_notes'),
+    definitionOfDone: jsonb('definition_of_done')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     statusColumnId: text('status_column_id')
       .notNull()
       .references(() => statusColumns.id, { onDelete: 'restrict' }),
     assigneeMemberId: text('assignee_member_id').references(() => members.id, {
+      onDelete: 'set null',
+    }),
+    // Accountable reviewer (RACI). May equal the assignee in v2.
+    reviewerMemberId: text('reviewer_member_id').references(() => members.id, {
       onDelete: 'set null',
     }),
     priority: smallint('priority').notNull().default(0),
@@ -142,8 +168,18 @@ export const tasks = pgTable(
       onDelete: 'set null',
     }),
     estimateMinutes: integer('estimate_minutes'),
+    // Story-point style estimate, distinct from estimateMinutes.
+    estimatePoints: real('estimate_points'),
+    startDate: timestamp('start_date', { withTimezone: true }),
     dueDate: timestamp('due_date', { withTimezone: true }),
+    // Why the task reached a terminal state (see COMPLETION_REASONS).
+    completionReason: text('completion_reason'),
     createdByMemberId: text('created_by_member_id').references(() => members.id, {
+      onDelete: 'set null',
+    }),
+    // Soft-delete: non-null means the task is in the trash (recoverable).
+    trashedAt: timestamp('trashed_at', { withTimezone: true }),
+    trashedByMemberId: text('trashed_by_member_id').references(() => members.id, {
       onDelete: 'set null',
     }),
     createdAt: createdAt(),
@@ -154,6 +190,8 @@ export const tasks = pgTable(
     projectNumberUq: uniqueIndex('tasks_project_number_uq').on(t.projectId, t.number),
     projectStatusIdx: index('tasks_project_status_idx').on(t.projectId, t.statusColumnId),
     assigneeIdx: index('tasks_assignee_idx').on(t.assigneeMemberId),
+    // List/board/coordination queries filter on trashed_at within a project.
+    projectTrashedIdx: index('tasks_project_trashed_idx').on(t.projectId, t.trashedAt),
   }),
 );
 
@@ -323,5 +361,137 @@ export const taskLabels = pgTable(
   },
   (t) => ({
     pk: primaryKey({ columns: [t.taskId, t.labelId] }),
+  }),
+);
+
+// Watchers = the RACI "Informed" set: members notified of task activity.
+export const taskWatchers = pgTable(
+  'task_watchers',
+  {
+    taskId: text('task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    memberId: text('member_id')
+      .notNull()
+      .references(() => members.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.taskId, t.memberId] }),
+    memberIdx: index('task_watchers_member_idx').on(t.memberId),
+  }),
+);
+
+// Recorded review verdicts from the request-review loop.
+export const taskReviews = pgTable(
+  'task_reviews',
+  {
+    id: pk(),
+    taskId: text('task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    reviewerMemberId: text('reviewer_member_id').references(() => members.id, {
+      onDelete: 'set null',
+    }),
+    verdict: text('verdict').notNull(),
+    comment: text('comment'),
+    // Optional 1-5 quality score, mirroring the ERC-8004 feedback scale.
+    score: smallint('score'),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    taskIdx: index('task_reviews_task_idx').on(t.taskId, t.createdAt),
+  }),
+);
+
+// Reusable task scaffolds: ~15 seeded builtins (one per type) + workspace-authored.
+export const taskTemplates = pgTable(
+  'task_templates',
+  {
+    id: pk(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    // When set, the template is scoped to a single project.
+    projectId: text('project_id').references(() => projects.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    taskType: text('task_type').notNull().default('generic'),
+    descriptionMarkdown: text('description_markdown'),
+    acceptanceCriteria: jsonb('acceptance_criteria')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    defaultPriority: smallint('default_priority'),
+    defaultLabels: text('default_labels').array(),
+    defaultEstimateMinutes: integer('default_estimate_minutes'),
+    fieldDefaults: jsonb('field_defaults'),
+    requiredFields: text('required_fields').array(),
+    builtin: boolean('builtin').notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    workspaceIdx: index('task_templates_workspace_idx').on(t.workspaceId),
+  }),
+);
+
+// Server-issued confirmation tokens for the two-call dry-run -> commit reset flow.
+export const resetTokens = pgTable(
+  'reset_tokens',
+  {
+    id: pk(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    scope: text('scope'),
+    targetId: text('target_id'),
+    // Hash of the entity counts at issue-time; commit is rejected (409) if it drifts.
+    countsHash: text('counts_hash'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdByMemberId: text('created_by_member_id').references(() => members.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    workspaceIdx: index('reset_tokens_workspace_idx').on(t.workspaceId),
+  }),
+);
+
+// Idempotency-Key store: caches a prior response per (workspace, key) so retried
+// mutations return the original result instead of re-running.
+export const idempotencyKeys = pgTable(
+  'idempotency_keys',
+  {
+    key: text('key').notNull(),
+    workspaceId: text('workspace_id').notNull(),
+    endpoint: text('endpoint'),
+    responseJson: jsonb('response_json'),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.workspaceId, t.key] }),
+  }),
+);
+
+// Append-only audit trail for sensitive (esp. destructive) actions.
+export const auditLog = pgTable(
+  'audit_log',
+  {
+    id: pk(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    actorMemberId: text('actor_member_id').references(() => members.id, {
+      onDelete: 'set null',
+    }),
+    apiKeyId: text('api_key_id'),
+    action: text('action').notNull(),
+    scope: text('scope'),
+    payload: jsonb('payload'),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    workspaceCreatedIdx: index('audit_log_workspace_created_idx').on(t.workspaceId, t.createdAt),
   }),
 );

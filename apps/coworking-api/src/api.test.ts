@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
 import { PGlite } from '@electric-sql/pglite';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import type { Hono } from 'hono';
@@ -15,6 +15,7 @@ import type { CoworkingConfig } from './config.js';
 import type { Database } from './db/client.js';
 import * as schema from './db/schema.js';
 import type { AppEnv } from './lib/context.js';
+import { LIMITS } from './lib/limits.js';
 import { createServer } from './server.js';
 import { deliverPending } from './services/webhooks.js';
 
@@ -259,6 +260,96 @@ test('mcp server: initialize, tools/list, tools/call bridges to REST', async () 
   }
 });
 
+test('task-model-v2 P4: MCP tools + label endpoints; destructive reset stays REST-only', async () => {
+  const { app, client } = await setup();
+  const mcp = (id: number, name: string, args: Record<string, unknown>, key?: string) =>
+    call(app, 'POST', '/mcp', { jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args } }, key);
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'P4 Team' });
+    const key: string = boot.body.apiKey.key;
+    const ownerId: string = boot.body.owner.id;
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'P4', name: 'P4' }, key)).body;
+
+    // tools/list advertises the new P4 tools but NOT any destructive reset tool.
+    const list = await call(app, 'POST', '/mcp', { jsonrpc: '2.0', id: 1, method: 'tools/list' });
+    const names: string[] = list.body.result.tools.map((t: { name: string }) => t.name);
+    for (const expected of [
+      'list_templates', 'create_task_from_template', 'request_review', 'submit_review',
+      'add_watcher', 'remove_watcher', 'list_unmet_criteria', 'my_reviews', 'list_labels', 'preview_reset',
+    ]) {
+      assert.ok(names.includes(expected), `tools/list should include ${expected}`);
+    }
+    for (const forbidden of ['commit_reset', 'reset_project', 'clear_workspace', 'seed_demo']) {
+      assert.ok(!names.includes(forbidden), `tools/list must NOT expose ${forbidden}`);
+    }
+
+    // Label REST endpoints back the SDK/MCP label surface.
+    const label = (await call(app, 'POST', `/v1/projects/${project.id}/labels`, { name: 'backend', color: '#0af' }, key)).body;
+    assert.equal(label.name, 'backend');
+    const dupe = await call(app, 'POST', `/v1/projects/${project.id}/labels`, { name: 'backend' }, key);
+    assert.equal(dupe.status, 409); // label_name_taken
+    const labelList = await mcp(2, 'list_labels', { projectId: project.id }, key);
+    assert.equal(JSON.parse(labelList.body.result.content[0].text).items.length, 1);
+
+    // create_task via MCP with the rich fields, then PUT /tasks/:id/labels.
+    const ct = await mcp(3, 'create_task', {
+      projectId: project.id,
+      title: 'Rich task',
+      type: 'code',
+      acceptanceCriteria: [{ text: 'compiles' }, { text: 'tests pass' }],
+      fields: { repo: 'acme/widgets' },
+    }, key);
+    const task = JSON.parse(ct.body.result.content[0].text);
+    assert.equal(task.type, 'code');
+    assert.equal(task.acceptanceCriteria.length, 2);
+    assert.equal((task.fields as { repo: string }).repo, 'acme/widgets');
+
+    const setLabels = await call(app, 'PUT', `/v1/tasks/${task.id}/labels`, { labelIds: [label.id] }, key);
+    assert.equal(setLabels.status, 200);
+    assert.equal(setLabels.body.labels[0].id, label.id);
+    // A label from another project is rejected.
+    const other = (await call(app, 'POST', '/v1/projects', { key: 'OTHER', name: 'Other' }, key)).body;
+    const foreign = (await call(app, 'POST', `/v1/projects/${other.id}/labels`, { name: 'x' }, key)).body;
+    const badSet = await call(app, 'PUT', `/v1/tasks/${task.id}/labels`, { labelIds: [foreign.id] }, key);
+    assert.equal(badSet.status, 400);
+
+    // list_unmet_criteria returns the task so the agent can read unmet AC.
+    const unmet = await mcp(4, 'list_unmet_criteria', { taskId: task.id }, key);
+    const unmetTask = JSON.parse(unmet.body.result.content[0].text);
+    assert.equal(unmetTask.acceptanceCriteria.filter((c: { done: boolean }) => !c.done).length, 2);
+
+    // add_watcher (defaults to caller), then request_review + submit_review loop.
+    const watch = await mcp(5, 'add_watcher', { taskId: task.id }, key);
+    assert.equal(watch.body.result.isError, false);
+    const rr = await mcp(6, 'request_review', { taskId: task.id, reviewerMemberId: ownerId }, key);
+    assert.equal(rr.body.result.isError, false);
+    assert.equal(JSON.parse(rr.body.result.content[0].text).reviewerMemberId, ownerId);
+    const myReviews = await mcp(7, 'my_reviews', {}, key);
+    assert.equal(JSON.parse(myReviews.body.result.content[0].text).items.length, 1);
+    const sr = await mcp(8, 'submit_review', { taskId: task.id, verdict: 'approved', score: 5 }, key);
+    assert.equal(sr.body.result.isError, false);
+
+    // list_templates surfaces the seeded builtins; create_task_from_template works.
+    const tmpls = await mcp(9, 'list_templates', {}, key);
+    const tmplItems = JSON.parse(tmpls.body.result.content[0].text).items as Array<{ id: string; builtin: boolean }>;
+    assert.ok(tmplItems.length >= 1 && tmplItems.every((t) => t.builtin));
+    const fromTmpl = await mcp(10, 'create_task_from_template', { templateId: tmplItems[0]!.id, projectId: project.id }, key);
+    assert.equal(fromTmpl.body.result.isError, false);
+
+    // preview_reset is a pure dry-run: returns counts + token, deletes nothing.
+    const preview = await mcp(11, 'preview_reset', { projectId: project.id }, key);
+    assert.equal(preview.body.result.isError, false);
+    const pv = JSON.parse(preview.body.result.content[0].text);
+    assert.ok(typeof pv.confirmationToken === 'string' && pv.confirmationToken.length > 0);
+    assert.equal(pv.scope, 'project');
+    const stillThere = await call(app, 'GET', `/v1/tasks/${task.id}`, undefined, key);
+    assert.equal(stillThere.status, 200);
+    assert.equal(stillThere.body.trashedAt, null); // dry-run did not delete
+  } finally {
+    await client.close();
+  }
+});
+
 test('time tracking and goal progress roll-up', async () => {
   const { app, client } = await setup();
   try {
@@ -377,6 +468,933 @@ test('premium gating: free tier caps projects, premium is unlimited', async () =
     await db.update(schema.workspaces).set({ isPremium: true }).where(eq(schema.workspaces.id, workspaceId));
     const ok = await call(app, 'POST', '/v1/projects', { key: 'P4', name: 'Project 4' }, key);
     assert.equal(ok.status, 201);
+  } finally {
+    await client.close();
+  }
+});
+
+test('premium gating: trashed tasks do not consume the free-tier task quota', async () => {
+  const { app, client } = await setup();
+  // Temporarily pin the per-project task cap to 1 so the quota is cheap to hit.
+  const originalCap = LIMITS.freeMaxTasksPerProject;
+  LIMITS.freeMaxTasksPerProject = 1;
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Quota Team' });
+    const key: string = boot.body.apiKey.key;
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'Q', name: 'Quota' }, key)).body;
+
+    // First task fits the cap; a second is blocked while the first is live.
+    const first = await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'One' }, key);
+    assert.equal(first.status, 201);
+    const blocked = await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Two' }, key);
+    assert.equal(blocked.status, 402, 'second task blocked at the cap');
+    assert.equal(blocked.body.error.code, 'premium_required');
+
+    // Trashing the first task frees its quota slot (soft-deleted rows do not count).
+    const trash = await call(app, 'DELETE', `/v1/tasks/${first.body.id}`, undefined, key);
+    assert.equal(trash.status, 200);
+    const afterTrash = await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Two' }, key);
+    assert.equal(afterTrash.status, 201, 'a trashed task no longer consumes quota');
+  } finally {
+    LIMITS.freeMaxTasksPerProject = originalCap;
+    await client.close();
+  }
+});
+
+test('task-model-v2: templates, AC/DoD, review back-edge, watchers, trash, authz', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'V2 Team', ownerName: 'Lead' });
+    const key: string = boot.body.apiKey.key;
+    const ownerMemberId: string = boot.body.owner.id;
+
+    // Bootstrap seeds the builtin templates (one per meaningful type).
+    const templates = await call(app, 'GET', '/v1/templates', undefined, key);
+    assert.equal(templates.status, 200);
+    assert.ok(templates.body.items.length >= 15, 'expected builtin templates to be seeded');
+    const codeTpl = templates.body.items.find((t: { taskType: string }) => t.taskType === 'code');
+    assert.ok(codeTpl, 'expected a builtin code template');
+    const legalTpl = templates.body.items.find((t: { taskType: string }) => t.taskType === 'legal');
+    assert.ok(
+      legalTpl.acceptanceCriteria.some((ac: { text: string }) => /disclaimer/i.test(ac.text)),
+      'legal template must carry a disclaimer AC item',
+    );
+    assert.equal(codeTpl.builtin, true);
+
+    // Owner-only PATCH /workspace sets the DoD template; new tasks snapshot it.
+    const patchWs = await call(
+      app,
+      'PATCH',
+      '/v1/workspace',
+      { definitionOfDone: [{ text: 'CI green' }, { text: 'Docs updated' }] },
+      key,
+    );
+    assert.equal(patchWs.status, 200);
+    assert.equal(patchWs.body.definitionOfDone.length, 2);
+
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'V2', name: 'V2' }, key)).body;
+
+    // Column management is admin-gated; the owner passes.
+    const addCol = await call(
+      app,
+      'POST',
+      `/v1/projects/${project.id}/columns`,
+      { key: 'extra', name: 'Extra' },
+      key,
+    );
+    assert.equal(addCol.status, 201);
+
+    // A typed task with acceptance criteria + an advisory field bag.
+    const richTask = await call(
+      app,
+      'POST',
+      '/v1/tasks',
+      {
+        projectId: project.id,
+        title: 'Implement parser',
+        type: 'code',
+        fields: { repo: 'acme/parser', anything: 123 }, // unknown keys accepted
+        acceptanceCriteria: [{ text: 'Handles empty input' }, { kind: 'scenario', text: 'Given X when Y then Z' }],
+        acceptanceNotes: 'see RFC',
+      },
+      key,
+    );
+    assert.equal(richTask.status, 201);
+    assert.equal(richTask.body.type, 'code');
+    assert.equal(richTask.body.acceptanceCriteria.length, 2);
+    assert.equal(richTask.body.acceptanceCriteria[0].done, false);
+    assert.ok(richTask.body.acceptanceCriteria[0].id, 'AC items get server ids');
+    assert.equal(richTask.body.definitionOfDone.length, 2, 'workspace DoD is snapshotted');
+    assert.deepEqual(richTask.body.fields, { repo: 'acme/parser', anything: 123 });
+    const taskId: string = richTask.body.id;
+
+    // Reporter auto-watches; the list view inlines labels + AC progress.
+    const watchers = await call(app, 'GET', `/v1/tasks/${taskId}/watchers`, undefined, key);
+    assert.ok(watchers.body.items.some((w: { memberId: string }) => w.memberId === ownerMemberId));
+
+    const list = await call(app, 'GET', `/v1/tasks?projectId=${project.id}&type=code`, undefined, key);
+    assert.equal(list.body.items.length, 1);
+    assert.deepEqual(list.body.items[0].acProgress, { done: 0, total: 4 }); // 2 AC + 2 DoD
+
+    // Review loop: request-review assigns a reviewer + moves to in_review;
+    // changes_requested moves back. A reviewer must be set before a verdict.
+    const rr = await call(
+      app,
+      'POST',
+      `/v1/tasks/${taskId}/request-review`,
+      { reviewerMemberId: ownerMemberId },
+      key,
+    );
+    assert.equal(rr.status, 200);
+    const inReview = (await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, key)).body.statusColumnId;
+    const review = await call(
+      app,
+      'POST',
+      `/v1/tasks/${taskId}/review`,
+      { verdict: 'changes_requested', comment: 'fix edge case', score: 3 },
+      key,
+    );
+    assert.equal(review.status, 201);
+    assert.equal(review.body.verdict, 'changes_requested');
+    const afterReview = (await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, key)).body.statusColumnId;
+    assert.notEqual(afterReview, inReview, 'changes_requested moves the task back off the review column');
+
+    // Move to done with unmet AC/DoD -> WARNs (comment + activity) but does NOT block.
+    const done = await call(app, 'POST', `/v1/tasks/${taskId}/status`, { statusColumnKey: 'done' }, key);
+    assert.equal(done.status, 200);
+    assert.ok(done.body.completedAt, 'task still closes despite unmet criteria');
+    const comments = await call(app, 'GET', `/v1/tasks/${taskId}/comments`, undefined, key);
+    assert.ok(
+      comments.body.items.some((cm: { body: string }) => /unmet/i.test(cm.body)),
+      'a warning comment is posted on completing with unmet criteria',
+    );
+
+    // Instantiate a task from the code builtin; its AC is materialized fresh.
+    const fromTpl = await call(
+      app,
+      'POST',
+      `/v1/tasks/from-template/${codeTpl.id}`,
+      { projectId: project.id, vars: { goal: 'build the thing' } },
+      key,
+    );
+    assert.equal(fromTpl.status, 201);
+    assert.equal(fromTpl.body.type, 'code');
+    assert.ok(fromTpl.body.acceptanceCriteria.length >= 1);
+    assert.ok(fromTpl.body.description.includes('build the thing'), 'placeholder substituted');
+
+    // Soft-delete (trash) removes the task from the default list; restore brings it back.
+    const trash = await call(app, 'DELETE', `/v1/tasks/${taskId}`, undefined, key);
+    assert.equal(trash.status, 200);
+    assert.ok(trash.body.trashedAt);
+    const afterTrash = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, key);
+    assert.ok(!afterTrash.body.items.some((t: { id: string }) => t.id === taskId), 'trashed task is hidden');
+    await call(app, 'POST', `/v1/tasks/${taskId}/restore`, undefined, key);
+    const afterRestore = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, key);
+    assert.ok(afterRestore.body.items.some((t: { id: string }) => t.id === taskId), 'restored task reappears');
+
+    // authz: a viewer (read-scoped key) may read + comment but not create tasks.
+    const viewer = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Watcher', role: 'viewer' }, key)
+    ).body;
+    const viewerKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: viewer.id, scopes: ['read'] }, key)
+    ).body.key;
+    const denied = await call(
+      app,
+      'POST',
+      '/v1/tasks',
+      { projectId: project.id, title: 'nope' },
+      viewerKey,
+    );
+    assert.equal(denied.status, 403);
+    const canComment = await call(app, 'POST', `/v1/tasks/${taskId}/comments`, { body: 'lgtm' }, viewerKey);
+    assert.equal(canComment.status, 201, 'viewers may comment');
+    const canRead = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, viewerKey);
+    assert.equal(canRead.status, 200, 'viewers may read');
+  } finally {
+    await client.close();
+  }
+});
+
+test('task-model-v2 review loop: roles, verdict moves, reviewer authz, /me/reviews', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Review Team', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+
+    // A second member (role=member) who will be the reviewer, with their own key.
+    const reviewer = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Reviewer', role: 'member' }, ownerKey)
+    ).body;
+    const reviewerKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: reviewer.id, scopes: ['read', 'write'] }, ownerKey)
+    ).body.key;
+    // A third, unrelated member who must NOT be able to review someone else's task.
+    const stranger = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Stranger', role: 'member' }, ownerKey)
+    ).body;
+    const strangerKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: stranger.id, scopes: ['read', 'write'] }, ownerKey)
+    ).body.key;
+
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'RV', name: 'Review' }, ownerKey)).body;
+
+    // The reviewer claims a task -> auto-watches as the assignee (Responsible).
+    const task = (
+      await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Approve me' }, ownerKey)
+    ).body;
+    await call(app, 'POST', `/v1/tasks/${task.id}/claim`, undefined, reviewerKey);
+    const watchers = (await call(app, 'GET', `/v1/tasks/${task.id}/watchers`, undefined, ownerKey)).body;
+    assert.ok(
+      watchers.items.some((w: { memberId: string }) => w.memberId === reviewer.id),
+      'claiming auto-adds the assignee as a watcher',
+    );
+
+    // request-review assigns an explicit reviewer + moves to a started column.
+    const rr = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task.id}/request-review`,
+      { reviewerMemberId: reviewer.id },
+      ownerKey,
+    );
+    assert.equal(rr.status, 200);
+    assert.equal(rr.body.reviewerMemberId, reviewer.id, 'reviewer is set by request-review');
+    const inReviewColId: string = rr.body.statusColumnId;
+
+    // The task now shows up in the reviewer's /me/reviews inbox (but not the stranger's).
+    const myReviews = await call(app, 'GET', '/v1/me/reviews', undefined, reviewerKey);
+    assert.equal(myReviews.status, 200);
+    assert.ok(
+      myReviews.body.items.some((t: { id: string }) => t.id === task.id),
+      'awaiting-review task appears in the reviewer inbox',
+    );
+    const strangerInbox = await call(app, 'GET', '/v1/me/reviews', undefined, strangerKey);
+    assert.ok(!strangerInbox.body.items.some((t: { id: string }) => t.id === task.id));
+
+    // A verdict on a task with NO reviewer assigned is refused (must call
+    // request-review first) - even for the owner/admin, and nothing is recorded.
+    const noReviewer = (
+      await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'No reviewer yet' }, ownerKey)
+    ).body;
+    const premature = await call(
+      app,
+      'POST',
+      `/v1/tasks/${noReviewer.id}/review`,
+      { verdict: 'approved' },
+      ownerKey,
+    );
+    assert.equal(premature.status, 409, 'a verdict needs a reviewer assigned first');
+    assert.equal(premature.body.error.code, 'no_reviewer_assigned');
+    const noReviewerReviews = await call(app, 'GET', `/v1/tasks/${noReviewer.id}/reviews`, undefined, ownerKey);
+    assert.equal(noReviewerReviews.body.items.length, 0, 'no review row is written when refused');
+
+    // A non-reviewer, non-admin member is forbidden from recording a verdict.
+    const denied = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task.id}/review`,
+      { verdict: 'approved' },
+      strangerKey,
+    );
+    assert.equal(denied.status, 403, 'only the reviewer or an admin may review');
+
+    // The reviewer approves -> task moves to a completed column with reason.
+    const approve = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task.id}/review`,
+      { verdict: 'approved', score: 5 },
+      reviewerKey,
+    );
+    assert.equal(approve.status, 201);
+    assert.equal(approve.body.verdict, 'approved');
+    const afterApprove = (await call(app, 'GET', `/v1/tasks/${task.id}`, undefined, ownerKey)).body;
+    assert.notEqual(afterApprove.statusColumnId, inReviewColId, 'approve moves off the review column');
+    assert.ok(afterApprove.completedAt, 'approve sets completedAt');
+    assert.equal(afterApprove.completionReason, 'completed');
+    const inboxAfter = await call(app, 'GET', '/v1/me/reviews', undefined, reviewerKey);
+    assert.ok(
+      !inboxAfter.body.items.some((t: { id: string }) => t.id === task.id),
+      'an approved task leaves the reviewer inbox',
+    );
+
+    // A second task taken through the reject path -> canceled column + reason.
+    const task2 = (
+      await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Reject me' }, ownerKey)
+    ).body;
+    await call(
+      app,
+      'POST',
+      `/v1/tasks/${task2.id}/request-review`,
+      { reviewerMemberId: reviewer.id },
+      ownerKey,
+    );
+    const reject = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task2.id}/review`,
+      { verdict: 'rejected', comment: 'out of scope' },
+      reviewerKey,
+    );
+    assert.equal(reject.status, 201);
+    const afterReject = (await call(app, 'GET', `/v1/tasks/${task2.id}`, undefined, ownerKey)).body;
+    assert.equal(afterReject.completionReason, 'canceled', 'reject sets completionReason=canceled');
+
+    // The reviews list returns the recorded verdicts in order.
+    const reviews = await call(app, 'GET', `/v1/tasks/${task.id}/reviews`, undefined, ownerKey);
+    assert.equal(reviews.body.items.length, 1);
+    assert.equal(reviews.body.items[0].verdict, 'approved');
+    assert.equal(reviews.body.items[0].score, 5);
+
+    // The blackboard recorded the review verbs.
+    const verbs: string[] = (await call(app, 'GET', '/v1/activity', undefined, ownerKey)).body.items.map(
+      (a: { verb: string }) => a.verb,
+    );
+    for (const expected of ['reviewer.assigned', 'review.requested', 'review.approved', 'review.rejected']) {
+      assert.ok(verbs.includes(expected), `expected activity verb ${expected}`);
+    }
+  } finally {
+    await client.close();
+  }
+});
+
+// Commit a reset with an Idempotency-Key header (the plain `call` helper omits it).
+async function commit(
+  app: Hono<AppEnv>,
+  path: string,
+  body: unknown,
+  key: string,
+  idemKey: string,
+): Promise<CallResult> {
+  const res = await app.request(path, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${key}`,
+      'idempotency-key': idemKey,
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  return { status: res.status, body: text ? JSON.parse(text) : undefined };
+}
+
+test('task-model-v2 reset: project dry-run -> commit soft-deletes (recoverable) + authz + idempotency', async () => {
+  const { app, client, db } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Reset Team', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'RS', name: 'Reset' }, ownerKey)).body;
+    const t1 = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'One' }, ownerKey)).body;
+    const t2 = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Two' }, ownerKey)).body;
+    await call(app, 'POST', `/v1/tasks/${t1.id}/comments`, { body: 'hi' }, ownerKey);
+
+    // authz: a member (non-admin) is forbidden even from the dry-run.
+    const member = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Dev', role: 'member' }, ownerKey)
+    ).body;
+    const memberKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: member.id, scopes: ['read', 'write', 'admin'] }, ownerKey)
+    ).body.key;
+    const denyRole = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, memberKey);
+    assert.equal(denyRole.status, 403, 'member role cannot reset');
+
+    // authz: an admin role but a key WITHOUT the admin scope is also forbidden.
+    const admin = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Adm', role: 'admin' }, ownerKey)
+    ).body;
+    const adminNoScopeKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: admin.id, scopes: ['read', 'write'] }, ownerKey)
+    ).body.key;
+    const denyScope = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, adminNoScopeKey);
+    assert.equal(denyScope.status, 403, 'admin scope is required');
+
+    // Dry-run (owner): reports the counts + a confirmation token, deletes nothing.
+    const dry = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, ownerKey);
+    assert.equal(dry.status, 200);
+    assert.equal(dry.body.scope, 'project');
+    assert.equal(dry.body.targetId, project.id);
+    assert.equal(dry.body.counts.tasks, 2);
+    assert.equal(dry.body.counts.comments, 1);
+    assert.ok(dry.body.confirmationToken, 'a confirmation token is issued');
+    assert.ok(dry.body.expiresAt);
+    // Nothing was deleted by the dry-run.
+    const stillThere = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, ownerKey);
+    assert.equal(stillThere.body.items.length, 2);
+
+    // Commit without an Idempotency-Key header -> 400.
+    const noIdem = await call(
+      app,
+      'POST',
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+    );
+    assert.equal(noIdem.status, 400);
+    assert.equal(noIdem.body.error.code, 'idempotency_key_required');
+
+    // Commit with the token + header -> soft-deletes the tasks (recoverable).
+    const committed = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+      'idem-project-1',
+    );
+    assert.equal(committed.status, 200);
+    assert.equal(committed.body.counts.tasks, 2);
+    const afterReset = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, ownerKey);
+    assert.equal(afterReset.body.items.length, 0, 'all tasks are trashed (hidden from the list)');
+
+    // Recoverable: the trashed tasks can be restored.
+    const restore = await call(app, 'POST', `/v1/tasks/${t2.id}/restore`, undefined, ownerKey);
+    assert.equal(restore.status, 200);
+    const afterRestore = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, ownerKey);
+    assert.ok(afterRestore.body.items.some((t: { id: string }) => t.id === t2.id), 'restore brings a task back');
+
+    // The token is single-use: replaying the SAME idempotency key replays the
+    // stored response (still 200, same counts) without re-running.
+    const replay = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+      'idem-project-1',
+    );
+    assert.equal(replay.status, 200);
+    assert.equal(replay.body.counts.tasks, 2, 'idempotent replay returns the original result');
+
+    // Reusing the SAME idempotency key for a DIFFERENT request (different token)
+    // must 409 - never silently replay the stale result and skip the new op.
+    const keyConflict = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: 'a-different-token' },
+      ownerKey,
+      'idem-project-1',
+    );
+    assert.equal(keyConflict.status, 409, 'reusing a key for a different request is rejected');
+    assert.equal(keyConflict.body.error.code, 'idempotency_key_conflict');
+
+    // A fresh commit with a NEW idempotency key but the consumed token -> 410.
+    const consumed = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+      'idem-project-2',
+    );
+    assert.equal(consumed.status, 410, 'a consumed token cannot be reused');
+
+    // Counts-drift 409: dry-run, then change the workspace, then commit.
+    const t3 = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Three' }, ownerKey)).body;
+    const dry2 = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, ownerKey);
+    await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Four (drift)' }, ownerKey);
+    const drift = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry2.body.confirmationToken },
+      ownerKey,
+      'idem-project-3',
+    );
+    assert.equal(drift.status, 409, 'counts changed since the dry-run');
+    assert.equal(drift.body.error.code, 'reset_counts_changed');
+    assert.ok(t3.id);
+
+    // Resetting an already-trashed project is refused (no silent re-stamp). Trash
+    // the project row directly, then a fresh dry-run -> commit must 409.
+    await db.update(schema.projects).set({ trashedAt: new Date() }).where(eq(schema.projects.id, project.id));
+    const dryTrashed = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, ownerKey);
+    const onTrashed = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dryTrashed.body.confirmationToken },
+      ownerKey,
+      'idem-project-trashed',
+    );
+    assert.equal(onTrashed.status, 409, 'cannot reset an already-trashed project');
+    assert.equal(onTrashed.body.error.code, 'project_already_trashed');
+
+    // The blackboard + audit trail recorded the project.reset.
+    const verbs: string[] = (await call(app, 'GET', '/v1/activity', undefined, ownerKey)).body.items.map(
+      (a: { verb: string }) => a.verb,
+    );
+    assert.ok(verbs.includes('project.reset'), 'project.reset activity is written');
+  } finally {
+    await client.close();
+  }
+});
+
+test('task-model-v2 reset: workspace clear + seed-demo + allowReset gate', async () => {
+  const { app, client, db } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Clear Team', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+    const workspaceId: string = boot.body.workspace.id;
+
+    const p1 = (await call(app, 'POST', '/v1/projects', { key: 'A', name: 'A' }, ownerKey)).body;
+    await call(app, 'POST', '/v1/tasks', { projectId: p1.id, title: 'a1' }, ownerKey);
+    const p2 = (await call(app, 'POST', '/v1/projects', { key: 'B', name: 'B' }, ownerKey)).body;
+    await call(app, 'POST', '/v1/tasks', { projectId: p2.id, title: 'b1' }, ownerKey);
+
+    // Workspace clear dry-run: counts both projects and their tasks.
+    const dry = await call(app, 'POST', '/v1/workspaces/current/reset', { dryRun: true }, ownerKey);
+    assert.equal(dry.status, 200);
+    assert.equal(dry.body.scope, 'workspace');
+    assert.equal(dry.body.counts.projects, 2);
+    assert.equal(dry.body.counts.tasks, 2);
+
+    const cleared = await commit(
+      app,
+      '/v1/workspaces/current/reset',
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+      'idem-ws-clear',
+    );
+    assert.equal(cleared.status, 200);
+    assert.equal(cleared.body.counts.projects, 2);
+    const projectsAfter = await call(app, 'GET', '/v1/projects', undefined, ownerKey);
+    assert.equal(projectsAfter.body.items.length, 0, 'all projects are trashed');
+
+    // Members + the owner key are preserved across the clear.
+    const membersAfter = await call(app, 'GET', '/v1/members', undefined, ownerKey);
+    assert.ok(membersAfter.body.items.length >= 1, 'members are preserved');
+    assert.equal(membersAfter.status, 200, 'the owner key still authenticates');
+
+    // seed-demo into the now-empty workspace: dry-run then commit.
+    const seedDry = await call(app, 'POST', '/v1/workspaces/current/seed-demo', { dryRun: true }, ownerKey);
+    assert.equal(seedDry.status, 200);
+    assert.equal(seedDry.body.scope, 'demo');
+    assert.equal(seedDry.body.counts.tasks, 8);
+    const seeded = await commit(
+      app,
+      '/v1/workspaces/current/seed-demo',
+      { confirm: true, confirmationToken: seedDry.body.confirmationToken },
+      ownerKey,
+      'idem-seed-1',
+    );
+    assert.equal(seeded.status, 200);
+    assert.equal(seeded.body.counts.projects, 1);
+    assert.equal(seeded.body.counts.tasks, 8);
+    const demoProjects = await call(app, 'GET', '/v1/projects', undefined, ownerKey);
+    assert.equal(demoProjects.body.items.length, 1, 'the demo project exists');
+    const demoTasks = await call(
+      app,
+      'GET',
+      `/v1/tasks?projectId=${demoProjects.body.items[0].id}`,
+      undefined,
+      ownerKey,
+    );
+    assert.equal(demoTasks.body.items.length, 8, 'demo tasks are seeded');
+
+    // seed-demo refuses on a non-empty workspace unless force:true.
+    const seedDry2 = await call(app, 'POST', '/v1/workspaces/current/seed-demo', { dryRun: true }, ownerKey);
+    const refused = await commit(
+      app,
+      '/v1/workspaces/current/seed-demo',
+      { confirm: true, confirmationToken: seedDry2.body.confirmationToken },
+      ownerKey,
+      'idem-seed-2',
+    );
+    assert.equal(refused.status, 409, 'seed-demo refuses on a non-empty workspace');
+    assert.equal(refused.body.error.code, 'workspace_not_empty');
+    const seedDry3 = await call(app, 'POST', '/v1/workspaces/current/seed-demo', { dryRun: true }, ownerKey);
+    const forced = await commit(
+      app,
+      '/v1/workspaces/current/seed-demo',
+      { confirm: true, confirmationToken: seedDry3.body.confirmationToken, force: true },
+      ownerKey,
+      'idem-seed-3',
+    );
+    assert.equal(forced.status, 200, 'force:true seeds anyway');
+
+    // allowReset = false disables the destructive endpoints (403 reset_disabled).
+    await db.update(schema.workspaces).set({ allowReset: false }).where(eq(schema.workspaces.id, workspaceId));
+    const disabled = await call(app, 'POST', '/v1/workspaces/current/reset', { dryRun: true }, ownerKey);
+    assert.equal(disabled.status, 403, 'reset is disabled when allowReset=false');
+
+    // The audit log captured the destructive actions.
+    const auditRows = await db.select().from(schema.auditLog).where(eq(schema.auditLog.workspaceId, workspaceId));
+    const actions = auditRows.map((a: { action: string }) => a.action);
+    assert.ok(actions.includes('workspace.cleared'), 'workspace.cleared is audited');
+    assert.ok(actions.includes('workspace.seeded_demo'), 'workspace.seeded_demo is audited');
+  } finally {
+    await client.close();
+  }
+});
+
+test('task-model-v2 reset: project reset with restoreDefaultColumns rebuilds the board (FK-safe)', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Board Team', ownerName: 'Lead' });
+    const key: string = boot.body.apiKey.key;
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'BD', name: 'Board' }, key)).body;
+
+    // A custom column beyond the defaults + a task moved into 'done'.
+    await call(app, 'POST', `/v1/projects/${project.id}/columns`, { key: 'extra', name: 'Extra', category: 'started' }, key);
+    const t1 = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'shipme' }, key)).body;
+    await call(app, 'POST', `/v1/tasks/${t1.id}/status`, { statusColumnKey: 'done' }, key);
+    const before = await call(app, 'GET', `/v1/projects/${project.id}/columns`, undefined, key);
+    assert.equal(before.body.items.length, 7, 'custom column present before reset');
+
+    const dry = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, key);
+    const committed = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken, restoreDefaultColumns: true },
+      key,
+      'idem-board-1',
+    );
+    assert.equal(committed.status, 200, 'restoreDefaultColumns commit succeeds (no FK violation)');
+
+    // Board is back to exactly the 6 defaults; the custom column is gone.
+    const after = await call(app, 'GET', `/v1/projects/${project.id}/columns`, undefined, key);
+    assert.equal(after.body.items.length, 6, 'board is rebuilt to the default columns');
+    assert.deepEqual(
+      after.body.items.map((c: { key: string }) => c.key),
+      ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'canceled'],
+    );
+
+    // The trashed task is restorable and lands on a valid (repointed) column.
+    const restored = await call(app, 'POST', `/v1/tasks/${t1.id}/restore`, undefined, key);
+    assert.equal(restored.status, 200);
+    assert.ok(restored.body.statusColumnId, 'restored task points at a live column');
+    const live = after.body.items.map((c: { id: string }) => c.id);
+    assert.ok(live.includes(restored.body.statusColumnId), 'repointed column is one of the new defaults');
+  } finally {
+    await client.close();
+  }
+});
+
+test('task-model-v2: labelIds+reviewer on create inline in list; single-task review back-edge -> approve; reset soft-delete keeps the row', async () => {
+  const { app, client, db } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Inline Team', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+    const ownerId: string = boot.body.owner.id;
+
+    // A reviewer member (role=member) with their own key.
+    const reviewer = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Reviewer', role: 'member' }, ownerKey)
+    ).body;
+    const reviewerKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: reviewer.id, scopes: ['read', 'write'] }, ownerKey)
+    ).body.key;
+
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'INL', name: 'Inline' }, ownerKey)).body;
+    const label = (
+      await call(app, 'POST', `/v1/projects/${project.id}/labels`, { name: 'backend', color: '#0af' }, ownerKey)
+    ).body;
+
+    // --- Rich create: type + acceptanceCriteria + labelIds + reviewerMemberId ---
+    const created = await call(
+      app,
+      'POST',
+      '/v1/tasks',
+      {
+        projectId: project.id,
+        title: 'Build with all the fixings',
+        type: 'code',
+        acceptanceCriteria: [{ text: 'Compiles' }, { kind: 'scenario', text: 'Given X when Y then Z' }],
+        labelIds: [label.id],
+        reviewerMemberId: reviewer.id,
+      },
+      ownerKey,
+    );
+    assert.equal(created.status, 201);
+    assert.equal(created.body.type, 'code');
+    assert.equal(created.body.reviewerMemberId, reviewer.id, 'reviewer is set on create');
+    assert.equal(created.body.acceptanceCriteria.length, 2);
+    const taskId: string = created.body.id;
+
+    // GET /tasks inlines BOTH labels and AC progress in one shot.
+    const list = await call(app, 'GET', `/v1/tasks?projectId=${project.id}&type=code`, undefined, ownerKey);
+    assert.equal(list.body.items.length, 1);
+    const listed = list.body.items[0];
+    assert.equal(listed.labels.length, 1, 'labels are inlined on the list view');
+    assert.equal(listed.labels[0].id, label.id);
+    assert.deepEqual(listed.acProgress, { done: 0, total: 2 }, 'AC progress is inlined on the list view');
+
+    // Filtering by that label returns the task (label-join EXISTS path).
+    const byLabel = await call(app, 'GET', `/v1/tasks?projectId=${project.id}&label=backend`, undefined, ownerKey);
+    assert.ok(byLabel.body.items.some((t: { id: string }) => t.id === taskId), 'label filter matches');
+
+    // --- Single-task full review loop: request-review -> changes_requested -> approved ---
+    const rr = await call(
+      app,
+      'POST',
+      `/v1/tasks/${taskId}/request-review`,
+      { reviewerMemberId: reviewer.id },
+      ownerKey,
+    );
+    assert.equal(rr.status, 200);
+    const inReviewColId: string = rr.body.statusColumnId;
+
+    // changes_requested: the reviewer sends it BACK to a started, non-review column.
+    const changes = await call(
+      app,
+      'POST',
+      `/v1/tasks/${taskId}/review`,
+      { verdict: 'changes_requested', comment: 'fix the edge case' },
+      reviewerKey,
+    );
+    assert.equal(changes.status, 201);
+    assert.equal(changes.body.verdict, 'changes_requested');
+    const afterChanges = (await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, ownerKey)).body;
+    assert.notEqual(afterChanges.statusColumnId, inReviewColId, 'changes_requested moves the task off review');
+    assert.equal(afterChanges.completedAt, null, 'a re-opened task is not completed');
+
+    // The back-edge writes a task.reopened activity verb.
+    const midVerbs: string[] = (await call(app, 'GET', '/v1/activity', undefined, ownerKey)).body.items.map(
+      (a: { verb: string }) => a.verb,
+    );
+    assert.ok(midVerbs.includes('task.reopened'), 'changes_requested writes task.reopened');
+    assert.ok(midVerbs.includes('review.changes_requested'), 'changes_requested writes review.changes_requested');
+
+    // The same task goes back to review, then the reviewer approves it.
+    await call(app, 'POST', `/v1/tasks/${taskId}/request-review`, { reviewerMemberId: reviewer.id }, ownerKey);
+    const approve = await call(
+      app,
+      'POST',
+      `/v1/tasks/${taskId}/review`,
+      { verdict: 'approved', score: 5 },
+      reviewerKey,
+    );
+    assert.equal(approve.status, 201);
+    const afterApprove = (await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, ownerKey)).body;
+    assert.ok(afterApprove.completedAt, 'approve sets completedAt on the same task');
+    assert.equal(afterApprove.completionReason, 'completed');
+
+    // --- Reset soft-delete keeps the physical row (trashedAt set, not a hard DELETE) ---
+    const dry = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, ownerKey);
+    assert.equal(dry.status, 200);
+    assert.equal(dry.body.counts.tasks, 1);
+    const committed = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+      'idem-inline-reset',
+    );
+    assert.equal(committed.status, 200);
+
+    // Vanishes from GET /tasks ...
+    const afterReset = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, ownerKey);
+    assert.equal(afterReset.body.items.length, 0, 'trashed task is hidden from the list');
+
+    // ... but the row is STILL THERE in the DB with trashedAt stamped (recoverable).
+    const rows = await db.select().from(schema.tasks).where(eq(schema.tasks.id, taskId));
+    assert.equal(rows.length, 1, 'soft-delete keeps the physical row');
+    assert.notEqual(rows[0]!.trashedAt, null, 'trashedAt is set by the reset commit');
+    assert.equal(rows[0]!.trashedByMemberId, ownerId, 'the committing member is recorded as trasher');
+
+    // And the direct single-task read still returns it with trashedAt populated.
+    const direct = await call(app, 'GET', `/v1/tasks/${taskId}`, undefined, ownerKey);
+    assert.equal(direct.status, 200);
+    assert.ok(direct.body.trashedAt, 'single-task read exposes the trashedAt timestamp');
+  } finally {
+    await client.close();
+  }
+});
+
+test('task-model-v2 review loop: approve with no completed column is a loud no-op; null reviewer -> 409', async () => {
+  const { app, client, db } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Loud Review', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+
+    const reviewer = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Reviewer', role: 'member' }, ownerKey)
+    ).body;
+
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'NC', name: 'No Completed' }, ownerKey)).body;
+
+    // --- Fix B: reviewerMemberId null -> conflict no_reviewer_assigned (no write) ---
+    const noReviewerTask = (
+      await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Unassigned reviewer' }, ownerKey)
+    ).body;
+    const nullReviewer = await call(
+      app,
+      'POST',
+      `/v1/tasks/${noReviewerTask.id}/review`,
+      { verdict: 'approved' },
+      ownerKey,
+    );
+    assert.equal(nullReviewer.status, 409, 'a verdict with no reviewer assigned is refused');
+    assert.equal(nullReviewer.body.error.code, 'no_reviewer_assigned');
+    const noReviewerRows = await call(app, 'GET', `/v1/tasks/${noReviewerTask.id}/reviews`, undefined, ownerKey);
+    assert.equal(noReviewerRows.body.items.length, 0, 'no review row is recorded when there is no reviewer');
+
+    // --- Fix B: approve verdict on a board with NO completed column is a loud
+    // no-op: clear error, AND nothing recorded / moved. Drop the default
+    // completed-category column(s) directly; the task sits in `in_review`
+    // (started), so the restrict FK on statusColumnId is not violated. ---
+    const task = (
+      await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Approve me' }, ownerKey)
+    ).body;
+    // Move into review first (this assigns the reviewer + a started review column).
+    const rr = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task.id}/request-review`,
+      { reviewerMemberId: reviewer.id },
+      ownerKey,
+    );
+    assert.equal(rr.status, 200);
+    const reviewColId: string = rr.body.statusColumnId;
+
+    // Now physically remove the completed-category column(s) from the board.
+    await db
+      .delete(schema.statusColumns)
+      .where(and(eq(schema.statusColumns.projectId, project.id), eq(schema.statusColumns.category, 'completed')));
+    const colsAfter = await call(app, 'GET', `/v1/projects/${project.id}/columns`, undefined, ownerKey);
+    assert.ok(
+      !colsAfter.body.items.some((col: { category: string }) => col.category === 'completed'),
+      'the board now has no completed-category column',
+    );
+
+    // The reviewer approves -> clear error, NOT a silent success.
+    const approve = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task.id}/review`,
+      { verdict: 'approved', score: 5 },
+      ownerKey,
+    );
+    assert.equal(approve.status, 409, 'approve with no completed column fails loud');
+    assert.equal(approve.body.error.code, 'no_completed_column');
+
+    // The task did NOT move and was NOT completed (the move/verdict are written
+    // only after the destination column is resolved).
+    const afterTry = (await call(app, 'GET', `/v1/tasks/${task.id}`, undefined, ownerKey)).body;
+    assert.equal(afterTry.statusColumnId, reviewColId, 'task stays on the review column');
+    assert.equal(afterTry.completedAt, null, 'task is not marked completed');
+    assert.equal(afterTry.completionReason, null, 'no completion reason recorded');
+
+    // No review row was recorded for the rejected verdict.
+    const reviewRows = await call(app, 'GET', `/v1/tasks/${task.id}/reviews`, undefined, ownerKey);
+    assert.equal(reviewRows.body.items.length, 0, 'no review row is recorded when the move would no-op');
+
+    // No review.approved activity leaked onto the blackboard for this task.
+    const verbs: string[] = (await call(app, 'GET', '/v1/activity', undefined, ownerKey)).body.items
+      .filter((a: { taskId: string | null }) => a.taskId === task.id)
+      .map((a: { verb: string }) => a.verb);
+    assert.ok(!verbs.includes('review.approved'), 'no review.approved activity is written on the failed approve');
+  } finally {
+    await client.close();
+  }
+});
+
+test('task-model-v2 reset: Idempotency-Key reused for a DIFFERENT request (different project/scope) -> 409; same request replays', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Idem Conflict', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+
+    // Two distinct projects so a reuse can target a structurally different request.
+    const pA = (await call(app, 'POST', '/v1/projects', { key: 'A', name: 'Alpha' }, ownerKey)).body;
+    const pB = (await call(app, 'POST', '/v1/projects', { key: 'B', name: 'Beta' }, ownerKey)).body;
+    await call(app, 'POST', '/v1/tasks', { projectId: pA.id, title: 'A1' }, ownerKey);
+    await call(app, 'POST', '/v1/tasks', { projectId: pB.id, title: 'B1' }, ownerKey);
+
+    const sharedKey = 'idem-shared-1';
+
+    // Commit a reset of project A under the shared idempotency key.
+    const dryA = await call(app, 'POST', `/v1/projects/${pA.id}/reset`, { dryRun: true }, ownerKey);
+    const committedA = await commit(
+      app,
+      `/v1/projects/${pA.id}/reset`,
+      { confirm: true, confirmationToken: dryA.body.confirmationToken },
+      ownerKey,
+      sharedKey,
+    );
+    assert.equal(committedA.status, 200);
+    assert.equal(committedA.body.targetId, pA.id);
+    const aEmpty = await call(app, 'GET', `/v1/tasks?projectId=${pA.id}`, undefined, ownerKey);
+    assert.equal(aEmpty.body.items.length, 0, 'project A tasks are trashed');
+
+    // Reuse the SAME key for a DIFFERENT request (project B reset) -> 409 conflict,
+    // NOT a stale replay of A's result. Crucially, project B is NOT touched.
+    const dryB = await call(app, 'POST', `/v1/projects/${pB.id}/reset`, { dryRun: true }, ownerKey);
+    const crossProject = await commit(
+      app,
+      `/v1/projects/${pB.id}/reset`,
+      { confirm: true, confirmationToken: dryB.body.confirmationToken },
+      ownerKey,
+      sharedKey,
+    );
+    assert.equal(crossProject.status, 409, 'reusing a key for a different project is a conflict');
+    assert.equal(crossProject.body.error.code, 'idempotency_key_conflict');
+    const bStillThere = await call(app, 'GET', `/v1/tasks?projectId=${pB.id}`, undefined, ownerKey);
+    assert.equal(bStillThere.body.items.length, 1, 'project B was NOT reset by the stale-key replay');
+
+    // Reuse the SAME key for a DIFFERENT scope (workspace clear) -> 409 conflict
+    // too (different endpoint binds the request identity).
+    const dryWs = await call(app, 'POST', '/v1/workspaces/current/reset', { dryRun: true }, ownerKey);
+    const crossScope = await commit(
+      app,
+      '/v1/workspaces/current/reset',
+      { confirm: true, confirmationToken: dryWs.body.confirmationToken },
+      ownerKey,
+      sharedKey,
+    );
+    assert.equal(crossScope.status, 409, 'reusing a key for a different scope is a conflict');
+    assert.equal(crossScope.body.error.code, 'idempotency_key_conflict');
+
+    // Replaying the ORIGINAL request (same project A, same token, same key) still
+    // returns the committed ResetResult verbatim (single-use token + retry-safe).
+    const replayA = await commit(
+      app,
+      `/v1/projects/${pA.id}/reset`,
+      { confirm: true, confirmationToken: dryA.body.confirmationToken },
+      ownerKey,
+      sharedKey,
+    );
+    assert.equal(replayA.status, 200, 'the original request replays under its own key');
+    assert.equal(replayA.body.targetId, pA.id);
+    assert.deepEqual(replayA.body.counts, committedA.body.counts, 'replay returns the original ResetResult');
   } finally {
     await client.close();
   }

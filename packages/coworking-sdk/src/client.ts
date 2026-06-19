@@ -2,11 +2,19 @@ import type {
   Activity,
   ApiKeyWithSecret,
   Comment,
+  Label,
   Member,
   Project,
+  ResetPreview,
+  ResetResult,
+  ReviewVerdict,
   StatusColumn,
   Task,
   TaskDependency,
+  TaskReview,
+  TaskTemplate,
+  TaskType,
+  TaskWatcher,
   Workspace,
 } from '@yeheskieltame/claudelance-coworking-types';
 
@@ -48,16 +56,66 @@ export interface CreateProjectInput {
   linkedBountyId?: string;
 }
 
+/** An acceptance-criterion item supplied on task create/update (ids server-filled). */
+export interface AcceptanceCriterionInput {
+  id?: string;
+  kind?: 'rule' | 'scenario';
+  text: string;
+  done?: boolean;
+  verification?: string;
+  evidenceUrl?: string;
+  evidenceHash?: string;
+}
+
+/** A Definition-of-Done item supplied on task update. */
+export interface DoDItemInput {
+  id?: string;
+  text: string;
+  done?: boolean;
+}
+
 export interface CreateTaskInput {
   projectId: string;
   title: string;
   description?: string;
+  /** Task type taxonomy (default 'generic'). */
+  type?: TaskType;
+  /** Per-type advisory field bag - any keys accepted, unknowns never rejected. */
+  fields?: Record<string, unknown>;
+  /** Authoritative completion criteria. */
+  acceptanceCriteria?: AcceptanceCriterionInput[];
+  acceptanceNotes?: string;
   priority?: number;
   assigneeMemberId?: string;
+  /** Accountable reviewer (RACI); may equal the assignee. */
+  reviewerMemberId?: string;
   parentTaskId?: string;
+  startDate?: string;
   dueDate?: string;
+  estimatePoints?: number;
+  estimateMinutes?: number;
+  /** Label ids to attach; each must belong to the task's project. */
+  labelIds?: string[];
   /** Column key to start in; defaults to the project's first column. */
   statusColumnKey?: string;
+}
+
+/** Partial update of a task's rich fields (PATCH /tasks/:id). */
+export interface UpdateTaskInput {
+  title?: string;
+  description?: string | null;
+  type?: TaskType;
+  fields?: Record<string, unknown> | null;
+  acceptanceCriteria?: AcceptanceCriterionInput[];
+  acceptanceNotes?: string | null;
+  definitionOfDone?: DoDItemInput[];
+  priority?: number;
+  reviewerMemberId?: string | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  estimateMinutes?: number | null;
+  estimatePoints?: number | null;
+  completionReason?: 'completed' | 'canceled' | 'not_planned' | 'duplicate' | null;
 }
 
 // Type aliases (not interfaces) so they satisfy the Record<string, QueryValue>
@@ -66,9 +124,67 @@ export type ListTasksQuery = {
   projectId?: string;
   status?: string;
   assigneeMemberId?: string;
+  reviewerMemberId?: string;
+  type?: string;
+  /** Label id or name. */
+  label?: string;
+  /** priority | dueDate | createdAt (default). */
+  sort?: string;
   limit?: number;
   cursor?: string;
 };
+
+/** Create a reusable task template (workspace-wide, or project-scoped). */
+export interface CreateTemplateInput {
+  name: string;
+  taskType?: TaskType;
+  /** When set, scopes the template to a single (in-workspace) project. */
+  projectId?: string;
+  descriptionMarkdown?: string;
+  /** AC items authored as { kind?, text }; materialized fresh on instantiate. */
+  acceptanceCriteria?: Array<{ kind?: 'rule' | 'scenario'; text: string }>;
+  defaultPriority?: number;
+  defaultLabels?: string[];
+  defaultEstimateMinutes?: number;
+  fieldDefaults?: Record<string, unknown>;
+  requiredFields?: string[];
+}
+
+/** Overrides applied when instantiating a task from a template. */
+export interface TemplateOverrides {
+  projectId: string;
+  title?: string;
+  description?: string | null;
+  priority?: number;
+  estimateMinutes?: number | null;
+  statusColumnKey?: string;
+  assigneeMemberId?: string;
+  reviewerMemberId?: string;
+  /** {{placeholder}} substitutions in the template body / AC. */
+  vars?: Record<string, string | number>;
+  /** Per-type advisory field overrides merged onto the template defaults. */
+  fields?: Record<string, unknown>;
+}
+
+/** Body for committing a reset (dry-run -> commit handshake). */
+export interface CommitResetInput {
+  confirmationToken: string;
+  confirm: boolean;
+  /** Sent as the required `Idempotency-Key` header on commit calls. */
+  idempotencyKey: string;
+  /** Project reset only: rebuild the board to the default columns. */
+  restoreDefaultColumns?: boolean;
+}
+
+/** Body for committing a demo seed (dry-run -> commit handshake). */
+export interface CommitSeedDemoInput {
+  confirmationToken: string;
+  confirm: true;
+  /** Sent as the required `Idempotency-Key` header on the commit call. */
+  idempotencyKey: string;
+  /** Seed the demo even when the workspace already has live projects. */
+  force?: boolean;
+}
 
 export type ActivityQuery = {
   projectId?: string;
@@ -116,9 +232,15 @@ export class CoworkingClient {
     return new CoworkingClient({ baseUrl, apiKey: env.COWORKING_API_KEY });
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  private async request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    extraHeaders?: Record<string, string>,
+  ): Promise<T> {
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
+    if (extraHeaders) Object.assign(headers, extraHeaders);
 
     // Call through a local reference rather than `this.fetchImpl(...)`. The
     // browser's native fetch must keep its global `this`; invoking it as a
@@ -188,6 +310,11 @@ export class CoworkingClient {
     return this.request('POST', '/v1/tasks', input);
   }
 
+  /** Patch a task's rich fields (title, AC, DoD, reviewer, estimates, etc.). */
+  updateTask(id: string, patch: UpdateTaskInput): Promise<Task> {
+    return this.request('PATCH', `/v1/tasks/${id}`, patch);
+  }
+
   updateTaskStatus(id: string, statusColumnKey: string): Promise<Task> {
     return this.request('POST', `/v1/tasks/${id}/status`, { statusColumnKey });
   }
@@ -238,5 +365,129 @@ export class CoworkingClient {
   /** Actionable, unblocked tasks in a project, ordered by priority. */
   whatsNext(projectId: string): Promise<{ items: Task[] }> {
     return this.request('GET', `/v1/projects/${projectId}/next`);
+  }
+
+  /** Tasks awaiting the current member's review verdict (the reviewer inbox). */
+  myReviews(): Promise<{ items: Task[] }> {
+    return this.request('GET', '/v1/me/reviews');
+  }
+
+  // ---- Review loop -----------------------------------------------------------
+
+  /**
+   * Move a task into review. The reviewer resolves explicit > existing > assignee;
+   * an in-review column is found or created unless `statusColumnKey` overrides it.
+   */
+  requestReview(id: string, reviewerMemberId?: string, statusColumnKey?: string): Promise<Task> {
+    return this.request('POST', `/v1/tasks/${id}/request-review`, {
+      reviewerMemberId,
+      statusColumnKey,
+    });
+  }
+
+  /**
+   * Record a review verdict. `approved` moves the task to done, `changes_requested`
+   * sends it back to an in-progress column, `rejected` cancels it.
+   */
+  submitReview(
+    id: string,
+    input: { verdict: ReviewVerdict; comment?: string; score?: number },
+  ): Promise<TaskReview> {
+    return this.request('POST', `/v1/tasks/${id}/review`, input);
+  }
+
+  listReviews(id: string): Promise<{ items: TaskReview[] }> {
+    return this.request('GET', `/v1/tasks/${id}/reviews`);
+  }
+
+  // ---- Watchers (RACI "Informed") --------------------------------------------
+
+  listWatchers(id: string): Promise<{ items: TaskWatcher[] }> {
+    return this.request('GET', `/v1/tasks/${id}/watchers`);
+  }
+
+  /** Add a watcher; defaults to the calling member when `memberId` is omitted. */
+  addWatcher(id: string, memberId?: string): Promise<{ taskId: string; memberId: string }> {
+    return this.request('POST', `/v1/tasks/${id}/watchers`, { memberId });
+  }
+
+  removeWatcher(id: string, memberId: string): Promise<{ ok: boolean }> {
+    return this.request('DELETE', `/v1/tasks/${id}/watchers/${memberId}`);
+  }
+
+  // ---- Templates -------------------------------------------------------------
+
+  /** List workspace templates, plus a project's own when `projectId` is given. */
+  listTemplates(projectId?: string): Promise<{ items: TaskTemplate[] }> {
+    return this.request('GET', `/v1/templates${toQueryString({ projectId })}`);
+  }
+
+  createTemplate(input: CreateTemplateInput): Promise<TaskTemplate> {
+    return this.request('POST', '/v1/templates', input);
+  }
+
+  /** Instantiate a task from a template; `overrides` fill placeholders + fields. */
+  createTaskFromTemplate(templateId: string, overrides: TemplateOverrides): Promise<Task> {
+    return this.request('POST', `/v1/tasks/from-template/${templateId}`, overrides);
+  }
+
+  // ---- Labels ----------------------------------------------------------------
+
+  listLabels(projectId: string): Promise<{ items: Label[] }> {
+    return this.request('GET', `/v1/projects/${projectId}/labels`);
+  }
+
+  createLabel(projectId: string, input: { name: string; color?: string }): Promise<Label> {
+    return this.request('POST', `/v1/projects/${projectId}/labels`, input);
+  }
+
+  /** Replace a task's full label set (each label must belong to its project). */
+  setTaskLabels(id: string, labelIds: string[]): Promise<Task> {
+    return this.request('PUT', `/v1/tasks/${id}/labels`, { labelIds });
+  }
+
+  // ---- Reset (dry-run -> commit; commit is destructive, REST-only) -----------
+
+  /** Dry-run a project reset: returns the soft-delete counts + a commit token. */
+  previewProjectReset(projectId: string): Promise<ResetPreview> {
+    return this.request('POST', `/v1/projects/${projectId}/reset`, { dryRun: true });
+  }
+
+  /** Commit a project reset (soft-delete, recoverable). Sends the Idempotency-Key header. */
+  commitProjectReset(projectId: string, input: CommitResetInput): Promise<ResetResult> {
+    const { idempotencyKey, ...body } = input;
+    return this.request('POST', `/v1/projects/${projectId}/reset`, body, {
+      'idempotency-key': idempotencyKey,
+    });
+  }
+
+  /** Dry-run a workspace clear: returns the soft-delete counts + a commit token. */
+  previewWorkspaceClear(): Promise<ResetPreview> {
+    return this.request('POST', '/v1/workspaces/current/reset', { dryRun: true });
+  }
+
+  /** Commit a workspace clear (soft-delete; members + keys preserved). */
+  commitWorkspaceClear(input: CommitResetInput): Promise<ResetResult> {
+    const { idempotencyKey, ...body } = input;
+    return this.request('POST', '/v1/workspaces/current/reset', body, {
+      'idempotency-key': idempotencyKey,
+    });
+  }
+
+  /** Dry-run seeding a canned demo project: returns the create counts + a commit token. */
+  previewSeedDemo(): Promise<ResetPreview> {
+    return this.request('POST', '/v1/workspaces/current/seed-demo', { dryRun: true });
+  }
+
+  /**
+   * Commit the demo seed (creates a sample project + tasks + deps + goal). Pass the
+   * `confirmationToken` from previewSeedDemo(); the idempotencyKey is sent as the
+   * required `Idempotency-Key` header, same as commitProjectReset/commitWorkspaceClear.
+   */
+  commitSeedDemo(input: CommitSeedDemoInput): Promise<ResetResult> {
+    const { idempotencyKey, ...body } = input;
+    return this.request('POST', '/v1/workspaces/current/seed-demo', body, {
+      'idempotency-key': idempotencyKey,
+    });
   }
 }

@@ -2,8 +2,11 @@ import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
+import { TASK_TYPES } from '@yeheskieltame/claudelance-coworking-types';
+
 import type { Database } from '../db/client.js';
 import { automations, projects } from '../db/schema.js';
+import { requireRole } from '../lib/authz.js';
 import type { AppEnv } from '../lib/context.js';
 import { notFound, parse } from '../lib/errors.js';
 import { loadProjectScoped } from '../lib/loaders.js';
@@ -13,6 +16,8 @@ import { authMiddleware } from '../middleware/auth.js';
 const triggerSchema = z.object({
   event: z.enum(['task.created', 'task.status_changed']),
   to: z.string().optional(),
+  // Optional: scope the rule to a single task type.
+  taskType: z.enum(TASK_TYPES).optional(),
 });
 
 const actionSchema = z.discriminatedUnion('type', [
@@ -22,6 +27,8 @@ const actionSchema = z.discriminatedUnion('type', [
     title: z.string().min(1).max(300),
     statusColumnKey: z.string().optional(),
   }),
+  // Non-blocking AC/DoD warn: posts a comment when unmet items remain.
+  z.object({ type: z.literal('warn_if_incomplete'), body: z.string().min(1).max(20000).optional() }),
 ]);
 
 /** If-this-then-that rules per project, evaluated by the automation engine. */
@@ -49,6 +56,7 @@ export function automationRoutes(db: Database): Hono<AppEnv> {
   });
 
   r.post('/projects/:id/automations', async (c) => {
+    requireRole(c, 'admin');
     const { workspace } = c.get('auth');
     const project = await loadProjectScoped(db, c.req.param('id'), workspace.id);
     const body = parse(createSchema, await c.req.json().catch(() => ({})));
@@ -82,6 +90,7 @@ export function automationRoutes(db: Database): Hono<AppEnv> {
   });
 
   r.patch('/automations/:id', async (c) => {
+    requireRole(c, 'admin');
     const { workspace } = c.get('auth');
     const automation = await loadAutomation(c.req.param('id'), workspace.id);
     const body = parse(patchSchema, await c.req.json().catch(() => ({})));
@@ -102,6 +111,7 @@ export function automationRoutes(db: Database): Hono<AppEnv> {
   });
 
   r.delete('/automations/:id', async (c) => {
+    requireRole(c, 'admin');
     const { workspace } = c.get('auth');
     const automation = await loadAutomation(c.req.param('id'), workspace.id);
     await db.delete(automations).where(eq(automations.id, automation.id));

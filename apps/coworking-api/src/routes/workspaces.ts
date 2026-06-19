@@ -1,12 +1,17 @@
+import { randomUUID } from 'node:crypto';
+
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
+import type { DoDItem } from '@yeheskieltame/claudelance-coworking-types';
+
 import type { Database } from '../db/client.js';
 import { activities, apiKeys, members, workspaces } from '../db/schema.js';
 import { generateApiKey } from '../lib/apikey.js';
+import { requireRole } from '../lib/authz.js';
 import type { AppEnv } from '../lib/context.js';
-import { conflict, forbidden, isUniqueViolation, notFound, parse } from '../lib/errors.js';
+import { conflict, isUniqueViolation, notFound, parse } from '../lib/errors.js';
 import {
   serializeApiKeyInfo,
   serializeApiKeyWithSecret,
@@ -15,10 +20,7 @@ import {
 } from '../lib/serialize.js';
 import { slugify, uniqueWorkspaceSlug } from '../lib/slug.js';
 import { authMiddleware } from '../middleware/auth.js';
-
-function assertAdmin(role: string): void {
-  if (role !== 'owner' && role !== 'admin') throw forbidden('requires owner or admin role');
-}
+import { seedBuiltinTemplates } from '../services/templates.js';
 
 /** Public bootstrap route - no API key required. */
 export function publicWorkspaceRoutes(db: Database): Hono<AppEnv> {
@@ -77,6 +79,8 @@ export function publicWorkspaceRoutes(db: Database): Hono<AppEnv> {
         verb: 'workspace.created',
         payload: { slug },
       });
+      // Seed the builtin task templates alongside the owner + default board.
+      await seedBuiltinTemplates(tx as unknown as Database, workspace.id);
       return { workspace, apiKey, key: secret.key };
     });
 
@@ -102,6 +106,47 @@ export function workspaceRoutes(db: Database): Hono<AppEnv> {
 
   r.get('/workspace', (c) => c.json(serializeWorkspace(c.get('auth').workspace)));
 
+  const dodItemInput = z.object({
+    id: z.string().optional(),
+    text: z.string().min(1).max(2000),
+    done: z.boolean().optional(),
+  });
+
+  const workspacePatchSchema = z.object({
+    name: z.string().min(1).max(120).optional(),
+    allowReset: z.boolean().optional(),
+    definitionOfDone: z.array(dodItemInput).optional(),
+  });
+
+  // Owner-only workspace settings: rename, toggle reset, set the DoD template.
+  r.patch('/workspace', async (c) => {
+    requireRole(c, 'owner');
+    const { workspace, member } = c.get('auth');
+    const body = parse(workspacePatchSchema, await c.req.json().catch(() => ({})));
+    const dod: DoDItem[] | undefined = body.definitionOfDone
+      ? body.definitionOfDone.map((d) => ({ id: d.id ?? randomUUID(), text: d.text, done: d.done ?? false }))
+      : undefined;
+    const updated = (
+      await db
+        .update(workspaces)
+        .set({
+          updatedAt: new Date(),
+          ...(body.name !== undefined ? { name: body.name } : {}),
+          ...(body.allowReset !== undefined ? { allowReset: body.allowReset } : {}),
+          ...(dod !== undefined ? { definitionOfDone: dod } : {}),
+        })
+        .where(eq(workspaces.id, workspace.id))
+        .returning()
+    )[0]!;
+    await db.insert(activities).values({
+      workspaceId: workspace.id,
+      actorMemberId: member.id,
+      verb: 'workspace.updated',
+      payload: { fields: Object.keys(body) },
+    });
+    return c.json(serializeWorkspace(updated));
+  });
+
   r.get('/members', async (c) => {
     const { workspace } = c.get('auth');
     const rows = await db.select().from(members).where(eq(members.workspaceId, workspace.id));
@@ -121,8 +166,8 @@ export function workspaceRoutes(db: Database): Hono<AppEnv> {
   });
 
   r.post('/members', async (c) => {
+    requireRole(c, 'admin');
     const { workspace, member } = c.get('auth');
-    assertAdmin(member.role);
     const body = parse(memberSchema, await c.req.json().catch(() => ({})));
     try {
       const created = (
@@ -165,8 +210,8 @@ export function workspaceRoutes(db: Database): Hono<AppEnv> {
   });
 
   r.post('/keys', async (c) => {
-    const { workspace, member } = c.get('auth');
-    assertAdmin(member.role);
+    requireRole(c, 'admin');
+    const { workspace } = c.get('auth');
     const body = parse(keySchema, await c.req.json().catch(() => ({})));
     const target = (
       await db
@@ -195,8 +240,8 @@ export function workspaceRoutes(db: Database): Hono<AppEnv> {
   });
 
   r.delete('/keys/:id', async (c) => {
-    const { workspace, member } = c.get('auth');
-    assertAdmin(member.role);
+    requireRole(c, 'admin');
+    const { workspace } = c.get('auth');
     const revoked = await db
       .update(apiKeys)
       .set({ revokedAt: new Date() })

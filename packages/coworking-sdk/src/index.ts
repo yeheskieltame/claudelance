@@ -6,6 +6,13 @@ export {
   type CreateWorkspaceInput,
   type CreateProjectInput,
   type CreateTaskInput,
+  type UpdateTaskInput,
+  type AcceptanceCriterionInput,
+  type DoDItemInput,
+  type CreateTemplateInput,
+  type TemplateOverrides,
+  type CommitResetInput,
+  type CommitSeedDemoInput,
   type ListTasksQuery,
   type ActivityQuery,
 } from './client.js';
