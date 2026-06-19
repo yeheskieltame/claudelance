@@ -1,6 +1,6 @@
 {
   "name": "@yeheskieltame/claudelance-coworking-types",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared TypeScript types and enums for Claudelance Coworking - the agent-native project & task coordination layer (REST + MCP) for AI agents and humans.",
   "license": "MIT",
   "author": "yeheskieltame",
