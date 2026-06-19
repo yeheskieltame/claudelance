@@ -529,3 +529,129 @@ test('task-model-v2: templates, AC/DoD, review back-edge, watchers, trash, authz
     await client.close();
   }
 });
+
+test('task-model-v2 review loop: roles, verdict moves, reviewer authz, /me/reviews', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Review Team', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+
+    // A second member (role=member) who will be the reviewer, with their own key.
+    const reviewer = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Reviewer', role: 'member' }, ownerKey)
+    ).body;
+    const reviewerKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: reviewer.id, scopes: ['read', 'write'] }, ownerKey)
+    ).body.key;
+    // A third, unrelated member who must NOT be able to review someone else's task.
+    const stranger = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Stranger', role: 'member' }, ownerKey)
+    ).body;
+    const strangerKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: stranger.id, scopes: ['read', 'write'] }, ownerKey)
+    ).body.key;
+
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'RV', name: 'Review' }, ownerKey)).body;
+
+    // The reviewer claims a task -> auto-watches as the assignee (Responsible).
+    const task = (
+      await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Approve me' }, ownerKey)
+    ).body;
+    await call(app, 'POST', `/v1/tasks/${task.id}/claim`, undefined, reviewerKey);
+    const watchers = (await call(app, 'GET', `/v1/tasks/${task.id}/watchers`, undefined, ownerKey)).body;
+    assert.ok(
+      watchers.items.some((w: { memberId: string }) => w.memberId === reviewer.id),
+      'claiming auto-adds the assignee as a watcher',
+    );
+
+    // request-review assigns an explicit reviewer + moves to a started column.
+    const rr = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task.id}/request-review`,
+      { reviewerMemberId: reviewer.id },
+      ownerKey,
+    );
+    assert.equal(rr.status, 200);
+    assert.equal(rr.body.reviewerMemberId, reviewer.id, 'reviewer is set by request-review');
+    const inReviewColId: string = rr.body.statusColumnId;
+
+    // The task now shows up in the reviewer's /me/reviews inbox (but not the stranger's).
+    const myReviews = await call(app, 'GET', '/v1/me/reviews', undefined, reviewerKey);
+    assert.equal(myReviews.status, 200);
+    assert.ok(
+      myReviews.body.items.some((t: { id: string }) => t.id === task.id),
+      'awaiting-review task appears in the reviewer inbox',
+    );
+    const strangerInbox = await call(app, 'GET', '/v1/me/reviews', undefined, strangerKey);
+    assert.ok(!strangerInbox.body.items.some((t: { id: string }) => t.id === task.id));
+
+    // A non-reviewer, non-admin member is forbidden from recording a verdict.
+    const denied = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task.id}/review`,
+      { verdict: 'approved' },
+      strangerKey,
+    );
+    assert.equal(denied.status, 403, 'only the reviewer or an admin may review');
+
+    // The reviewer approves -> task moves to a completed column with reason.
+    const approve = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task.id}/review`,
+      { verdict: 'approved', score: 5 },
+      reviewerKey,
+    );
+    assert.equal(approve.status, 201);
+    assert.equal(approve.body.verdict, 'approved');
+    const afterApprove = (await call(app, 'GET', `/v1/tasks/${task.id}`, undefined, ownerKey)).body;
+    assert.notEqual(afterApprove.statusColumnId, inReviewColId, 'approve moves off the review column');
+    assert.ok(afterApprove.completedAt, 'approve sets completedAt');
+    assert.equal(afterApprove.completionReason, 'completed');
+    const inboxAfter = await call(app, 'GET', '/v1/me/reviews', undefined, reviewerKey);
+    assert.ok(
+      !inboxAfter.body.items.some((t: { id: string }) => t.id === task.id),
+      'an approved task leaves the reviewer inbox',
+    );
+
+    // A second task taken through the reject path -> canceled column + reason.
+    const task2 = (
+      await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Reject me' }, ownerKey)
+    ).body;
+    await call(
+      app,
+      'POST',
+      `/v1/tasks/${task2.id}/request-review`,
+      { reviewerMemberId: reviewer.id },
+      ownerKey,
+    );
+    const reject = await call(
+      app,
+      'POST',
+      `/v1/tasks/${task2.id}/review`,
+      { verdict: 'rejected', comment: 'out of scope' },
+      reviewerKey,
+    );
+    assert.equal(reject.status, 201);
+    const afterReject = (await call(app, 'GET', `/v1/tasks/${task2.id}`, undefined, ownerKey)).body;
+    assert.equal(afterReject.completionReason, 'canceled', 'reject sets completionReason=canceled');
+
+    // The reviews list returns the recorded verdicts in order.
+    const reviews = await call(app, 'GET', `/v1/tasks/${task.id}/reviews`, undefined, ownerKey);
+    assert.equal(reviews.body.items.length, 1);
+    assert.equal(reviews.body.items[0].verdict, 'approved');
+    assert.equal(reviews.body.items[0].score, 5);
+
+    // The blackboard recorded the review verbs.
+    const verbs: string[] = (await call(app, 'GET', '/v1/activity', undefined, ownerKey)).body.items.map(
+      (a: { verb: string }) => a.verb,
+    );
+    for (const expected of ['reviewer.assigned', 'review.requested', 'review.approved', 'review.rejected']) {
+      assert.ok(verbs.includes(expected), `expected activity verb ${expected}`);
+    }
+  } finally {
+    await client.close();
+  }
+});
