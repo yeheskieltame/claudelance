@@ -895,3 +895,46 @@ test('task-model-v2 reset: workspace clear + seed-demo + allowReset gate', async
     await client.close();
   }
 });
+
+test('task-model-v2 reset: project reset with restoreDefaultColumns rebuilds the board (FK-safe)', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Board Team', ownerName: 'Lead' });
+    const key: string = boot.body.apiKey.key;
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'BD', name: 'Board' }, key)).body;
+
+    // A custom column beyond the defaults + a task moved into 'done'.
+    await call(app, 'POST', `/v1/projects/${project.id}/columns`, { key: 'extra', name: 'Extra', category: 'started' }, key);
+    const t1 = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'shipme' }, key)).body;
+    await call(app, 'POST', `/v1/tasks/${t1.id}/status`, { statusColumnKey: 'done' }, key);
+    const before = await call(app, 'GET', `/v1/projects/${project.id}/columns`, undefined, key);
+    assert.equal(before.body.items.length, 7, 'custom column present before reset');
+
+    const dry = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, key);
+    const committed = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken, restoreDefaultColumns: true },
+      key,
+      'idem-board-1',
+    );
+    assert.equal(committed.status, 200, 'restoreDefaultColumns commit succeeds (no FK violation)');
+
+    // Board is back to exactly the 6 defaults; the custom column is gone.
+    const after = await call(app, 'GET', `/v1/projects/${project.id}/columns`, undefined, key);
+    assert.equal(after.body.items.length, 6, 'board is rebuilt to the default columns');
+    assert.deepEqual(
+      after.body.items.map((c: { key: string }) => c.key),
+      ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'canceled'],
+    );
+
+    // The trashed task is restorable and lands on a valid (repointed) column.
+    const restored = await call(app, 'POST', `/v1/tasks/${t1.id}/restore`, undefined, key);
+    assert.equal(restored.status, 200);
+    assert.ok(restored.body.statusColumnId, 'restored task points at a live column');
+    const live = after.body.items.map((c: { id: string }) => c.id);
+    assert.ok(live.includes(restored.body.statusColumnId), 'repointed column is one of the new defaults');
+  } finally {
+    await client.close();
+  }
+});
