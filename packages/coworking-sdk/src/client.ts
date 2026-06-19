@@ -4,6 +4,7 @@ import type {
   Comment,
   Label,
   Member,
+  PendingReputationItem,
   Project,
   ResetPreview,
   ResetResult,
@@ -196,6 +197,25 @@ export type ActivityQuery = {
   since?: string;
   limit?: number;
 };
+
+// Type alias (not interface) so it satisfies the Record<string, QueryValue>
+// index signature toQueryString expects.
+export type ListPendingReputationQuery = {
+  /** Cursor: review-createdAt ISO timestamp; only reviews strictly after it. */
+  since?: string;
+  /** Page size, capped server-side at 200 (default 100). */
+  limit?: number;
+};
+
+/** Body for acking a reputation write-back back to the bridge ledger. */
+export interface AckReputationInput {
+  /** = PendingReputationItem.reviewId; the idempotency unit. */
+  reviewId: string;
+  /** On-chain giveFeedback tx hash; omitted when the relayer ran in dry-run. */
+  txHash?: string;
+  /** ERC-8004 agent id the feedback was recorded for (decimal string). */
+  agentId: string;
+}
 
 type QueryValue = string | number | boolean | undefined;
 
@@ -498,5 +518,28 @@ export class CoworkingClient {
     return this.request('POST', '/v1/workspaces/current/seed-demo', body, {
       'idempotency-key': idempotencyKey,
     });
+  }
+
+  // ---- ERC-8004 reputation bridge (off-chain; admin-scoped key) --------------
+
+  /**
+   * Approved task reviews owed an on-chain ERC-8004 reputation write-back: the
+   * assignee is an agent with a linked agentId and the review has not been acked.
+   * Drained incrementally via the `since` cursor (pass back `nextCursor`). The
+   * Coworking API stays fully off-chain; the relayer performs the on-chain write.
+   */
+  listPendingReputation(
+    query: ListPendingReputationQuery = {},
+  ): Promise<{ items: PendingReputationItem[]; nextCursor: string | null }> {
+    return this.request('GET', `/v1/reputation/pending${toQueryString(query)}`);
+  }
+
+  /**
+   * Record that a pending reputation review has been handled (idempotent upsert
+   * on reviewId). Pass `txHash` after a live giveFeedback; omit it for a dry-run
+   * ack. Re-acking the same reviewId is a no-op beyond refreshing the tx hash.
+   */
+  ackReputation(input: AckReputationInput): Promise<{ ok: boolean; reviewId: string }> {
+    return this.request('POST', '/v1/reputation/ack', input);
   }
 }
