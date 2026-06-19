@@ -16,6 +16,26 @@ export type RelayerConfig = {
   eventPollMs: number;
   eventsFromBlock: bigint;
   identityEventsFromBlock: bigint;
+  /** Base URL of the off-chain Coworking API (the reputation bridge source). */
+  coworkingApiUrl: string | undefined;
+  /**
+   * Admin-scoped Coworking API keys, one per workspace the bridge serves
+   * (COWORKING_API_KEYS, comma-split). Each key is a Bearer token over plain HTTP.
+   */
+  coworkingApiKeys: string[];
+  /**
+   * Master switch for the Coworking -> ERC-8004 reputation write-back bridge.
+   * Default FALSE: the bridge job is not even scheduled unless this is true.
+   */
+  reputationBridgeEnabled: boolean;
+  /**
+   * Bridge dry-run. INDEPENDENT of the keeper's `dryRun` so the bridge can ship
+   * dormant while the keeper runs live. Default TRUE: log the intended
+   * giveFeedback, never send, never ack. Going live is an explicit env flip.
+   */
+  reputationBridgeDryRun: boolean;
+  /** How often the bridge polls Coworking for pending reputation write-backs. */
+  reputationBridgeIntervalMs: number;
 };
 
 function parseBool(value: string | undefined, fallback: boolean): boolean {
@@ -65,6 +85,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayerConfig 
     throw new Error('[relayer] DRY_RUN=false requires RELAYER_PRIVATE_KEY to sign transactions');
   }
 
+  const coworkingApiUrl = env.COWORKING_API_URL || undefined;
+  const coworkingApiKeys = (env.COWORKING_API_KEYS ?? '')
+    .split(',')
+    .map((k) => k.trim())
+    .filter((k) => k !== '');
+  const reputationBridgeEnabled = parseBool(env.REPUTATION_BRIDGE_ENABLED, false);
+  const reputationBridgeDryRun = parseBool(env.REPUTATION_BRIDGE_DRY_RUN, true);
+
+  if (reputationBridgeEnabled && (!coworkingApiUrl || coworkingApiKeys.length === 0)) {
+    throw new Error(
+      '[relayer] REPUTATION_BRIDGE_ENABLED requires COWORKING_API_URL and a non-empty COWORKING_API_KEYS',
+    );
+  }
+
   return {
     network,
     deployment,
@@ -83,5 +117,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayerConfig 
       env.IDENTITY_EVENTS_FROM_BLOCK !== undefined && env.IDENTITY_EVENTS_FROM_BLOCK !== ''
         ? BigInt(env.IDENTITY_EVENTS_FROM_BLOCK)
         : DEFAULT_IDENTITY_FROM_BLOCK[network],
+    coworkingApiUrl,
+    coworkingApiKeys,
+    reputationBridgeEnabled,
+    reputationBridgeDryRun,
+    reputationBridgeIntervalMs: Number(env.REPUTATION_BRIDGE_INTERVAL_MS ?? 300_000),
   };
 }
