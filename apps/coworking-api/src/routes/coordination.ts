@@ -1,12 +1,19 @@
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 
+import { TASK_TYPES, type TaskType } from '@yeheskieltame/claudelance-coworking-types';
+
 import type { Database } from '../db/client.js';
 import { projects } from '../db/schema.js';
 import type { AppEnv } from '../lib/context.js';
 import { notFound } from '../lib/errors.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { myOpenTasks, whatsBlockingMe, whatsNext } from '../services/coordination.js';
+
+/** Coerce a `?type` query param to a known TaskType, else undefined (no filter). */
+function typeFilter(raw: string | undefined): TaskType | undefined {
+  return raw && (TASK_TYPES as readonly string[]).includes(raw) ? (raw as TaskType) : undefined;
+}
 
 /** REST surface for the coordination queries (also exposed as MCP "sense" tools). */
 export function coordinationRoutes(db: Database): Hono<AppEnv> {
@@ -15,12 +22,14 @@ export function coordinationRoutes(db: Database): Hono<AppEnv> {
 
   r.get('/me/tasks', async (c) => {
     const { workspace, member } = c.get('auth');
-    return c.json({ items: await myOpenTasks(db, workspace.id, member.id) });
+    return c.json({ items: await myOpenTasks(db, workspace.id, member.id, typeFilter(c.req.query('type'))) });
   });
 
   r.get('/me/blocked', async (c) => {
     const { workspace, member } = c.get('auth');
-    return c.json({ items: await whatsBlockingMe(db, workspace.id, member.id) });
+    return c.json({
+      items: await whatsBlockingMe(db, workspace.id, member.id, typeFilter(c.req.query('type'))),
+    });
   });
 
   r.get('/projects/:id/next', async (c) => {
@@ -32,7 +41,7 @@ export function coordinationRoutes(db: Database): Hono<AppEnv> {
       .limit(1);
     const project = rows[0];
     if (!project) throw notFound('project not found');
-    return c.json({ items: await whatsNext(db, project.id, member.id) });
+    return c.json({ items: await whatsNext(db, project.id, member.id, typeFilter(c.req.query('type'))) });
   });
 
   return r;
