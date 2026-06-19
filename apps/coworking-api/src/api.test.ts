@@ -655,3 +655,243 @@ test('task-model-v2 review loop: roles, verdict moves, reviewer authz, /me/revie
     await client.close();
   }
 });
+
+// Commit a reset with an Idempotency-Key header (the plain `call` helper omits it).
+async function commit(
+  app: Hono<AppEnv>,
+  path: string,
+  body: unknown,
+  key: string,
+  idemKey: string,
+): Promise<CallResult> {
+  const res = await app.request(path, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${key}`,
+      'idempotency-key': idemKey,
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  return { status: res.status, body: text ? JSON.parse(text) : undefined };
+}
+
+test('task-model-v2 reset: project dry-run -> commit soft-deletes (recoverable) + authz + idempotency', async () => {
+  const { app, client } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Reset Team', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+
+    const project = (await call(app, 'POST', '/v1/projects', { key: 'RS', name: 'Reset' }, ownerKey)).body;
+    const t1 = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'One' }, ownerKey)).body;
+    const t2 = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Two' }, ownerKey)).body;
+    await call(app, 'POST', `/v1/tasks/${t1.id}/comments`, { body: 'hi' }, ownerKey);
+
+    // authz: a member (non-admin) is forbidden even from the dry-run.
+    const member = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Dev', role: 'member' }, ownerKey)
+    ).body;
+    const memberKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: member.id, scopes: ['read', 'write', 'admin'] }, ownerKey)
+    ).body.key;
+    const denyRole = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, memberKey);
+    assert.equal(denyRole.status, 403, 'member role cannot reset');
+
+    // authz: an admin role but a key WITHOUT the admin scope is also forbidden.
+    const admin = (
+      await call(app, 'POST', '/v1/members', { displayName: 'Adm', role: 'admin' }, ownerKey)
+    ).body;
+    const adminNoScopeKey: string = (
+      await call(app, 'POST', '/v1/keys', { memberId: admin.id, scopes: ['read', 'write'] }, ownerKey)
+    ).body.key;
+    const denyScope = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, adminNoScopeKey);
+    assert.equal(denyScope.status, 403, 'admin scope is required');
+
+    // Dry-run (owner): reports the counts + a confirmation token, deletes nothing.
+    const dry = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, ownerKey);
+    assert.equal(dry.status, 200);
+    assert.equal(dry.body.scope, 'project');
+    assert.equal(dry.body.targetId, project.id);
+    assert.equal(dry.body.counts.tasks, 2);
+    assert.equal(dry.body.counts.comments, 1);
+    assert.ok(dry.body.confirmationToken, 'a confirmation token is issued');
+    assert.ok(dry.body.expiresAt);
+    // Nothing was deleted by the dry-run.
+    const stillThere = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, ownerKey);
+    assert.equal(stillThere.body.items.length, 2);
+
+    // Commit without an Idempotency-Key header -> 400.
+    const noIdem = await call(
+      app,
+      'POST',
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+    );
+    assert.equal(noIdem.status, 400);
+    assert.equal(noIdem.body.error.code, 'idempotency_key_required');
+
+    // Commit with the token + header -> soft-deletes the tasks (recoverable).
+    const committed = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+      'idem-project-1',
+    );
+    assert.equal(committed.status, 200);
+    assert.equal(committed.body.counts.tasks, 2);
+    const afterReset = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, ownerKey);
+    assert.equal(afterReset.body.items.length, 0, 'all tasks are trashed (hidden from the list)');
+
+    // Recoverable: the trashed tasks can be restored.
+    const restore = await call(app, 'POST', `/v1/tasks/${t2.id}/restore`, undefined, ownerKey);
+    assert.equal(restore.status, 200);
+    const afterRestore = await call(app, 'GET', `/v1/tasks?projectId=${project.id}`, undefined, ownerKey);
+    assert.ok(afterRestore.body.items.some((t: { id: string }) => t.id === t2.id), 'restore brings a task back');
+
+    // The token is single-use: replaying the SAME idempotency key replays the
+    // stored response (still 200, same counts) without re-running.
+    const replay = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+      'idem-project-1',
+    );
+    assert.equal(replay.status, 200);
+    assert.equal(replay.body.counts.tasks, 2, 'idempotent replay returns the original result');
+
+    // A fresh commit with a NEW idempotency key but the consumed token -> 410.
+    const consumed = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+      'idem-project-2',
+    );
+    assert.equal(consumed.status, 410, 'a consumed token cannot be reused');
+
+    // Counts-drift 409: dry-run, then change the workspace, then commit.
+    const t3 = (await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Three' }, ownerKey)).body;
+    const dry2 = await call(app, 'POST', `/v1/projects/${project.id}/reset`, { dryRun: true }, ownerKey);
+    await call(app, 'POST', '/v1/tasks', { projectId: project.id, title: 'Four (drift)' }, ownerKey);
+    const drift = await commit(
+      app,
+      `/v1/projects/${project.id}/reset`,
+      { confirm: true, confirmationToken: dry2.body.confirmationToken },
+      ownerKey,
+      'idem-project-3',
+    );
+    assert.equal(drift.status, 409, 'counts changed since the dry-run');
+    assert.equal(drift.body.error.code, 'reset_counts_changed');
+    assert.ok(t3.id);
+
+    // The blackboard + audit trail recorded the project.reset.
+    const verbs: string[] = (await call(app, 'GET', '/v1/activity', undefined, ownerKey)).body.items.map(
+      (a: { verb: string }) => a.verb,
+    );
+    assert.ok(verbs.includes('project.reset'), 'project.reset activity is written');
+  } finally {
+    await client.close();
+  }
+});
+
+test('task-model-v2 reset: workspace clear + seed-demo + allowReset gate', async () => {
+  const { app, client, db } = await setup();
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Clear Team', ownerName: 'Lead' });
+    const ownerKey: string = boot.body.apiKey.key;
+    const workspaceId: string = boot.body.workspace.id;
+
+    const p1 = (await call(app, 'POST', '/v1/projects', { key: 'A', name: 'A' }, ownerKey)).body;
+    await call(app, 'POST', '/v1/tasks', { projectId: p1.id, title: 'a1' }, ownerKey);
+    const p2 = (await call(app, 'POST', '/v1/projects', { key: 'B', name: 'B' }, ownerKey)).body;
+    await call(app, 'POST', '/v1/tasks', { projectId: p2.id, title: 'b1' }, ownerKey);
+
+    // Workspace clear dry-run: counts both projects and their tasks.
+    const dry = await call(app, 'POST', '/v1/workspaces/current/reset', { dryRun: true }, ownerKey);
+    assert.equal(dry.status, 200);
+    assert.equal(dry.body.scope, 'workspace');
+    assert.equal(dry.body.counts.projects, 2);
+    assert.equal(dry.body.counts.tasks, 2);
+
+    const cleared = await commit(
+      app,
+      '/v1/workspaces/current/reset',
+      { confirm: true, confirmationToken: dry.body.confirmationToken },
+      ownerKey,
+      'idem-ws-clear',
+    );
+    assert.equal(cleared.status, 200);
+    assert.equal(cleared.body.counts.projects, 2);
+    const projectsAfter = await call(app, 'GET', '/v1/projects', undefined, ownerKey);
+    assert.equal(projectsAfter.body.items.length, 0, 'all projects are trashed');
+
+    // Members + the owner key are preserved across the clear.
+    const membersAfter = await call(app, 'GET', '/v1/members', undefined, ownerKey);
+    assert.ok(membersAfter.body.items.length >= 1, 'members are preserved');
+    assert.equal(membersAfter.status, 200, 'the owner key still authenticates');
+
+    // seed-demo into the now-empty workspace: dry-run then commit.
+    const seedDry = await call(app, 'POST', '/v1/workspaces/current/seed-demo', { dryRun: true }, ownerKey);
+    assert.equal(seedDry.status, 200);
+    assert.equal(seedDry.body.scope, 'demo');
+    assert.equal(seedDry.body.counts.tasks, 8);
+    const seeded = await commit(
+      app,
+      '/v1/workspaces/current/seed-demo',
+      { confirm: true, confirmationToken: seedDry.body.confirmationToken },
+      ownerKey,
+      'idem-seed-1',
+    );
+    assert.equal(seeded.status, 200);
+    assert.equal(seeded.body.counts.projects, 1);
+    assert.equal(seeded.body.counts.tasks, 8);
+    const demoProjects = await call(app, 'GET', '/v1/projects', undefined, ownerKey);
+    assert.equal(demoProjects.body.items.length, 1, 'the demo project exists');
+    const demoTasks = await call(
+      app,
+      'GET',
+      `/v1/tasks?projectId=${demoProjects.body.items[0].id}`,
+      undefined,
+      ownerKey,
+    );
+    assert.equal(demoTasks.body.items.length, 8, 'demo tasks are seeded');
+
+    // seed-demo refuses on a non-empty workspace unless force:true.
+    const seedDry2 = await call(app, 'POST', '/v1/workspaces/current/seed-demo', { dryRun: true }, ownerKey);
+    const refused = await commit(
+      app,
+      '/v1/workspaces/current/seed-demo',
+      { confirm: true, confirmationToken: seedDry2.body.confirmationToken },
+      ownerKey,
+      'idem-seed-2',
+    );
+    assert.equal(refused.status, 409, 'seed-demo refuses on a non-empty workspace');
+    assert.equal(refused.body.error.code, 'workspace_not_empty');
+    const seedDry3 = await call(app, 'POST', '/v1/workspaces/current/seed-demo', { dryRun: true }, ownerKey);
+    const forced = await commit(
+      app,
+      '/v1/workspaces/current/seed-demo',
+      { confirm: true, confirmationToken: seedDry3.body.confirmationToken, force: true },
+      ownerKey,
+      'idem-seed-3',
+    );
+    assert.equal(forced.status, 200, 'force:true seeds anyway');
+
+    // allowReset = false disables the destructive endpoints (403 reset_disabled).
+    await db.update(schema.workspaces).set({ allowReset: false }).where(eq(schema.workspaces.id, workspaceId));
+    const disabled = await call(app, 'POST', '/v1/workspaces/current/reset', { dryRun: true }, ownerKey);
+    assert.equal(disabled.status, 403, 'reset is disabled when allowReset=false');
+
+    // The audit log captured the destructive actions.
+    const auditRows = await db.select().from(schema.auditLog).where(eq(schema.auditLog.workspaceId, workspaceId));
+    const actions = auditRows.map((a: { action: string }) => a.action);
+    assert.ok(actions.includes('workspace.cleared'), 'workspace.cleared is audited');
+    assert.ok(actions.includes('workspace.seeded_demo'), 'workspace.seeded_demo is audited');
+  } finally {
+    await client.close();
+  }
+});
