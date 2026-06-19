@@ -404,6 +404,30 @@ export const taskReviews = pgTable(
   }),
 );
 
+// Idempotency ledger for the ERC-8004 reputation write-back bridge. One row per
+// acked task review (review_id = task_reviews.id, the unit of idempotency). The
+// off-chain relayer reads pending approved reviews and acks here after the
+// on-chain giveFeedback tx; the presence of a row excludes that review from the
+// pending feed forever. coworking-api itself NEVER touches the chain - it only
+// records that the relayer has handled a review.
+export const reputationBridge = pgTable(
+  'reputation_bridge',
+  {
+    // = task_reviews.id. The PK enforces exactly-once attestation per review.
+    reviewId: text('review_id').primaryKey(),
+    workspaceId: text('workspace_id').notNull(),
+    // ERC-8004 agent id the feedback was recorded for (from members.agent_id).
+    agentId: bigint('agent_id', { mode: 'bigint' }).notNull(),
+    // On-chain giveFeedback tx hash; null while the bridge runs in dry-run.
+    txHash: text('tx_hash'),
+    attestedAt: timestamp('attested_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    workspaceIdx: index('reputation_bridge_workspace_idx').on(t.workspaceId),
+  }),
+);
+
 // Reusable task scaffolds: ~15 seeded builtins (one per type) + workspace-authored.
 export const taskTemplates = pgTable(
   'task_templates',

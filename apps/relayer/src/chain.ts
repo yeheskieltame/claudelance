@@ -2,6 +2,8 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  keccak256,
+  toBytes,
   type Account,
   type Address,
   type Chain,
@@ -37,6 +39,28 @@ const ERC721_OWNER_OF_ABI = [
   },
 ] as const;
 
+// Minimal ERC-8004 Reputation Registry surface for the coworking bridge.
+// giveFeedback takes an arbitrary agentId (no bountyId), so it can record a
+// signal for any Identity NFT - unlike the core's bounty-scoped attestReputation.
+const REPUTATION_GIVE_FEEDBACK_ABI = [
+  {
+    type: 'function',
+    name: 'giveFeedback',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'agentId', type: 'uint256' },
+      { name: 'value', type: 'int128' },
+      { name: 'valueDecimals', type: 'uint8' },
+      { name: 'tag1', type: 'string' },
+      { name: 'tag2', type: 'string' },
+      { name: 'endpoint', type: 'string' },
+      { name: 'feedbackURI', type: 'string' },
+      { name: 'feedbackHash', type: 'bytes32' },
+    ],
+    outputs: [],
+  },
+] as const;
+
 /** Optional per-send overrides used by the keeper's pipelined tick. */
 export type SendOpts = { nonce?: number; gasPrice?: bigint };
 
@@ -59,6 +83,7 @@ export class ChainClient {
   readonly walletClient?: WalletClient<Transport, Chain, Account>;
   readonly core: Address;
   readonly identityRegistry: Address;
+  readonly reputationRegistry: Address;
 
   constructor(cfg: RelayerConfig) {
     const chain = chainForNetwork(cfg.network);
@@ -68,6 +93,7 @@ export class ChainClient {
     this.publicClient = createPublicClient({ chain, transport, pollingInterval: 1_000 });
     this.core = cfg.deployment.core;
     this.identityRegistry = cfg.deployment.identityRegistry;
+    this.reputationRegistry = cfg.deployment.reputationRegistry;
     if (cfg.relayerPrivateKey) {
       const account = privateKeyToAccount(cfg.relayerPrivateKey);
       this.walletClient = createWalletClient({ chain, transport, account });
@@ -325,6 +351,58 @@ export class ChainClient {
     opts: SendOpts = {},
   ): Promise<`0x${string}`> {
     return this.simulateThenSend('attestReputation', [bountyId, agentId], opts);
+  }
+
+  // Gas ceiling for a giveFeedback write. The registry call is a single SSTORE
+  // batch, well under this; a fixed limit skips eth_estimateGas and its
+  // upfront-balance quirk (see the simulateThenSend note below).
+  private static readonly FEEDBACK_GAS_LIMIT = 300_000n;
+
+  /**
+   * Record a positive ERC-8004 reputation signal for an ARBITRARY agentId on
+   * the Reputation Registry (NOT the core). This is the bridge's only on-chain
+   * write: it mirrors the keeper's attestReputation effect but targets any
+   * Identity NFT directly (no bountyId). Fixed value=1, valueDecimals=0,
+   * empty endpoint. feedbackHash binds the signal to the review by hashing its
+   * feedbackURI (keccak256(toBytes(feedbackURI))) instead of an all-zero hash,
+   * giving the on-chain record verifiable provenance. Simulate-first like the
+   * core sends.
+   */
+  async giveFeedback(
+    agentId: bigint,
+    feedback: { tag1: string; tag2: string; feedbackURI: string },
+    opts: SendOpts = {},
+  ): Promise<`0x${string}`> {
+    const wallet = this.requireWallet();
+    const feedbackHash = keccak256(toBytes(feedback.feedbackURI));
+    const args = [
+      agentId,
+      1n,
+      0,
+      feedback.tag1,
+      feedback.tag2,
+      '',
+      feedback.feedbackURI,
+      feedbackHash,
+    ] as const;
+    await this.publicClient.simulateContract({
+      address: this.reputationRegistry,
+      abi: REPUTATION_GIVE_FEEDBACK_ABI,
+      functionName: 'giveFeedback',
+      args,
+      account: wallet.account,
+    });
+    return wallet.writeContract({
+      address: this.reputationRegistry,
+      abi: REPUTATION_GIVE_FEEDBACK_ABI,
+      functionName: 'giveFeedback',
+      args,
+      account: wallet.account,
+      chain: wallet.chain,
+      gas: ChainClient.FEEDBACK_GAS_LIMIT,
+      gasPrice: opts.gasPrice ?? (await this.publicClient.getGasPrice()),
+      ...(opts.nonce !== undefined ? { nonce: opts.nonce } : {}),
+    });
   }
 
   private async simulateThenSend(

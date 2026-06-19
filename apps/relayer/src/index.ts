@@ -2,7 +2,9 @@ import { serve } from '@hono/node-server';
 
 import { ChainClient } from './chain.js';
 import { loadConfig } from './config.js';
+import { ackReputation, listPendingReputation } from './coworking.js';
 import { createKeeperState, runKeeperTick } from './keeper.js';
+import { createBridgeState, runReputationBridgeTick } from './reputation-bridge.js';
 import { createServer } from './server.js';
 
 async function main(): Promise<void> {
@@ -55,8 +57,56 @@ async function main(): Promise<void> {
     void tick();
   });
 
+  // The Coworking -> ERC-8004 reputation bridge runs on its OWN independent
+  // clock (NOT inside the keeper tick) and only when explicitly enabled. It
+  // ships dormant: REPUTATION_BRIDGE_ENABLED gates scheduling, and even when
+  // scheduled REPUTATION_BRIDGE_DRY_RUN (default true) keeps it observational.
+  let bridgeTimer: ReturnType<typeof setInterval> | undefined;
+  if (cfg.reputationBridgeEnabled) {
+    const bridgeState = createBridgeState();
+    const bridgeDeps = {
+      chain,
+      listPending: listPendingReputation,
+      ack: ackReputation,
+    };
+    // Independent overlap guard so a slow bridge poll never stacks.
+    let bridgeRunning = false;
+    let bridgeQueued = false;
+    const bridgeTick = async (): Promise<void> => {
+      if (bridgeRunning) {
+        bridgeQueued = true;
+        return;
+      }
+      bridgeRunning = true;
+      try {
+        do {
+          bridgeQueued = false;
+          await runReputationBridgeTick(bridgeDeps, cfg, bridgeState).catch((err: unknown) =>
+            console.error(
+              JSON.stringify({ message: 'bridge.tick.fatal', error: String(err) }),
+            ),
+          );
+        } while (bridgeQueued);
+      } finally {
+        bridgeRunning = false;
+      }
+    };
+    console.log(
+      JSON.stringify({
+        message: 'bridge.start',
+        coworkingApiUrl: cfg.coworkingApiUrl,
+        workspaces: cfg.coworkingApiKeys.length,
+        dryRun: cfg.reputationBridgeDryRun,
+        intervalMs: cfg.reputationBridgeIntervalMs,
+      }),
+    );
+    void bridgeTick();
+    bridgeTimer = setInterval(() => void bridgeTick(), cfg.reputationBridgeIntervalMs);
+  }
+
   const shutdown = (): void => {
     clearInterval(timer);
+    if (bridgeTimer) clearInterval(bridgeTimer);
     unwatch();
     process.exit(0);
   };

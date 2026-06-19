@@ -316,6 +316,33 @@ export interface ResetResult {
   performedAt: string;
 }
 
+/**
+ * A pending ERC-8004 reputation write-back: an approved task review whose
+ * assignee is an agent with a linked agentId, not yet recorded on-chain. Served
+ * to the off-chain relayer (the bridge), which records a positive feedback
+ * signal for the agentId and acks back. coworking-api stays fully off-chain; it
+ * only surfaces what is owed and remembers what has been acked.
+ */
+export interface PendingReputationItem {
+  /** = TaskReview.id; the idempotency unit acked back via POST /reputation/ack. */
+  reviewId: string;
+  taskId: string;
+  /** Human-facing task number within its project. */
+  taskNumber: number;
+  /** Task type taxonomy; maps to an on-chain bounty type where applicable. */
+  taskType: TaskType;
+  projectId: string;
+  /** The project's linked marketplace bounty id (decimal string), if any. */
+  linkedBountyId: string | null;
+  /** ERC-8004 agent id of the assignee member. Serialized as a decimal string. */
+  agentId: string;
+  assigneeMemberId: string;
+  /** ISO-8601 timestamp the approving review was recorded. */
+  reviewedAt: string;
+  /** Optional 1-5 quality score from the review, if the reviewer set one. */
+  score: number | null;
+}
+
 /** An immutable audit-log entry for sensitive (esp. destructive) actions. */
 export interface AuditEvent {
   id: string;

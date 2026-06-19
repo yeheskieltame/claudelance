@@ -21,6 +21,7 @@ import type {
   Member,
   MemberKind,
   MemberRole,
+  PendingReputationItem,
   Project,
   ProjectStatus,
   ReviewVerdict,
@@ -310,6 +311,38 @@ export function serializeTaskReview(r: InferSelectModel<typeof taskReviews>): Ta
     comment: r.comment,
     score: r.score,
     createdAt: iso(r.createdAt),
+  };
+}
+
+/**
+ * Serialize a row of the pending-reputation join (task review + task + assignee
+ * member). Not a single-table model: the route selects the columns by hand, so
+ * the input is a plain shape. bigint identifiers -> decimal strings, Date -> ISO.
+ * `agentId` is non-null by construction (the query filters agentId IS NOT NULL).
+ */
+export function serializePendingReputationItem(r: {
+  reviewId: string;
+  taskId: string;
+  taskNumber: number;
+  taskType: string;
+  projectId: string;
+  linkedBountyId: bigint | null;
+  agentId: bigint;
+  assigneeMemberId: string;
+  reviewedAt: Date;
+  score: number | null;
+}): PendingReputationItem {
+  return {
+    reviewId: r.reviewId,
+    taskId: r.taskId,
+    taskNumber: r.taskNumber,
+    taskType: r.taskType as TaskType,
+    projectId: r.projectId,
+    linkedBountyId: r.linkedBountyId === null ? null : r.linkedBountyId.toString(),
+    agentId: r.agentId.toString(),
+    assigneeMemberId: r.assigneeMemberId,
+    reviewedAt: iso(r.reviewedAt),
+    score: r.score,
   };
 }
 

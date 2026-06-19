@@ -15,6 +15,13 @@
       "when": 1781835347576,
       "tag": "0001_acoustic_marvex",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781848278652,
+      "tag": "0002_chilly_legion",
+      "breakpoints": true
     }
   ]
 }
