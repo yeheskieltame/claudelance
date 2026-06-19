@@ -36,7 +36,7 @@ export function authMiddleware(db: Database): MiddlewareHandler<AppEnv> {
     const workspace = workspaceRows[0];
     if (!member || !workspace) throw unauthorized('api key has no member or workspace');
 
-    c.set('auth', { workspace, member, apiKeyId: key.id });
+    c.set('auth', { workspace, member, apiKey: key, apiKeyId: key.id });
     await db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, key.id));
     await next();
   };
