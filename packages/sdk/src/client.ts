@@ -601,7 +601,10 @@ export class ClaudelanceClient {
         fromBlock,
         toBlock,
       });
-      const minted = logs.find((l) => (l.args as { from?: Address }).from === ZERO_ADDRESS) ?? logs[0];
+      // Only a real mint (from == zero) identifies the agent's own id. Falling back
+      // to an arbitrary inbound transfer could return some other NFT's tokenId; keep
+      // scanning older chunks instead, and return null if no mint is ever found.
+      const minted = logs.find((l) => (l.args as { from?: Address }).from === ZERO_ADDRESS);
       const tokenId = (minted?.args as { tokenId?: bigint } | undefined)?.tokenId;
       if (tokenId !== undefined) return tokenId;
       if (opts?.fromBlock !== undefined || fromBlock === 0n) return null;
