@@ -1,7 +1,6 @@
 import {
   CLAUDELANCE_CORE_V3_ABI,
   MAINNET_V3,
-  MAINNET_V2,
   type Deployment,
 } from "@yeheskieltame/claudelance-types";
 
@@ -25,9 +24,6 @@ function flatten(d: Deployment) {
 export const deployments = {
   [MAINNET_V3.chainId]: flatten(MAINNET_V3),
 } as const;
-
-/** @deprecated Use deployments[chainId] - kept for backward compat. */
-export const MAINNET_FLAT = flatten(MAINNET_V2);
 
 export function getDeployment(chainId: number) {
   const entry = deployments[chainId as keyof typeof deployments];
