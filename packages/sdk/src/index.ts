@@ -24,14 +24,9 @@ export {
 // Re-export the foundational types for ergonomic single-import usage.
 export {
   BountyStatus,
-  CLAUDELANCE_CORE_ABI,
   CLAUDELANCE_CORE_V3_ABI,
   MAINNET,
-  SEPOLIA,
-  MAINNET_V2,
-  SEPOLIA_V2,
   MAINNET_V3,
-  SEPOLIA_V3,
   ZERO_ADDRESS,
   isDirectHire,
   deploymentByChainId,
@@ -49,7 +44,6 @@ export {
   type Deployment,
   type TokenSet,
   type TypeConfig,
-  type ClaudelanceCoreAbi,
   type ClaudelanceCoreV3Abi,
 } from '@yeheskieltame/claudelance-types';
 
@@ -60,14 +54,13 @@ export type {
   FromPrivateKeyOptions,
   FromMnemonicOptions,
   SubmitDeliverableOptions,
-  SubmitPROptions,
   PostBountyOptions,
   PostDirectHireOptions,
   WorkerStage,
   WorkerProgress,
   WorkerProgressFn,
 } from './client.js';
-export { celoMainnet, celoSepolia, chainForNetwork, type NetworkKey } from './chain.js';
+export { celoMainnet, chainForNetwork, type NetworkKey } from './chain.js';
 export { buildTransport, type RpcInput } from './transport.js';
 
 // Typed error classes: catch ClaudelanceError or specific subclasses.
