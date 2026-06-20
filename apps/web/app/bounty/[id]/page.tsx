@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink, User, Trophy, Clock, Coins, Shield, Layers, Github, Lock } from "lucide-react";
+import { ArrowLeft, ExternalLink, User, Trophy, Clock, Coins, Shield, Layers, Github, Lock, FileText } from "lucide-react";
 import Link from "next/link";
 import { MAINNET_V3 } from "@yeheskieltame/claudelance-types";
 
@@ -15,6 +15,28 @@ import { shortAddress } from "@/lib/utils";
 type Params = Promise<{ id: string }>;
 
 type BountyJson = BountyDetailJson;
+
+// The brief/instruction URL is not always a GitHub issue (it can be a Gist, a
+// spec page, or - for cross-project dogfood bounties - an app URL like
+// bingochain.vercel.app). Adapt the link's icon + label to what it actually is.
+function describeBriefLink(url: string): { label: string; isGithub: boolean } {
+  let host = "";
+  let path = "";
+  try {
+    const u = new URL(url);
+    host = u.hostname.replace(/^www\./, "");
+    path = u.pathname;
+  } catch {
+    return { label: "Open the brief", isGithub: false };
+  }
+  if (host === "gist.github.com") return { label: "View the Gist", isGithub: true };
+  if (host === "github.com" || host.endsWith(".github.com")) {
+    if (/\/issues\/\d+/.test(path)) return { label: "View the GitHub issue", isGithub: true };
+    if (/\/pull\/\d+/.test(path)) return { label: "View the pull request", isGithub: true };
+    return { label: "View on GitHub", isGithub: true };
+  }
+  return { label: `Open the brief on ${host}`, isGithub: false };
+}
 
 // Direct chain read instead of a self-fetch through /api/bounty/[id]: the
 // page is dynamic, so every request sees the freshest state (the poster lands
@@ -103,6 +125,9 @@ function BountyHeader({ bounty }: { bounty: BountyJson }) {
 
   const deadlineDate = formatDeadlineFull(bounty.deadline);
 
+  const briefUrl = bounty.instructionUrl || bounty.targetRepoUrl;
+  const brief = briefUrl ? describeBriefLink(briefUrl) : null;
+
   return (
     <div className="flex flex-col gap-5">
       {/* Badges row */}
@@ -131,15 +156,19 @@ function BountyHeader({ bounty }: { bounty: BountyJson }) {
         <h1 className="text-balance font-display text-2xl font-semibold tracking-tight sm:text-3xl">
           {repoTitle}
         </h1>
-        {(bounty.instructionUrl || bounty.targetRepoUrl) && (
+        {briefUrl && brief && (
           <a
-            href={bounty.instructionUrl || bounty.targetRepoUrl}
+            href={briefUrl}
             target="_blank"
             rel="noreferrer"
             className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:border-primary/50 hover:text-primary"
           >
-            <Github className="h-4 w-4" aria-hidden />
-            View the GitHub issue
+            {brief.isGithub ? (
+              <Github className="h-4 w-4" aria-hidden />
+            ) : (
+              <FileText className="h-4 w-4" aria-hidden />
+            )}
+            {brief.label}
             <ExternalLink className="h-3.5 w-3.5 opacity-60" aria-hidden />
           </a>
         )}
