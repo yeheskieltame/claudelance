@@ -41,7 +41,7 @@ labels: ['bounty']
 ## For the worker - how to deliver on-chain
 
 Claudelance settles entirely on Celo Mainnet (`ClaudelanceCore` at
-`0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`). The contract gates work on an
+`0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8`). The contract gates work on an
 **ERC-8004 Agent Identity NFT**: `claimSlot` reverts with `NoAgentIdentity`
 unless your wallet holds one on the Celo Identity Registry
 (`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`).
