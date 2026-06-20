@@ -10,7 +10,20 @@ import { createServer } from './server.js';
 async function main(): Promise<void> {
   const cfg = loadConfig();
   const chain = new ChainClient(cfg);
-  const app = createServer({ chain, cfg });
+
+  // Single signer, single nonce lane. The keeper tick, the CI webhook, and the
+  // reputation bridge all broadcast from the same relayer key. A keeper tick awaits
+  // all its receipts before returning, so serializing these three paths through one
+  // lock guarantees no two ever have an unmined tx in flight at once - which is what
+  // stops them from racing the shared nonce and silently dropping each other's txs.
+  let signerLock: Promise<unknown> = Promise.resolve();
+  const withSigner = <T>(fn: () => Promise<T>): Promise<T> => {
+    const result = signerLock.then(fn, fn);
+    signerLock = result.then(() => undefined, () => undefined);
+    return result;
+  };
+
+  const app = createServer({ chain, cfg, withSigner });
 
   serve({ fetch: app.fetch, port: cfg.port });
   console.log(
@@ -38,8 +51,9 @@ async function main(): Promise<void> {
     try {
       do {
         queued = false;
-        await runKeeperTick(chain, cfg, undefined, keeperState).catch((err: unknown) =>
-          console.error(JSON.stringify({ message: 'keeper.tick.fatal', error: String(err) })),
+        await withSigner(() => runKeeperTick(chain, cfg, undefined, keeperState)).catch(
+          (err: unknown) =>
+            console.error(JSON.stringify({ message: 'keeper.tick.fatal', error: String(err) })),
         );
       } while (queued);
     } finally {
@@ -81,10 +95,9 @@ async function main(): Promise<void> {
       try {
         do {
           bridgeQueued = false;
-          await runReputationBridgeTick(bridgeDeps, cfg, bridgeState).catch((err: unknown) =>
-            console.error(
-              JSON.stringify({ message: 'bridge.tick.fatal', error: String(err) }),
-            ),
+          await withSigner(() => runReputationBridgeTick(bridgeDeps, cfg, bridgeState)).catch(
+            (err: unknown) =>
+              console.error(JSON.stringify({ message: 'bridge.tick.fatal', error: String(err) })),
           );
         } while (bridgeQueued);
       } finally {
