@@ -3,7 +3,6 @@ import type { Address } from 'viem';
 import type { ChainClient } from './chain.js';
 import type { RelayerConfig } from './config.js';
 import {
-  GRACE_PERIOD_SECONDS,
   decideAttest,
   decideKeeperActions,
   deliverableMatchesCi,
@@ -133,13 +132,17 @@ export async function runKeeperTick(
     pairs.map((p) => ({ bountyId: p.bountyId, worker: p.worker })),
   );
   pairs.forEach((p, i) => {
-    p.row.claimers.push({ worker: p.worker, stakeSettled: submissions[i]?.stakeSettled ?? true });
+    // A missing batch read must NOT mask real work: default to "not settled" so a
+    // dropped read forces a re-check next tick rather than skipping the stake
+    // forever. The on-chain StakeAlreadySettled guard makes a redundant settle a no-op.
+    p.row.claimers.push({ worker: p.worker, stakeSettled: submissions[i]?.stakeSettled ?? false });
   });
 
   const resolved = settleable.filter((r) => r.bounty.status === BountyStatus.Resolved);
   const attestedFlags = await chain.isReputationAttestedBatch(resolved.map((r) => r.id));
   resolved.forEach((row, i) => {
-    row.attested = attestedFlags[i] ?? true;
+    // Same conservative default: a missing read means "re-check", not "already attested".
+    row.attested = attestedFlags[i] ?? false;
   });
 
   // 3. Decide.

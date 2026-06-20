@@ -263,8 +263,15 @@ export class ChainClient {
         functionName: 'ownerOf',
         args: [agentId],
       })) as Address;
-    } catch {
-      return null;
+    } catch (err) {
+      // Only a genuinely nonexistent token means "no owner" (null). An RPC blip
+      // must propagate so the caller retries, rather than being misread as the
+      // worker having lost their Identity NFT (which would wrongly skip an attest).
+      const message = err instanceof Error ? err.message : String(err);
+      if (/nonexistent token|ERC721NonexistentToken|owner query for nonexistent/i.test(message)) {
+        return null;
+      }
+      throw err;
     }
   }
 
@@ -462,20 +469,22 @@ export class ChainClient {
           return;
         }
         if (latest <= lastBlock) return;
-        const logs = await this.publicClient.getContractEvents({
-          address: this.core,
-          abi: ABI,
-          eventName: 'BountyResolved',
-          fromBlock: lastBlock + 1n,
-          toBlock: latest,
-        });
-        const cancels = await this.publicClient.getContractEvents({
-          address: this.core,
-          abi: ABI,
-          eventName: 'BountyCancelled',
-          fromBlock: lastBlock + 1n,
-          toBlock: latest,
-        });
+        const [logs, cancels] = await Promise.all([
+          this.publicClient.getContractEvents({
+            address: this.core,
+            abi: ABI,
+            eventName: 'BountyResolved',
+            fromBlock: lastBlock + 1n,
+            toBlock: latest,
+          }),
+          this.publicClient.getContractEvents({
+            address: this.core,
+            abi: ABI,
+            eventName: 'BountyCancelled',
+            fromBlock: lastBlock + 1n,
+            toBlock: latest,
+          }),
+        ]);
         // Only move the cursor once both queries succeed, so a transient RPC
         // failure re-reads the same range instead of dropping events.
         lastBlock = latest;

@@ -19,6 +19,9 @@ const args = {};
 for (let i = 2; i < process.argv.length; i += 2) args[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
 const amount = parseEther(args.amount ?? '1.5');
 
+// The live relayer / ciRelayer wallet (ERC-8004 agent 9144): one signer is both
+// the CI-attestation relayer and the settlement keeper, so this is the address to
+// fund. Keep it in sync with `ciRelayer` in contracts/deployments/celo-mainnet.json.
 const KEEPER = '0x1fEDda23c2945D59f3929e6C463cF685aC077ad5';
 const RPC = 'https://forno.celo.org';
 const chain = { id: 42220, name: 'Celo', nativeCurrency: { name: 'CELO', symbol: 'CELO', decimals: 18 }, rpcUrls: { default: { http: [RPC] } } };
@@ -30,7 +33,7 @@ const wallet = createWalletClient({ account, chain, transport: http(RPC) });
 
 const before = await pub.getBalance({ address: KEEPER });
 const gasPrice = ((await pub.getGasPrice()) * 15n) / 10n;
-const nonce = await pub.getTransactionCount({ address: account.address });
+const nonce = await pub.getTransactionCount({ address: account.address, blockTag: 'pending' });
 const hash = await wallet.sendTransaction({ to: KEEPER, value: amount, gas: 21000n, gasPrice, nonce });
 await pub.waitForTransactionReceipt({ hash });
 const after = await pub.getBalance({ address: KEEPER });

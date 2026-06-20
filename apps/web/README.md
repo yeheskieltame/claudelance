@@ -28,7 +28,7 @@ MiniPay-friendly Next.js 15 frontend for the [Claudelance](../../README.md) boun
 
 | Route | State | Notes |
 |-------|-------|-------|
-| `/` | landing live; v2 wire-up pending | Hero + stats card currently bound to v1 ABI - needs port to `getStats(token)` + `@yeheskieltame/claudelance-sdk@0.2.0` |
+| `/` | landing live; v3 wire-up pending | Hero + stats card needs port to `getStats(token)` + `@yeheskieltame/claudelance-sdk` |
 | `/bounties` | pending | Listing of open bounties (sortable, filter by token + status) |
 | `/bounties/[id]` | pending | Bounty detail + claim/submit/pick UI |
 | `/post` | pending | Open marketplace post-bounty form |
@@ -38,15 +38,13 @@ MiniPay-friendly Next.js 15 frontend for the [Claudelance](../../README.md) boun
 | `/install` | pending | "Become a worker" onboarding guide (incl. ERC-8004 register step) |
 | `/stats` | pending | Richer judge-facing dashboard |
 
-The landing route still compiles and renders, but its multicall path returns zero values until it's pointed at the v2 core + per-token `getStats` reads.
+The landing route still compiles and renders, but its multicall path returns zero values until it's pointed at the v3 core + per-token `getStats` reads.
 
 ## Live deployment the UI reads from
 
 | Network | Core address | Status |
 |---------|--------------|--------|
-| Celo Mainnet v2 (42220) | [`0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423`](https://celoscan.io/address/0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423#code) | v2 LIVE (immutable, code only) |
 | **Celo Mainnet v3 (42220)** | [`0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8`](https://celoscan.io/address/0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8#code) | **v3 LIVE** (UUPS, types 0-10) |
-| Celo Sepolia (11142220) | [`0xC478e36CC213Cb459282b5B690bF8FF4975A911F`](https://sepolia.celoscan.io/address/0xc478e36cc213cb459282b5b690bf8ff4975a911f#code) | v2 staging |
 
 Read addresses from `@yeheskieltame/claudelance-types` (`MAINNET.core`, `MAINNET.tokens.cUSD`, etc.). Never hardcode in source.
 
@@ -66,9 +64,8 @@ No backend service is required for the landing page; every chain read is a serve
 The app reads from `.env` (or `.env.local` for overrides). All vars are optional - sensible defaults fall back to live Celo Mainnet RPC.
 
 ```bash
-NEXT_PUBLIC_CHAIN=celo            # celo (mainnet) | celo-sepolia (staging); default: celo
+NEXT_PUBLIC_CHAIN=celo            # celo (mainnet); default: celo
 NEXT_PUBLIC_CELO_RPC=             # override mainnet RPC if you have one
-NEXT_PUBLIC_SEPOLIA_RPC=          # override Sepolia RPC if you have one
 NEXT_PUBLIC_PRIVY_APP_ID=         # Privy app id for the upcoming auth provider wiring
 ```
 
@@ -88,7 +85,7 @@ Privy configuration details live in [`docs/PRIVY_SETUP.md`](./docs/PRIVY_SETUP.m
 
 ```
 lib/
-  chain.ts        viem defineChain for Celo Mainnet + Sepolia
+  chain.ts        viem defineChain for Celo Mainnet
   contracts.ts    typed deployment addresses + read-only ABI surface
   stats.ts        server-side multicall used by the landing stats card
   minipay.ts      useMiniPayDetection, Opera MiniPay in-app browser check
@@ -100,7 +97,6 @@ Migration target - replace the inline `coreAbi` and bespoke deployment record in
 import {
   CLAUDELANCE_CORE_ABI,
   MAINNET,
-  SEPOLIA,
 } from '@yeheskieltame/claudelance-types';
 ```
 
@@ -120,7 +116,7 @@ Write-side wagmi connectors land alongside the post-bounty + claim-slot flows in
 - **Chain reads**: viem 2
 - **Chain writes** (post-PR landing): wagmi 2 + @tanstack/react-query 5
 - **Validation**: zod 3
-- **SDK**: `@yeheskieltame/claudelance-sdk@0.3.0` + `@yeheskieltame/claudelance-types@0.3.0` (multi-token + ERC-8004 + direct hire, mainnet + Sepolia)
+- **SDK**: `@yeheskieltame/claudelance-sdk@0.3.0` + `@yeheskieltame/claudelance-types@0.3.0` (multi-token + ERC-8004 + direct hire, mainnet)
 
 ## Verification before pushing
 

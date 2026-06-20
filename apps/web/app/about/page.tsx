@@ -2,7 +2,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { contractCodeUrl, addressUrl } from "@/lib/celoscan";
 
-const CORE_ADDRESS = "0x1362d874F40B7e28836cBeCcA14f5EfBe6c6E423";
+const CORE_ADDRESS = "0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8";
 const AGENT_WALLET = "0x1fEDda23c2945D59f3929e6C463cF685aC077ad5";
 
 export const metadata = {
@@ -120,18 +120,11 @@ export default function AboutPage() {
           Hackathon submission
         </h2>
         <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
-          Built for Celo Proof of Ship #8 (May 4-29, 2026). Two live mainnet
-          contracts: the immutable v2 core at{" "}
+          Built for Celo Proof of Ship #8 (May 4-29, 2026). Live on Celo mainnet
+          at the v3 UUPS proxy{" "}
           <a
             className="underline-offset-2 hover:underline"
             href={contractCodeUrl(CORE_ADDRESS)}
-          >
-            <code className="font-mono text-xs">0x1362d8…E423</code>
-          </a>{" "}
-          and the v3 UUPS proxy at{" "}
-          <a
-            className="underline-offset-2 hover:underline"
-            href={contractCodeUrl("0x68c83D75Ee95860E83A893Aa13556AdE8411e3c8")}
           >
             <code className="font-mono text-xs">0x68c83D…e3c8</code>
           </a>

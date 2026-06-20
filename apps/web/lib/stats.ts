@@ -1,14 +1,10 @@
 import { createPublicClient, formatUnits, http } from "viem";
 
-import {
-  CLAUDELANCE_CORE_ABI,
-  CLAUDELANCE_CORE_V3_ABI,
-  MAINNET_V2,
-} from "@yeheskieltame/claudelance-types";
+import { CLAUDELANCE_CORE_V3_ABI } from "@yeheskieltame/claudelance-types";
 import { DEFAULT_CHAIN_ID, chainById } from "./chain";
 import { getDeployment } from "./contracts";
 
-// On-chain constants (v2 + v3 both use these values).
+// On-chain constants.
 const PROTOCOL_FEE_BPS = 200n; // 2%
 const RESOLUTION_GRACE_PERIOD_SECONDS = 259_200n; // 3 days
 import { getCeloUsdPrice, tokenToCeloWei } from "./price";
@@ -47,34 +43,16 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
   const client = createPublicClient({ chain, transport: http(rpc) });
   const deploy = getDeployment(chainId);
 
-  // Activity lives on BOTH mainnet contracts: the immutable v2 core (code-bounty
-  // era) and the v3 UUPS proxy (task types). Volume / revenue / resolved /
-  // bountyCount are additive across them; unique poster/worker counts are NOT
-  // (the same wallets act on both), so those take the per-contract max.
-  // v3 stats come from getStatsV3(token); v2 still has its public getters.
-  const isMainnet = chainId === 42_220;
-  const v2Core = MAINNET_V2.core;
-  const [statsResults, v2Results] = await Promise.all([
-    client.multicall({
-      contracts: [
-        { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.cUSD] },
-        { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.CELO] },
-        { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.USDC] },
-      ],
-      allowFailure: true,
-    }),
-    isMainnet
-      ? client.multicall({
-          contracts: [
-            { address: v2Core, abi: CLAUDELANCE_CORE_ABI, functionName: "getStats" as const, args: [deploy.cUSD] },
-            { address: v2Core, abi: CLAUDELANCE_CORE_ABI, functionName: "getStats" as const, args: [deploy.CELO] },
-            { address: v2Core, abi: CLAUDELANCE_CORE_ABI, functionName: "getStats" as const, args: [deploy.USDC] },
-            { address: v2Core, abi: CLAUDELANCE_CORE_ABI, functionName: "bountyCount" as const },
-          ],
-          allowFailure: true,
-        })
-      : Promise.resolve(null),
-  ]);
+  // Protocol stats from the v3 proxy: getStatsV3(token) returns
+  // [volume, revenue, resolved, posters, workers, countByType].
+  const statsResults = await client.multicall({
+    contracts: [
+      { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.cUSD] },
+      { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.CELO] },
+      { address: deploy.core, abi: CLAUDELANCE_CORE_V3_ABI, functionName: "getStatsV3" as const, args: [deploy.USDC] },
+    ],
+    allowFailure: true,
+  });
 
   type StatsV3Tuple = readonly [bigint, bigint, bigint, bigint, bigint, readonly bigint[]];
   const safeStats = (i: number): StatsV3Tuple => {
@@ -85,35 +63,19 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
 
   const [sCusd, sCelo, sUsdc] = [safeStats(0), safeStats(1), safeStats(2)];
 
-  // v2 getStats returns the same 5 leading fields (no countByType).
-  type StatsV2Tuple = readonly [bigint, bigint, bigint, bigint, bigint];
-  const safeV2 = (i: number): StatsV2Tuple => {
-    const r = v2Results?.[i];
-    if (!r || r.status === "failure") return [0n, 0n, 0n, 0n, 0n];
-    return r.result as unknown as StatsV2Tuple;
-  };
-  const [vCusd, vCelo, vUsdc] = [safeV2(0), safeV2(1), safeV2(2)];
-  const v2BountyCountRead = v2Results?.[3];
-  const v2BountyCount =
-    v2BountyCountRead && v2BountyCountRead.status === "success"
-      ? (v2BountyCountRead.result as unknown as bigint)
-      : 0n;
-
   // Index: 0=volume, 1=revenue, 2=resolved, 3=posters, 4=workers
-  const volCusd = sCusd[0] + vCusd[0];
-  const volCelo = sCelo[0] + vCelo[0];
-  const volUsdc = sUsdc[0] + vUsdc[0];
-  const revCusd = sCusd[1] + vCusd[1];
-  const revCelo = sCelo[1] + vCelo[1];
-  const revUsdc = sUsdc[1] + vUsdc[1];
-  // resolved/posters/workers are global per contract (same for all tokens).
-  const totalBountiesResolved = sCusd[2] + vCusd[2];
-  const max = (a: bigint, b: bigint) => (a > b ? a : b);
-  const uniquePosterCount = max(sCusd[3], vCusd[3]);
-  const uniqueWorkerCount = max(sCusd[4], vCusd[4]);
-  // v3 has no bountyCount getter; its resolved count is the conservative proxy.
-  const bountyCount = v2BountyCount + sCusd[2];
-  // Protocol fee and grace period are constants - read from SDK rather than on-chain.
+  const volCusd = sCusd[0];
+  const volCelo = sCelo[0];
+  const volUsdc = sUsdc[0];
+  const revCusd = sCusd[1];
+  const revCelo = sCelo[1];
+  const revUsdc = sUsdc[1];
+  const totalBountiesResolved = sCusd[2];
+  const uniquePosterCount = sCusd[3];
+  const uniqueWorkerCount = sCusd[4];
+  // v3 keeps no bountyCount getter; its resolved count is the conservative proxy.
+  const bountyCount = sCusd[2];
+  // Protocol fee and grace period are constants.
   const feeBps = PROTOCOL_FEE_BPS;
   const graceSeconds = RESOLUTION_GRACE_PERIOD_SECONDS;
 
@@ -123,7 +85,7 @@ export async function fetchLiveStats(chainId: number = DEFAULT_CHAIN_ID): Promis
   const totalVolumeInCelo = volCelo + cusdInCelo + usdcInCelo;
 
   // USD straight from the per-token on-chain volumes: CELO at the live rate,
-  // cUSD + USDC at their $1 peg. No round-trip through the CELO conversion.
+  // cUSD + USDC at their $1 peg.
   const totalVolumeUsd =
     Number(formatUnits(volCelo, 18)) * celoUsdPrice +
     Number(formatUnits(volCusd, 18)) +

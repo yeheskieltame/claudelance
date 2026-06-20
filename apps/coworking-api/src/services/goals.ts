@@ -40,15 +40,17 @@ export async function computeGoalProgress(db: Database, goalId: string): Promise
     return 0;
   }
 
-  let weighted = 0;
-  let total = 0;
-  for (const link of links) {
-    total += link.weight;
-    if (link.taskId) {
-      weighted += link.weight * ((await isTaskCompleted(db, link.taskId)) ? 1 : 0);
-    } else if (link.projectId) {
-      weighted += link.weight * (await projectCompletionFraction(db, link.projectId));
-    }
-  }
+  // Resolve every link's completion concurrently instead of one DB round-trip
+  // per link in series - the old N+1 on the GET /goals hot path (which itself
+  // fans out one computeGoalProgress per goal).
+  const contributions = await Promise.all(
+    links.map(async (link) => {
+      if (link.taskId) return link.weight * ((await isTaskCompleted(db, link.taskId)) ? 1 : 0);
+      if (link.projectId) return link.weight * (await projectCompletionFraction(db, link.projectId));
+      return 0;
+    }),
+  );
+  const total = links.reduce((sum, l) => sum + l.weight, 0);
+  const weighted = contributions.reduce((sum, c) => sum + c, 0);
   return total > 0 ? weighted / total : 0;
 }

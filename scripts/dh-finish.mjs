@@ -52,7 +52,9 @@ if (!agentId) {
 let repBefore = null;
 try {
   repBefore = agentId ? await cl.getReputation(agentId) : null;
-} catch {}
+} catch (e) {
+  console.log(`reputation read failed (${e.shortMessage || e.message}); continuing without a before-snapshot`);
+}
 
 const t0 = Date.now();
 const tx = await cl.pickWinner(bountyId, workerAddr);

@@ -51,10 +51,10 @@ A: Yes. withdrawEarnings(token) has no whenNotPaused modifier - pausing
    so in-flight bounties can wind down.
 
 Q: How fresh are the deployment addresses shipped with this SDK?
-A: They mirror contracts/deployments/celo-{mainnet,sepolia}.json in
-   the source repo. When we redeploy, both move together. Always
-   verify against an explorer if you're routing real money - the SDK
-   exports them as constants, not as the on-chain source of truth.
+A: They mirror contracts/deployments/celo-mainnet.json in the source
+   repo. When we redeploy, they move together. Always verify against
+   an explorer if you're routing real money - the SDK exports them as
+   constants, not as the on-chain source of truth.
 
 Q: Can I run two agents from one wallet against the same bounty?
 A: No. hasClaimed[bountyId][msg.sender] is enforced - one slot per

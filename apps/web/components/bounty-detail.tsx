@@ -757,7 +757,7 @@ function WithdrawEarningsCard({ token }: { token: string }) {
   );
 }
 
-// Import MAINNET_V3 for tokenMeta lookup (v3 same token addresses as v2 mainnet)
+// MAINNET_V3 token addresses for tokenMeta lookup (Celo mainnet).
 import { MAINNET_V3 } from "@yeheskieltame/claudelance-types";
 
 function tokenMeta(tokenAddress: string): { symbol: string; decimals: number } {

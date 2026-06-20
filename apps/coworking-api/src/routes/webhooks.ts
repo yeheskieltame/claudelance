@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import type { Database } from '../db/client.js';
 import { webhooks } from '../db/schema.js';
+import { requireRole } from '../lib/authz.js';
 import type { AppEnv } from '../lib/context.js';
 import { notFound, parse } from '../lib/errors.js';
 import { serializeWebhook } from '../lib/serialize.js';
@@ -28,6 +29,9 @@ export function webhookRoutes(db: Database): Hono<AppEnv> {
 
   r.post('/webhooks', async (c) => {
     const { workspace } = c.get('auth');
+    // A webhook tails the whole activity feed to an arbitrary URL, so registering
+    // one is an admin/integration action - not something a viewer key may do.
+    requireRole(c, 'admin');
     const body = parse(createSchema, await c.req.json().catch(() => ({})));
     const secret = body.secret ?? randomBytes(24).toString('hex');
     const hook = (
@@ -54,6 +58,7 @@ export function webhookRoutes(db: Database): Hono<AppEnv> {
 
   r.delete('/webhooks/:id', async (c) => {
     const { workspace } = c.get('auth');
+    requireRole(c, 'admin');
     const deleted = await db
       .delete(webhooks)
       .where(and(eq(webhooks.id, c.req.param('id')), eq(webhooks.workspaceId, workspace.id)))

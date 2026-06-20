@@ -43,17 +43,15 @@ export type TokenManagerOptions = {
   tokens: TokenSet;
   /**
    * Starting block for `TokenAllowed`/`MinBountyUpdated` event scans.
-   * Defaults to 68_143_824 (Celo mainnet Claudelance v2 deploy block).
-   * Set to 0n for Sepolia or custom deployments.
+   * Defaults to 68_143_824 (a safe Celo-mainnet lower bound).
+   * Set to 0n for custom deployments.
    */
   deployBlock?: bigint;
 };
 
 // v3 mainnet proxy deployed at block 68,536,240 (2026-06-04).
-// v2 mainnet deployed at block 68,143,824 (2026-05-14).
-// Use v2 deploy block as the safe lower bound: no allowToken events exist before it.
+// 68,143,824 is a safe Celo-mainnet lower bound: no allowToken events exist before it.
 const CLAUDELANCE_MAINNET_DEPLOY_BLOCK = 68_143_824n;
-const CLAUDELANCE_SEPOLIA_DEPLOY_BLOCK = 0n; // Sepolia block numbers differ; scan all.
 
 const TOKEN_ALLOWED_ABI = [
   {

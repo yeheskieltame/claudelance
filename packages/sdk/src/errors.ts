@@ -127,7 +127,7 @@ export class TokenNotAllowedError extends ClaudelanceError {
   }
 }
 
-/** submitDeliverable/submitPR: deliverable has already been submitted for this bounty. */
+/** submitDeliverable: deliverable has already been submitted for this bounty. */
 export class AlreadySubmittedError extends ClaudelanceError {
   constructor(ctx?: ClaudelanceErrorContext) {
     super(

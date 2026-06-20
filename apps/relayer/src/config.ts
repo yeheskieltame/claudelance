@@ -1,6 +1,6 @@
-import { MAINNET, SEPOLIA, type Deployment } from '@yeheskieltame/claudelance-sdk';
+import { MAINNET, type Deployment } from '@yeheskieltame/claudelance-sdk';
 
-export type NetworkKey = 'celo' | 'sepolia';
+export type NetworkKey = 'celo';
 
 export type RelayerConfig = {
   network: NetworkKey;
@@ -43,18 +43,18 @@ function parseBool(value: string | undefined, fallback: boolean): boolean {
   return value === '1' || value.toLowerCase() === 'true';
 }
 
-function parseNetwork(value: string | undefined): NetworkKey {
-  return value === 'celo' ? 'celo' : 'sepolia';
+function parseNetwork(_value: string | undefined): NetworkKey {
+  // Celo Mainnet (chain 42220) is the only supported network.
+  return 'celo';
 }
 
 /**
- * Default first block to scan for DeliverableSubmitted logs. On mainnet this is
- * the v3 proxy deploy block, so webhook lookups never reach back toward genesis
- * (forno times out on an unbounded eth_getLogs). 0 is fine for the sparse testnet.
+ * Default first block to scan for DeliverableSubmitted logs. This is the v3
+ * mainnet proxy deploy block, so webhook lookups never reach back toward genesis
+ * (forno times out on an unbounded eth_getLogs).
  */
 const DEFAULT_EVENTS_FROM_BLOCK: Record<NetworkKey, bigint> = {
   celo: 68_689_178n,
-  sepolia: 0n,
 };
 
 /**
@@ -64,18 +64,17 @@ const DEFAULT_EVENTS_FROM_BLOCK: Record<NetworkKey, bigint> = {
  */
 const DEFAULT_IDENTITY_FROM_BLOCK: Record<NetworkKey, bigint> = {
   celo: 58_000_000n,
-  sepolia: 0n,
 };
 
 /**
- * Build the relayer config from the environment. MAINNET / SEPOLIA resolve to
- * the v3 proxy deployments. Fails fast when asked to broadcast (DRY_RUN=false)
+ * Build the relayer config from the environment. Mainnet only: MAINNET resolves
+ * to the v3 proxy deployment. Fails fast when asked to broadcast (DRY_RUN=false)
  * without a signing key, so a misconfigured deploy never silently runs without
  * the ability to act.
  */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayerConfig {
   const network = parseNetwork(env.RELAYER_NETWORK);
-  const deployment = network === 'celo' ? MAINNET : SEPOLIA;
+  const deployment = MAINNET;
   const dryRun = parseBool(env.DRY_RUN, true);
   const relayerPrivateKey = env.RELAYER_PRIVATE_KEY
     ? (env.RELAYER_PRIVATE_KEY as `0x${string}`)

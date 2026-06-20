@@ -798,6 +798,19 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
     }
     const body = parse(reviewSchema, await c.req.json().catch(() => ({})));
 
+    // One terminal verdict per task. A task already approved or rejected is done;
+    // re-recording inserts another taskReviews row, and the reputation bridge keys
+    // idempotency on review id - so each duplicate approval would mint another +1
+    // ERC-8004 feedback signal. Cap reputation attestation at one per task here.
+    const priorTerminal = await db
+      .select({ id: taskReviews.id })
+      .from(taskReviews)
+      .where(and(eq(taskReviews.taskId, task.id), inArray(taskReviews.verdict, ['approved', 'rejected'])))
+      .limit(1);
+    if (priorTerminal.length > 0) {
+      throw conflict('task already has a final review verdict', 'task_already_reviewed');
+    }
+
     const cols = await db
       .select()
       .from(statusColumns)
@@ -1231,6 +1244,26 @@ export function taskRoutes(db: Database): Hono<AppEnv> {
     const { blockerTaskId, type } = parse(depSchema, await c.req.json().catch(() => ({})));
     if (blockerTaskId === blocked.id) throw badRequest('a task cannot depend on itself');
     const blocker = await loadTask(blockerTaskId, workspace.id);
+    // Cycle guard: adding blocker -> blocked is illegal if `blocked` already
+    // (transitively) blocks `blocker`, which would deadlock both tasks. Walk the
+    // existing blocks-graph forward from `blocked`; reject if it reaches `blocker`.
+    const wsDeps = await db
+      .select({ blocker: taskDependencies.blockerTaskId, blocked: taskDependencies.blockedTaskId })
+      .from(taskDependencies)
+      .innerJoin(tasks, eq(tasks.id, taskDependencies.blockedTaskId))
+      .innerJoin(projects, eq(projects.id, tasks.projectId))
+      .where(eq(projects.workspaceId, workspace.id));
+    const adj = new Map<string, string[]>();
+    for (const d of wsDeps) adj.set(d.blocker, [...(adj.get(d.blocker) ?? []), d.blocked]);
+    const stack = [blocked.id];
+    const seen = new Set<string>();
+    while (stack.length > 0) {
+      const node = stack.pop()!;
+      if (node === blocker.id) throw conflict('that dependency would create a cycle', 'dependency_cycle');
+      if (seen.has(node)) continue;
+      seen.add(node);
+      for (const next of adj.get(node) ?? []) stack.push(next);
+    }
     try {
       const dep = (
         await db

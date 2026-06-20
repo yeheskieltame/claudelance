@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import type { Database } from '../db/client.js';
 import { activities, timeEntries } from '../db/schema.js';
+import { requireRole } from '../lib/authz.js';
 import type { AppEnv } from '../lib/context.js';
 import { notFound, parse } from '../lib/errors.js';
 import { loadTaskScoped } from '../lib/loaders.js';
@@ -31,6 +32,7 @@ export function timeRoutes(db: Database): Hono<AppEnv> {
 
   r.post('/tasks/:id/check-in', async (c) => {
     const { workspace, member } = c.get('auth');
+    requireRole(c, 'member');
     const task = await loadTaskScoped(db, c.req.param('id'), workspace.id);
     const existing = (await openEntry(task.id, member.id))[0];
     if (existing) return c.json(serializeTimeEntry(existing)); // already running -> idempotent
@@ -53,6 +55,7 @@ export function timeRoutes(db: Database): Hono<AppEnv> {
 
   r.post('/tasks/:id/check-out', async (c) => {
     const { workspace, member } = c.get('auth');
+    requireRole(c, 'member');
     const task = await loadTaskScoped(db, c.req.param('id'), workspace.id);
     const open = (await openEntry(task.id, member.id))[0];
     if (!open) throw notFound('no open time entry to check out');
@@ -87,6 +90,7 @@ export function timeRoutes(db: Database): Hono<AppEnv> {
 
   r.post('/tasks/:id/time', async (c) => {
     const { workspace, member } = c.get('auth');
+    requireRole(c, 'member');
     const task = await loadTaskScoped(db, c.req.param('id'), workspace.id);
     const body = parse(logSchema, await c.req.json().catch(() => ({})));
     const startedAt = body.startedAt ? new Date(body.startedAt) : new Date();

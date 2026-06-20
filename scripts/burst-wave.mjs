@@ -4,7 +4,7 @@
 // pickWinner in parallel with explicit nonces. Prints per-step timings so
 // chain and keeper behaviour under burst load is measurable.
 // Usage: node scripts/burst-wave.mjs --start 11 --end 20 --issue <url> [--amount 1] [--stake 0.05]
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
@@ -48,17 +48,21 @@ const FUND = parseEther('0.35');
 const AMOUNT = parseEther(args.amount ?? '1');
 const STAKE = parseEther(args.stake ?? '0.05');
 
-// 1. Fund all wave workers in parallel with explicit nonces.
+// 1. Fund all wave workers in parallel with explicit nonces. Only workers that
+//    actually need topping up consume a nonce: skipping one mid-sequence would
+//    leave a gap that strands every later funding tx as permanently pending.
 console.log(`[fund] topping up ${workers.length} workers`);
 const gasPrice = ((await pub.getGasPrice()) * 15n) / 10n;
-let nonce = await pub.getTransactionCount({ address: deployer.address });
-const fundHashes = await Promise.all(workers.map(async (w, i) => {
-  const bal = await pub.getBalance({ address: w.addr });
-  if (bal >= FUND) return null;
-  return deployerWallet.sendTransaction({ to: w.addr, value: FUND - bal, gas: 21000n, gasPrice, nonce: nonce + i });
-}));
-await Promise.all(fundHashes.filter(Boolean).map((h) => pub.waitForTransactionReceipt({ hash: h, timeout: 180_000 })));
-console.log(`[fund] done (${fundHashes.filter(Boolean).length} sends)`);
+const balances = await Promise.all(workers.map((w) => pub.getBalance({ address: w.addr })));
+const needFund = workers.map((w, i) => ({ w, bal: balances[i] })).filter(({ bal }) => bal < FUND);
+let nonce = await pub.getTransactionCount({ address: deployer.address, blockTag: 'pending' });
+const fundHashes = await Promise.all(
+  needFund.map(({ w, bal }, i) =>
+    deployerWallet.sendTransaction({ to: w.addr, value: FUND - bal, gas: 21000n, gasPrice, nonce: nonce + i }),
+  ),
+);
+await Promise.all(fundHashes.map((h) => pub.waitForTransactionReceipt({ hash: h, timeout: 180_000 })));
+console.log(`[fund] done (${fundHashes.length} sends)`);
 
 // 2. Post N direct hires sequentially (bountyId mapping must stay unambiguous).
 const cl = ClaudelanceClient.fromPrivateKey({ privateKey: deployerKey, network: 'celo' });

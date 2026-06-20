@@ -3,18 +3,12 @@ export { BountyStatus, ZERO_ADDRESS, isDirectHire, type Bounty } from './bounty.
 export type { Submission } from './submission.js';
 export type { PendingAddress } from './pending.js';
 export {
-  CLAUDELANCE_CORE_ABI,
   CLAUDELANCE_CORE_V3_ABI,
-  type ClaudelanceCoreAbi,
   type ClaudelanceCoreV3Abi,
 } from './abi.js';
 export {
   MAINNET,
-  SEPOLIA,
-  MAINNET_V2,
-  SEPOLIA_V2,
   MAINNET_V3,
-  SEPOLIA_V3,
   deploymentByChainId,
   type Deployment,
   type TokenSet,
