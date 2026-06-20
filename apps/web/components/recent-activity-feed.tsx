@@ -101,7 +101,7 @@ function TerminalShell({ empty }: { empty?: boolean }) {
           {empty ? "Listening for the next resolution" : "Connecting to Celo…"}
         </p>
         <span className="font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground/50">
-          Mainnet · ClaudelanceCore v2
+          Mainnet · ClaudelanceCore v3
         </span>
       </div>
     </div>
