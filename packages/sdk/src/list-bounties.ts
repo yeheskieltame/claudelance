@@ -1,7 +1,7 @@
 /**
  * Filtered, paginated bounty reads for ClaudelanceCoreV3. Kept out of the
- * client class so it composes with both v2 and v3. Filters run client-side
- * after one multicall batch: fine at hackathon scale, no indexer needed.
+ * client class so it composes cleanly. Filters run client-side after one
+ * multicall batch: fine at hackathon scale, no indexer needed.
  */
 
 import { type PublicClient, type Address } from 'viem';
@@ -48,7 +48,7 @@ export type BountyPage = {
  * Return a paginated, filtered list of bounties from a v3 contract.
  *
  * @param publicClient  viem PublicClient connected to the right network.
- * @param core          v3 proxy address (or v2 address - getBounty ABI is compatible).
+ * @param core          v3 proxy address.
  * @param maxId         Highest bounty ID to scan. Pass the result of
  *                      `client.getBountyCountV3()` or a known upper bound.
  * @param opts          Filter and pagination options.
