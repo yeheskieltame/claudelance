@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import type { Database } from '../db/client.js';
 import { activities, goalLinks, goals } from '../db/schema.js';
+import { requireRole } from '../lib/authz.js';
 import type { AppEnv } from '../lib/context.js';
 import { badRequest, notFound, parse } from '../lib/errors.js';
 import { loadGoalScoped, loadProjectScoped, loadTaskScoped } from '../lib/loaders.js';
@@ -26,6 +27,7 @@ export function goalRoutes(db: Database): Hono<AppEnv> {
 
   r.post('/goals', async (c) => {
     const { workspace, member } = c.get('auth');
+    requireRole(c, 'member');
     const body = parse(createSchema, await c.req.json().catch(() => ({})));
     const goal = (
       await db
@@ -80,6 +82,7 @@ export function goalRoutes(db: Database): Hono<AppEnv> {
 
   r.patch('/goals/:id', async (c) => {
     const { workspace, member } = c.get('auth');
+    requireRole(c, 'member');
     const goal = await loadGoalScoped(db, c.req.param('id'), workspace.id);
     const body = parse(patchSchema, await c.req.json().catch(() => ({})));
     const updated = (
@@ -119,6 +122,7 @@ export function goalRoutes(db: Database): Hono<AppEnv> {
 
   r.post('/goals/:id/links', async (c) => {
     const { workspace } = c.get('auth');
+    requireRole(c, 'member');
     const goal = await loadGoalScoped(db, c.req.param('id'), workspace.id);
     const body = parse(linkSchema, await c.req.json().catch(() => ({})));
     if (!body.projectId && !body.taskId) throw badRequest('link requires projectId or taskId');
@@ -140,6 +144,7 @@ export function goalRoutes(db: Database): Hono<AppEnv> {
 
   r.delete('/goals/:id/links/:linkId', async (c) => {
     const { workspace } = c.get('auth');
+    requireRole(c, 'member');
     const goal = await loadGoalScoped(db, c.req.param('id'), workspace.id);
     const deleted = await db
       .delete(goalLinks)
