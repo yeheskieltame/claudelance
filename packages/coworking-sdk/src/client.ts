@@ -278,7 +278,17 @@ export class CoworkingClient {
     });
 
     const text = await response.text();
-    const data: unknown = text ? JSON.parse(text) : undefined;
+    let data: unknown;
+    try {
+      data = text ? JSON.parse(text) : undefined;
+    } catch {
+      // Non-JSON body (e.g. an HTML 502 from a proxy). Surface a structured error
+      // rather than a raw SyntaxError so callers handle all failures uniformly.
+      throw new CoworkingApiError(
+        response.status,
+        response.ok ? `non-JSON response body: ${text.slice(0, 200)}` : text.slice(0, 200) || response.statusText,
+      );
+    }
 
     if (!response.ok) {
       const err = (data as { error?: { message?: string; code?: string; details?: unknown } })
