@@ -5,13 +5,20 @@ import type { RelayerConfig } from './config.js';
 import { parseCiWebhook, verifyGithubSignature } from './github.js';
 import { handleCiWebhook, type Logger } from './keeper.js';
 
-export type ServerDeps = { chain: ChainClient; cfg: RelayerConfig; log?: Logger };
+export type ServerDeps = {
+  chain: ChainClient;
+  cfg: RelayerConfig;
+  log?: Logger;
+  // Serializes the webhook's signing against the keeper tick + reputation bridge
+  // so the shared relayer key never races its nonce. Optional for standalone use.
+  withSigner?: <T>(fn: () => Promise<T>) => Promise<T>;
+};
 
 const defaultServerLog: Logger = (message, meta) =>
   console.log(JSON.stringify({ t: new Date().toISOString(), message, ...meta }));
 
 /** Build the keeper's HTTP surface: a status root, a health probe, and the GitHub CI webhook. */
-export function createServer({ chain, cfg, log }: ServerDeps): Hono {
+export function createServer({ chain, cfg, log, withSigner }: ServerDeps): Hono {
   const app = new Hono();
 
   app.get('/', (c) =>
@@ -60,7 +67,9 @@ export function createServer({ chain, cfg, log }: ServerDeps): Hono {
     }
 
     try {
-      const result = await handleCiWebhook(chain, cfg, event, log);
+      const run = (): Promise<Awaited<ReturnType<typeof handleCiWebhook>>> =>
+        handleCiWebhook(chain, cfg, event, log);
+      const result = withSigner ? await withSigner(run) : await run();
       return c.json(result, 202);
     } catch (err) {
       // A chain read failed (RPC down/slow). Report it instead of leaking a 500;
