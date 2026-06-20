@@ -23,26 +23,10 @@ export const celoMainnet = defineChain({
   },
 });
 
-export const celoSepolia = defineChain({
-  id: 11_142_220,
-  name: 'Celo Sepolia',
-  network: 'celo-sepolia',
-  nativeCurrency: { name: 'CELO', symbol: 'CELO', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['https://forno.celo-sepolia.celo-testnet.org/'] },
-    public: { http: ['https://forno.celo-sepolia.celo-testnet.org/'] },
-  },
-  blockExplorers: {
-    default: { name: 'Celoscan', url: 'https://sepolia.celoscan.io' },
-  },
-  testnet: true,
-});
-
 /** Friendly network key accepted by SDK factories. `'mainnet'` is an alias for `'celo'`. */
-export type NetworkKey = 'sepolia' | 'celo' | 'mainnet';
+export type NetworkKey = 'celo' | 'mainnet';
 
 export function chainForNetwork(network: NetworkKey) {
   if (network === 'celo' || network === 'mainnet') return celoMainnet;
-  if (network === 'sepolia') return celoSepolia;
   throw new Error(`[chainForNetwork] Unknown network: ${network as string}`);
 }
