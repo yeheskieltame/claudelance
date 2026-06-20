@@ -13,10 +13,8 @@ import {
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 
 import {
-  CLAUDELANCE_CORE_ABI,
   CLAUDELANCE_CORE_V3_ABI,
   MAINNET,
-  SEPOLIA,
   type Bounty,
   type Deployment,
   type Submission,
@@ -109,16 +107,6 @@ export type SubmitDeliverableOptions = {
 };
 
 /**
- * @deprecated Use {@link SubmitDeliverableOptions}. submitPR is v2-only and does
- * not exist on the v3 contract. This alias is kept for backward compatibility.
- */
-export type SubmitPROptions = {
-  prUrl: string;
-  commitHash: `0x${string}`;
-  metadata?: string;
-};
-
-/**
  * Stages emitted by {@link ClaudelanceClient.runWorkerLoop} so callers can
  * surface progress in headless logs or a UI progress bar.
  */
@@ -180,11 +168,10 @@ export type PostDirectHireOptions = {
 };
 
 /**
- * High-level read + write client for ClaudelanceCore (v2 and v3).
+ * High-level read + write client for ClaudelanceCoreV3.
  *
- * Default target is the v3 UUPS proxy which supports all 10 task types and
- * `submitDeliverable` (not just GitHub PRs). v2 methods are kept for backward
- * compat but `submitPR` is deprecated - use `submitDeliverable` instead.
+ * Targets the v3 UUPS proxy which supports all 10 task types and
+ * `submitDeliverable` (not just GitHub PRs).
  *
  * Multi-token escrow: every write that moves tokens takes (or infers from
  * the bounty) the ERC20 to use. Workers must be registered ERC-8004 agents
@@ -240,10 +227,10 @@ export class ClaudelanceClient {
    * Convenience: build a fully-wired client from a private key + network
    * key. Resolves the canonical addresses from `@yeheskieltame/claudelance-types`.
    *
-   * Supported networks: `'sepolia'` (Celo Sepolia) and `'celo'` (Celo Mainnet).
+   * Mainnet only: pass `'celo'` (or its alias `'mainnet'`).
    */
   static fromPrivateKey(opts: FromPrivateKeyOptions): ClaudelanceClient {
-    const deployment: Deployment = (opts.network === 'celo' || opts.network === 'mainnet') ? MAINNET : SEPOLIA;
+    const deployment: Deployment = MAINNET;
     const chain = chainForNetwork(opts.network);
     const account = privateKeyToAccount(opts.privateKey);
     const transport = buildTransport(opts);
@@ -267,7 +254,7 @@ export class ClaudelanceClient {
    * Write methods throw `[ClaudelanceClient] Write methods require a wallet client`.
    */
   static fromRpcUrl(opts: { rpcUrl?: string; rpcUrls?: string[]; network: NetworkKey }): ClaudelanceClient {
-    const deployment: Deployment = (opts.network === 'celo' || opts.network === 'mainnet') ? MAINNET : SEPOLIA;
+    const deployment: Deployment = MAINNET;
     const chain = chainForNetwork(opts.network);
     const transport = buildTransport(opts);
     const publicClient = createPublicClient({ chain, transport });
@@ -290,10 +277,10 @@ export class ClaudelanceClient {
    * account / first address). Override `derivationPath` to use a
    * different index, e.g. `m/44'/60'/0'/0/1` for the second address.
    *
-   * Supported networks: `'sepolia'` (Celo Sepolia) and `'celo'` (Celo Mainnet).
+   * Mainnet only: pass `'celo'` (or its alias `'mainnet'`).
    */
   static fromMnemonic(opts: FromMnemonicOptions): ClaudelanceClient {
-    const deployment: Deployment = (opts.network === 'celo' || opts.network === 'mainnet') ? MAINNET : SEPOLIA;
+    const deployment: Deployment = MAINNET;
     const chain = chainForNetwork(opts.network);
     const account = mnemonicToAccount(opts.mnemonic, {
       path: opts.derivationPath ?? "m/44'/60'/0'/0/0",
@@ -355,7 +342,7 @@ export class ClaudelanceClient {
 
   /**
    * A worker's submission for a bounty, including the relayer's CI verdict.
-   * v3: fields are `deliverableUrl` + `deliverableHash` (not prUrl/commitHash).
+   * Fields are `deliverableUrl` + `deliverableHash`.
    * `submittedAt === 0n` means the worker has not submitted yet.
    */
   async getSubmission(bountyId: bigint, worker: Address): Promise<Submission> {
@@ -415,21 +402,13 @@ export class ClaudelanceClient {
   }
 
   /**
-   * Total bounty count. On v2, reads the `bountyCount` public getter.
-   * On v3 (EIP-7201 storage, no public getter), falls back to `getBountyCountV3`.
+   * Total bounty count. v3 keeps no public `bountyCount` getter (EIP-7201
+   * storage), so this resolves via `getBountyCountV3` (binary search, O(log n)).
    *
-   * For new code targeting v3, prefer `getBountyCountV3()` directly.
+   * Equivalent to calling `getBountyCountV3()` directly.
    */
   async getBountyCount(): Promise<bigint> {
-    try {
-      return (await this.publicClient.readContract({
-        address: this.core,
-        abi: CLAUDELANCE_CORE_ABI,
-        functionName: 'bountyCount',
-      })) as bigint;
-    } catch {
-      return this.getBountyCountV3();
-    }
+    return this.getBountyCountV3();
   }
 
   /**
@@ -513,37 +492,6 @@ export class ClaudelanceClient {
         args: [token],
       })) as readonly [bigint, bigint, bigint, bigint, bigint];
     return { volume, revenue, resolved, posters, workers };
-  }
-
-  /**
-   * Pending earnings for an address in a specific token.
-   *
-   * v2 only: reads the `earnings(address, token)` public mapping getter.
-   * On v3 this getter does not exist (EIP-7201 storage). For v3, earnings
-   * are opaque until `withdrawEarnings` is called - use `EarningsWithdrawn`
-   * event logs via `listProtocolRevenueEvents` or `watchEarningsWithdrawn`
-   * to audit past withdrawals.
-   */
-  async getEarnings(account: Address, token: Address): Promise<bigint> {
-    try {
-      return (await this.publicClient.readContract({
-        address: this.core,
-        abi: CLAUDELANCE_CORE_ABI,
-        functionName: 'earnings',
-        args: [account, token],
-      })) as bigint;
-    } catch {
-      // v3 does not expose the earnings mapping as a public getter.
-      return 0n;
-    }
-  }
-
-  /**
-   * Pending earnings for the connected wallet in a specific token.
-   * Returns 0 on v3 (earnings not readable - see `getEarnings` for details).
-   */
-  async getMyEarnings(token: Address): Promise<bigint> {
-    return this.getEarnings(this.requireAccount(), token);
   }
 
   /**
@@ -721,10 +669,9 @@ export class ClaudelanceClient {
    * Eligibility check before claiming. Mirrors the v3 on-chain guards so
    * agents don't waste gas on a guaranteed-revert `claimSlot` call.
    *
-   * Note: the `hasClaimed(bountyId, worker)` mapping getter exists on v2 but
-   * is not a public getter on v3 (EIP-7201 namespaced storage). To check if
-   * the wallet already claimed on v3, call `getClaimers(bountyId)` and search
-   * the result - or just attempt `claimSlot` and catch `AlreadyClaimedError`.
+   * Note: v3 keeps no public `hasClaimed` getter (EIP-7201 namespaced storage).
+   * To check if the wallet already claimed, call `getClaimers(bountyId)` and
+   * search the result - or just attempt `claimSlot` and catch `AlreadyClaimedError`.
    */
   async canClaim(bountyId: bigint, account?: Address): Promise<boolean> {
     const who = account ?? this.requireAccount();
@@ -737,23 +684,12 @@ export class ClaudelanceClient {
     }
     if (!(await this.hasAgentIdentity(who))) return false;
 
-    // On v3: check the claimers list. On v2: try the hasClaimed getter.
+    // Check the claimers list for an existing claim by this wallet.
     try {
       const claimers = await this.getClaimers(bountyId);
       return !claimers.some((c) => c.toLowerCase() === who.toLowerCase());
     } catch {
-      // v2 fallback: hasClaimed public getter
-      try {
-        const claimed = (await this.publicClient.readContract({
-          address: this.core,
-          abi: CLAUDELANCE_CORE_ABI,
-          functionName: 'hasClaimed',
-          args: [bountyId, who],
-        })) as boolean;
-        return !claimed;
-      } catch {
-        return true; // cannot determine - optimistically allow
-      }
+      return true; // cannot determine - optimistically allow
     }
   }
 
@@ -792,7 +728,7 @@ export class ClaudelanceClient {
   }
 
   /**
-   * Submit a deliverable for any task type (v3). Replaces `submitPR`.
+   * Submit a deliverable for any task type.
    * Works for GitHub PRs (type 0), Gist/IPFS/Arweave for all other types.
    */
   async submitDeliverable(bountyId: bigint, opts: SubmitDeliverableOptions): Promise<`0x${string}`> {
@@ -806,18 +742,6 @@ export class ClaudelanceClient {
       chain: wallet.chain,
       // URL + metadata strings dominate the cost; 400k covers long ones.
       ...(await this.celoGas(400_000n)),
-    });
-  }
-
-  /**
-   * @deprecated v3 contract uses `submitDeliverable`. This wrapper maps v2 field
-   * names to the v3 call so existing code keeps working against the v3 proxy.
-   */
-  async submitPR(bountyId: bigint, opts: SubmitPROptions): Promise<`0x${string}`> {
-    return this.submitDeliverable(bountyId, {
-      deliverableUrl: opts.prUrl,
-      deliverableHash: opts.commitHash,
-      metadata: opts.metadata,
     });
   }
 
@@ -962,25 +886,19 @@ export class ClaudelanceClient {
    * Orchestrator: claim slot (with auto-approval) then submit the deliverable
    * in one call. Skips `claimSlot` if the wallet already holds the slot.
    * Returns both tx hashes (`claimTx` is `null` when the slot was already claimed).
-   *
-   * Accepts either v3 `SubmitDeliverableOptions` or the legacy v2 `SubmitPROptions` shape.
    */
   async solveAndSubmit(opts: {
     bountyId: bigint;
-    /** v3: deliverable URL (GitHub PR, Gist, IPFS, Arweave). */
+    /** Deliverable URL (GitHub PR, Gist, IPFS, Arweave). */
     deliverableUrl?: string;
-    /** v3: keccak256 content hash (or commit SHA padded to bytes32). */
+    /** keccak256 content hash (or commit SHA padded to bytes32). */
     deliverableHash?: `0x${string}`;
-    /** @deprecated v2 alias for deliverableUrl */
-    prUrl?: string;
-    /** @deprecated v2 alias for deliverableHash */
-    commitHash?: `0x${string}`;
     metadata?: string;
   }): Promise<{ claimTx: `0x${string}` | null; submitTx: `0x${string}` }> {
     const wallet = this.requireWalletClient();
     const me = wallet.account.address;
 
-    // v3 does not expose hasClaimed as a public getter; attempt claim and catch AlreadyClaimed.
+    // v3 keeps no public hasClaimed getter; attempt claim and catch AlreadyClaimed.
     let claimTx: `0x${string}` | null = null;
     try {
       claimTx = await this.claimSlotWithApproval(opts.bountyId);
@@ -993,8 +911,8 @@ export class ClaudelanceClient {
       }
     }
 
-    const url = opts.deliverableUrl ?? opts.prUrl ?? '';
-    const hash = opts.deliverableHash ?? opts.commitHash ?? `0x${'0'.repeat(64)}`;
+    const url = opts.deliverableUrl ?? '';
+    const hash = opts.deliverableHash ?? `0x${'0'.repeat(64)}`;
     const submitTx = await this.submitDeliverable(opts.bountyId, {
       deliverableUrl: url,
       deliverableHash: hash as `0x${string}`,
@@ -1021,10 +939,6 @@ export class ClaudelanceClient {
     /** Deliverable URL: GitHub PR, Gist, IPFS CID, Arweave TX, etc. */
     deliverableUrl?: string;
     deliverableHash?: `0x${string}`;
-    /** @deprecated Use deliverableUrl */
-    prUrl?: string;
-    /** @deprecated Use deliverableHash */
-    commitHash?: `0x${string}`;
     metadata?: string;
     onProgress?: WorkerProgressFn;
   }): Promise<{
@@ -1053,8 +967,8 @@ export class ClaudelanceClient {
       }
     }
 
-    const url = opts.deliverableUrl ?? opts.prUrl ?? '';
-    const hash = opts.deliverableHash ?? opts.commitHash ?? `0x${'0'.repeat(64)}`;
+    const url = opts.deliverableUrl ?? '';
+    const hash = opts.deliverableHash ?? `0x${'0'.repeat(64)}`;
     const submitTx = await this.submitDeliverable(opts.bountyId, {
       deliverableUrl: url,
       deliverableHash: hash as `0x${string}`,
@@ -1358,8 +1272,7 @@ export class ClaudelanceClient {
    * on mainnet since the attestReputation upgrade (2026-06-10). Where
    * {@link getImplementation} answers which address is live, this answers
    * which surface semantics - the cheap check for a long-running agent to
-   * notice an upgrade changed behaviour. Reverts on v2 deployments, which
-   * predate the function.
+   * notice an upgrade changed behaviour.
    */
   async version(): Promise<string> {
     return (await this.publicClient.readContract({
@@ -1371,8 +1284,8 @@ export class ClaudelanceClient {
 
   /**
    * Current implementation address behind the v3 UUPS proxy, read straight
-   * from the EIP-1967 implementation slot. Returns the zero address for a
-   * non-proxy (v2) deployment. Watch `Upgraded(address)` to detect changes.
+   * from the EIP-1967 implementation slot. Returns the zero address if the
+   * slot is empty (non-proxy deployment). Watch `Upgraded(address)` to detect changes.
    */
   async getImplementation(): Promise<Address> {
     // keccak256("eip1967.proxy.implementation") - 1
@@ -1386,7 +1299,7 @@ export class ClaudelanceClient {
    * One-call health snapshot for monitoring and long-running agents: chain id,
    * latest block, live gas price, and whether the protocol is paused. Lets a
    * keeper or skill gate its tick (skip writes while paused, watch gas) without
-   * wiring several reads. `paused` is null if the read fails (e.g. v2 core).
+   * wiring several reads. `paused` is null if the read fails.
    */
   async health(): Promise<{
     chainId: number;
