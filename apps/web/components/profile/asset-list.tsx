@@ -19,7 +19,7 @@ function formatBalance(raw: bigint, decimals: number): string {
 }
 
 /**
- * Connected wallet's balances across the three marketplace tokens. One
+ * Connected wallet's balances across the wallet tokens. One
  * multicall per render; "Send" hands the chosen token up to the send form.
  */
 export function AssetList({ onSend }: { onSend?: (symbol: (typeof WALLET_TOKENS)[number]["symbol"]) => void }) {
