@@ -79,7 +79,7 @@ export function SendToken({
         abi: erc20Abi,
         functionName: "transfer",
         args: [getAddress(toTrimmed), parsedAmount],
-        feeCurrency: miniPayFeeCurrency(),
+        feeCurrency: miniPayFeeCurrency(meta.address),
       })) as Hash;
       setTxHash(hash);
     } catch (error) {
@@ -100,7 +100,7 @@ export function SendToken({
       </div>
 
       {/* Token picker */}
-      <div className="mt-5 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Token to send">
+      <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Token to send">
         {WALLET_TOKENS.map((t) => {
           const active = t.symbol === token;
           return (
