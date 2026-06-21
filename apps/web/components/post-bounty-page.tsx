@@ -46,6 +46,7 @@ import {
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { MiniPayAddCash } from "@/components/minipay-add-cash";
 import { MiniPayBadge } from "@/components/minipay-badge";
 import { MiniPayBalanceCard } from "@/components/minipay-balance-card";
 import { useTransactionToast } from "@/components/transaction-toast";
@@ -505,8 +506,9 @@ function PostBountyForm() {
           <h1 className="mt-1.5 font-display text-3xl font-bold tracking-tight sm:text-4xl">
             Post an onchain task
           </h1>
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <MiniPayBadge />
+            <MiniPayAddCash />
           </div>
         </div>
         <WalletStrip
