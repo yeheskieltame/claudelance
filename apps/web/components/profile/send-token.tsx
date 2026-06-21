@@ -12,6 +12,7 @@ import { WALLET_TOKENS, tokenBySymbol } from "@/lib/wallet/tokens";
 import type { TokenSymbol } from "@/lib/token-theme";
 import { TOKEN_BADGE } from "@/lib/token-theme";
 import { miniPayFeeCurrency } from "@/lib/wallet/fee-currency";
+import { MiniPayAddCash } from "@/components/minipay-add-cash";
 import { DEFAULT_CHAIN_ID } from "@/lib/chain";
 import { cn } from "@/lib/utils";
 
@@ -191,6 +192,8 @@ export function SendToken({
           {formError}
         </div>
       ) : null}
+
+      {overBalance ? <MiniPayAddCash className="mt-3" /> : null}
     </GlassCard>
   );
 }

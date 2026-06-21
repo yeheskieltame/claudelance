@@ -7,6 +7,11 @@ import type { Address } from "viem";
 
 import { isMiniPay as isMiniPayProvider } from "@/lib/wallet/config";
 
+/// MiniPay's in-wallet Add Cash deeplink for topping up stablecoins. MiniPay
+/// holds no native CELO and only stablecoins, so when a user is short on funds we
+/// point them here rather than hardcoding a ramp URL.
+export const MINIPAY_ADD_CASH = "https://link.minipay.xyz/add_cash?tokens=USDM,USDT,USDC";
+
 /// Detects the Opera MiniPay in-app browser. When present, MiniPay auto-injects
 /// `window.ethereum.isMiniPay = true` and expects the dapp to call
 /// `eth_requestAccounts` eagerly so the user lands inside an authorised session.

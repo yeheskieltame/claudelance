@@ -68,7 +68,16 @@ export function WorkersTable({ rows }: { rows: WorkerRow[] }) {
       {visible.length === 0 ? (
         <EmptyState message={`No workers match “${query.trim()}”.`} />
       ) : (
-        <div className="glow-card overflow-hidden">
+        <>
+          {/* Mobile: cards (no horizontal overflow) */}
+          <div className="space-y-3 sm:hidden">
+            {visible.map((row) => (
+              <WorkerCard key={row.address} row={row} />
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="glow-card hidden overflow-hidden sm:block">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
@@ -102,28 +111,7 @@ export function WorkersTable({ rows }: { rows: WorkerRow[] }) {
                       </Link>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {row.hasIdentity ? (
-                          <span
-                            title="ERC-8004 Agent Identity verified"
-                            className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-300"
-                          >
-                            <ShieldCheck aria-hidden className="h-3 w-3" />
-                            ERC-8004
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
-                        {row.feedbackCount > 0 && (
-                          <span
-                            title={`${row.feedbackCount} on-chain ERC-8004 feedback`}
-                            className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-300"
-                          >
-                            <Star aria-hidden className="h-3 w-3" />
-                            {row.feedbackCount}
-                          </span>
-                        )}
-                      </div>
+                      <IdentityBadges row={row} />
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">{row.wins}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{row.payout}</td>
@@ -148,7 +136,8 @@ export function WorkersTable({ rows }: { rows: WorkerRow[] }) {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -183,6 +172,79 @@ export function WorkersTable({ rows }: { rows: WorkerRow[] }) {
             Next
             <ChevronRight aria-hidden className="h-4 w-4" />
           </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IdentityBadges({ row }: { row: WorkerRow }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {row.hasIdentity ? (
+        <span
+          title="ERC-8004 Agent Identity verified"
+          className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-300"
+        >
+          <ShieldCheck aria-hidden className="h-3 w-3" />
+          ERC-8004
+        </span>
+      ) : (
+        <span className="text-xs text-muted-foreground">-</span>
+      )}
+      {row.feedbackCount > 0 && (
+        <span
+          title={`${row.feedbackCount} on-chain ERC-8004 feedback`}
+          className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-300"
+        >
+          <Star aria-hidden className="h-3 w-3" />
+          {row.feedbackCount}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function WorkerCard({ row }: { row: WorkerRow }) {
+  return (
+    <div className="glow-card overflow-hidden rounded-2xl p-4">
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href={`/worker/${row.address.toLowerCase()}`}
+          className="inline-flex min-w-0 items-center gap-2 font-mono text-sm text-foreground transition-colors hover:text-primary"
+        >
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+            {row.rank}
+          </span>
+          <span className="truncate">{shortAddress(row.address)}</span>
+          <ArrowUpRight aria-hidden className="h-3.5 w-3.5 shrink-0" />
+        </Link>
+        <a
+          href={onchainIdentityUrl(row.address)}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={
+            row.agentId
+              ? `View ERC-8004 agent #${row.agentId} on 8004scan`
+              : `View ${shortAddress(row.address)} on Celoscan`
+          }
+          className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {row.agentId ? `Agent #${row.agentId}` : "Celoscan"}
+          <ExternalLink aria-hidden className="h-3.5 w-3.5" />
+        </a>
+      </div>
+      <div className="mt-3">
+        <IdentityBadges row={row} />
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border/60 pt-3 text-sm">
+        <div>
+          <p className="text-xs text-muted-foreground">Wins</p>
+          <p className="tabular-nums">{row.wins}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-muted-foreground">Earned</p>
+          <p className="tabular-nums">{row.payout}</p>
         </div>
       </div>
     </div>
