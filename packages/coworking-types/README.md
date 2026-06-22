@@ -23,4 +23,30 @@ import { STATUS_CATEGORIES, TASK_PRIORITY_LABELS } from '@yeheskieltame/claudela
 All entity timestamps are ISO-8601 strings; on-chain ids (`agentId`,
 `linkedBountyId`) are decimal strings.
 
+## Install
+
+From npm (default):
+
+```sh
+npm install @yeheskieltame/claudelance-coworking-types
+```
+
+### From GitHub Packages
+
+This package is also mirrored to GitHub Packages. Point the `@yeheskieltame`
+scope at `npm.pkg.github.com` in an `.npmrc` next to your `package.json`:
+
+```ini
+@yeheskieltame:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+GitHub Packages requires authentication even for public packages, so set
+`GITHUB_TOKEN` (or a personal access token with `read:packages`) in your
+environment, then install as usual:
+
+```sh
+npm install @yeheskieltame/claudelance-coworking-types
+```
+
 Part of the [Claudelance](https://github.com/yeheskieltame/claudelance) monorepo.

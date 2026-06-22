@@ -1,0 +1,83 @@
+name: Publish coworking packages to GitHub Packages
+
+# Mirror the coworking packages to GitHub Packages (npm.pkg.github.com).
+#
+# Both packages are already live on npmjs.com via publish-npm.yml; this
+# workflow only fills the GitHub Packages registry mirror, which makes them
+# installable for consumers who pin the @yeheskieltame scope to GH Packages.
+#
+# Trigger:
+#   - a published GitHub Release (cuts the mirror at release time)
+#   - manual workflow_dispatch with an optional package filter
+#
+# Publish order is types -> sdk because the sdk depends on the types package.
+# Repeating a publish is a no-op (the registry rejects duplicate versions).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'coworking-types | coworking-sdk | all (default all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - coworking-types
+          - coworking-sdk
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        # version comes from "packageManager" in the root package.json
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@yeheskieltame'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build coworking packages
+        run: |
+          pnpm --filter @yeheskieltame/claudelance-coworking-types run build
+          pnpm --filter @yeheskieltame/claudelance-coworking-sdk run build
+
+      - name: Configure .npmrc for GitHub Packages
+        # setup-node wrote a scope binding for npm.pkg.github.com, but pnpm
+        # prioritises that scope binding over --registry, so we OVERWRITE the
+        # .npmrc to be explicit and inject the auth token line. Same pattern as
+        # the GitHub Packages step in publish-npm.yml.
+        run: |
+          NPMRC="${RUNNER_TEMP}/.npmrc"
+          {
+            echo "@yeheskieltame:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}"
+          } > "$NPMRC"
+          echo "NPM_CONFIG_USERCONFIG=$NPMRC" >> "$GITHUB_ENV"
+
+      - name: Publish coworking-types to GitHub Packages
+        # types first - the sdk declares it as a workspace dependency
+        if: ${{ github.event.inputs.package == 'coworking-types' || github.event.inputs.package == 'all' || github.event_name == 'release' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @yeheskieltame/claudelance-coworking-types publish --access public --no-git-checks
+
+      - name: Publish coworking-sdk to GitHub Packages
+        if: ${{ github.event.inputs.package == 'coworking-sdk' || github.event.inputs.package == 'all' || github.event_name == 'release' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @yeheskieltame/claudelance-coworking-sdk publish --access public --no-git-checks

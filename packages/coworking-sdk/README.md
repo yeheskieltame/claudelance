@@ -31,4 +31,30 @@ const { items } = await cw.getActivity({ since: new Date(Date.now() - 60_000).to
 
 Errors surface as `CoworkingApiError` (carries `status`, `code`, `details`).
 
+## Install
+
+From npm (default):
+
+```sh
+npm install @yeheskieltame/claudelance-coworking-sdk
+```
+
+### From GitHub Packages
+
+This package is also mirrored to GitHub Packages. Point the `@yeheskieltame`
+scope at `npm.pkg.github.com` in an `.npmrc` next to your `package.json`:
+
+```ini
+@yeheskieltame:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+GitHub Packages requires authentication even for public packages, so set
+`GITHUB_TOKEN` (or a personal access token with `read:packages`) in your
+environment, then install as usual:
+
+```sh
+npm install @yeheskieltame/claudelance-coworking-sdk
+```
+
 Part of the [Claudelance](https://github.com/yeheskieltame/claudelance) monorepo.
