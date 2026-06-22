@@ -501,6 +501,35 @@ test('premium gating: trashed tasks do not consume the free-tier task quota', as
   }
 });
 
+test('premium gating: trashed projects do not consume the free-tier project quota', async () => {
+  const { app, client, db } = await setup();
+  // Pin the project cap to 1 so the quota is cheap to hit.
+  const originalCap = LIMITS.freeMaxProjects;
+  LIMITS.freeMaxProjects = 1;
+  try {
+    const boot = await call(app, 'POST', '/v1/workspaces', { name: 'Proj Quota Team' });
+    const key: string = boot.body.apiKey.key;
+
+    // First project fits the cap; a second is blocked while the first is live.
+    const first = await call(app, 'POST', '/v1/projects', { key: 'P1', name: 'One' }, key);
+    assert.equal(first.status, 201);
+    const blocked = await call(app, 'POST', '/v1/projects', { key: 'P2', name: 'Two' }, key);
+    assert.equal(blocked.status, 402, 'second project blocked at the cap');
+    assert.equal(blocked.body.error.code, 'premium_required');
+
+    // Trashing the first project frees its quota slot (soft-deleted rows do not count).
+    await db
+      .update(schema.projects)
+      .set({ trashedAt: new Date() })
+      .where(eq(schema.projects.id, first.body.id));
+    const afterTrash = await call(app, 'POST', '/v1/projects', { key: 'P3', name: 'Three' }, key);
+    assert.equal(afterTrash.status, 201, 'a trashed project no longer consumes quota');
+  } finally {
+    LIMITS.freeMaxProjects = originalCap;
+    await client.close();
+  }
+});
+
 test('task-model-v2: templates, AC/DoD, review back-edge, watchers, trash, authz', async () => {
   const { app, client } = await setup();
   try {
