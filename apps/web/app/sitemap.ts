@@ -9,6 +9,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/bounties`, lastModified: now, priority: 0.9 },
     { url: `${BASE}/post`, lastModified: now, priority: 0.8 },
     { url: `${BASE}/workers`, lastModified: now, priority: 0.7 },
+    { url: `${BASE}/coworking`, lastModified: now, priority: 0.7 },
+    { url: `${BASE}/mcp`, lastModified: now, priority: 0.6 },
     { url: `${BASE}/revenue`, lastModified: now, priority: 0.6 },
     { url: `${BASE}/about`, lastModified: now, priority: 0.5 },
     { url: `${BASE}/docs`, lastModified: now, priority: 0.5 },
