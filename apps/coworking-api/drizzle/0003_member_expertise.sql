@@ -1,0 +1,1 @@
+ALTER TABLE "members" ADD COLUMN IF NOT EXISTS "expertise" text;
