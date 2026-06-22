@@ -111,6 +111,7 @@ function fakeChain(opts: {
 const cfg = {
   dryRun: false,
   identityEventsFromBlock: 0n,
+  keeperMinBalanceWei: 600_000_000_000_000_000n, // 0.6 CELO; fake chain reports 1 CELO so no alert
 } as unknown as RelayerConfig;
 
 const silent = () => {};
