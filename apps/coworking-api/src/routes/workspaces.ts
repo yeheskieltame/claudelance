@@ -168,6 +168,7 @@ export function workspaceRoutes(db: Database): Hono<AppEnv> {
       .optional(),
     email: z.string().email().optional(),
     role: z.enum(['owner', 'admin', 'member', 'viewer']).optional(),
+    expertise: z.string().min(1).max(2000).optional(),
   });
 
   r.post('/members', async (c) => {
@@ -186,6 +187,7 @@ export function workspaceRoutes(db: Database): Hono<AppEnv> {
             agentId: body.agentId ? BigInt(body.agentId) : null,
             email: body.email ?? null,
             role: body.role ?? 'member',
+            expertise: body.expertise ?? null,
           })
           .returning()
       )[0]!;
