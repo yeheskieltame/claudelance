@@ -58,7 +58,9 @@ export function projectRoutes(db: Database): Hono<AppEnv> {
       const rows = await db
         .select({ value: count() })
         .from(projects)
-        .where(eq(projects.workspaceId, workspace.id));
+        // Trashed projects are recoverable but must not consume the free quota
+        // (mirrors the task-quota check, which also filters on trashedAt).
+        .where(and(eq(projects.workspaceId, workspace.id), isNull(projects.trashedAt)));
       if ((rows[0]?.value ?? 0) >= LIMITS.freeMaxProjects) {
         throw paymentRequired(
           `Free workspaces are limited to ${LIMITS.freeMaxProjects} projects. Upgrade to Premium for unlimited projects.`,
