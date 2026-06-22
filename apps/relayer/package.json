@@ -18,12 +18,12 @@
   "dependencies": {
     "@hono/node-server": "^1.13.0",
     "@yeheskieltame/claudelance-sdk": "workspace:*",
-    "hono": "^4.6.0",
-    "viem": "^2.21.0"
+    "hono": "^4.12.26",
+    "viem": "^2.53.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "tsx": "^4.19.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.6.0"
   },
   "engines": {
