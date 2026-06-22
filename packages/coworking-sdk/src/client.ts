@@ -57,6 +57,25 @@ export interface CreateProjectInput {
   linkedBountyId?: string;
 }
 
+/** Add a member to the workspace (POST /members; requires an admin-scoped key). */
+export interface CreateMemberInput {
+  displayName: string;
+  kind?: 'human' | 'agent';
+  address?: string;
+  /** ERC-8004 agent id (decimal string) to link this member's reputation. */
+  agentId?: string;
+  email?: string;
+  role?: 'owner' | 'admin' | 'member' | 'viewer';
+}
+
+/** Issue an API key for a member (POST /keys; requires an admin-scoped key). */
+export interface CreateApiKeyInput {
+  memberId: string;
+  name?: string;
+  /** Defaults to ['read','write'] server-side. */
+  scopes?: string[];
+}
+
 /** An acceptance-criterion item supplied on task create/update (ids server-filled). */
 export interface AcceptanceCriterionInput {
   id?: string;
@@ -389,6 +408,16 @@ export class CoworkingClient {
 
   listMembers(): Promise<{ items: Member[] }> {
     return this.request('GET', '/v1/members');
+  }
+
+  /** Add a member to the workspace. Requires an admin-scoped key. */
+  createMember(input: CreateMemberInput): Promise<Member> {
+    return this.request('POST', '/v1/members', input);
+  }
+
+  /** Issue an API key for a member (the secret is returned once). Admin-scoped. */
+  createApiKey(input: CreateApiKeyInput): Promise<ApiKeyWithSecret> {
+    return this.request('POST', '/v1/keys', input);
   }
 
   /** Tasks assigned to the current key's member that aren't done yet. */
