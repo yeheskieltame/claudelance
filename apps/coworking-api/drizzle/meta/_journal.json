@@ -22,6 +22,13 @@
       "when": 1781848278652,
       "tag": "0002_chilly_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781935200000,
+      "tag": "0003_member_expertise",
+      "breakpoints": true
     }
   ]
 }
