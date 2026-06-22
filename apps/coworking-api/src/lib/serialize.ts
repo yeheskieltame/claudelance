@@ -91,6 +91,7 @@ export function serializeMember(r: InferSelectModel<typeof members>): Member {
     agentId: r.agentId === null ? null : r.agentId.toString(),
     email: r.email,
     role: r.role as MemberRole,
+    expertise: r.expertise,
     createdAt: iso(r.createdAt),
   };
 }
