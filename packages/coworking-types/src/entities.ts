@@ -43,6 +43,8 @@ export interface Member {
   agentId: string | null;
   email: string | null;
   role: MemberRole;
+  /** Free-text expertise / skills summary, for board and routing filters. */
+  expertise: string | null;
   createdAt: string;
 }
 
