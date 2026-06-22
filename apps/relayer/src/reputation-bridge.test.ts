@@ -37,7 +37,7 @@ function item(over: Partial<PendingReputationItem> = {}): PendingReputationItem 
  * ordered oldest-first, sliced to `limit`. This is what makes "an un-acked
  * review re-lists" and "an acked review does NOT re-list" testable without a
  * real DB. `owners` maps agentId -> NFT owner (absent = the id does not
- * resolve). `balanceWei` defaults above the 0.3 CELO floor.
+ * resolve). `balanceWei` defaults above the 0.6 CELO floor.
  */
 function fakeDeps(opts: {
   /** The full set of reviews the server knows about (the un-acked universe). */
@@ -116,6 +116,7 @@ function makeCfg(over: Partial<RelayerConfig> = {}): RelayerConfig {
     reputationBridgeEnabled: true,
     reputationBridgeDryRun: false,
     reputationBridgeIntervalMs: 300_000,
+    keeperMinBalanceWei: 600_000_000_000_000_000n, // 0.6 CELO floor, shared with the keeper
     ...over,
   } as unknown as RelayerConfig;
 }
@@ -314,7 +315,7 @@ describe('runReputationBridgeTick', () => {
   it('skips the whole tick below the keeper balance floor', async () => {
     const { deps, fed, acked, fetched } = fakeDeps({
       reviews: [item()],
-      balanceWei: 100_000_000_000_000_000n, // 0.1 CELO < 0.3 floor
+      balanceWei: 100_000_000_000_000_000n, // 0.1 CELO < 0.6 floor
     });
     const summary = await runReputationBridgeTick(deps, makeCfg(), createBridgeState(), silent);
 
