@@ -1,0 +1,3 @@
+# Secrets (per-role API keys) and generated agent kits never get committed.
+.local/
+workers/
