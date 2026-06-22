@@ -1,3 +1,5 @@
+import { connectorsForWallets } from "@rainbow-me/rainbowkit";
+import { injectedWallet, metaMaskWallet, walletConnectWallet } from "@rainbow-me/rainbowkit/wallets";
 import type { EIP1193Provider } from "viem";
 import { createConfig, http } from "wagmi";
 import { injected } from "wagmi/connectors";
@@ -9,7 +11,7 @@ type MiniPayCandidate = {
   request?: EIP1193Provider["request"];
 };
 
-export const connectorResolutionOrder = ["minipay", "privy"] as const;
+export const connectorResolutionOrder = ["minipay", "walletconnect"] as const;
 
 export type ConnectorResolution = (typeof connectorResolutionOrder)[number];
 
@@ -18,7 +20,7 @@ export function isMiniPay(provider: unknown = getInjectedProvider()): provider i
 }
 
 export function resolveConnector(provider: unknown = getInjectedProvider()): ConnectorResolution {
-  return isMiniPay(provider) ? "minipay" : "privy";
+  return isMiniPay(provider) ? "minipay" : "walletconnect";
 }
 
 const miniPayConnector = injected({
@@ -35,9 +37,25 @@ const miniPayConnector = injected({
   },
 });
 
+// External (non-MiniPay) wallets, rendered by RainbowKit's connect modal.
+// injectedWallet needs no projectId; metaMask + walletConnect require a
+// WalletConnect Cloud id and throw at construction without one - so only add
+// them when configured. This keeps a missing id from crashing module load for
+// MiniPay/injected users, who never touch WalletConnect.
+const wcProjectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? "";
+const externalWallets = wcProjectId
+  ? [injectedWallet, metaMaskWallet, walletConnectWallet]
+  : [injectedWallet];
+
+const externalConnectors = connectorsForWallets(
+  [{ groupName: "Connect a wallet", wallets: externalWallets }],
+  { appName: "Claudelance", projectId: wcProjectId },
+);
+
 export const wagmiConfig = createConfig({
   chains: [celoMainnet],
-  connectors: [miniPayConnector],
+  // MiniPay first (injected webview); RainbowKit's wallets cover the browser.
+  connectors: [miniPayConnector, ...externalConnectors],
   ssr: true,
   transports: {
     [celoMainnet.id]: http(process.env.NEXT_PUBLIC_CELO_MAINNET_RPC),

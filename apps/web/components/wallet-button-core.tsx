@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown, Github, Loader2, LogOut, Wallet } from "lucide-react";
+import { Check, ChevronDown, Loader2, LogOut, Wallet } from "lucide-react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 
 import { Button } from "@/components/ui/button";
@@ -10,22 +10,13 @@ import { isMiniPay, pickInjectedConnector } from "@/lib/wallet/config";
 import { cn, shortAddress } from "@/lib/utils";
 
 type WalletButtonCoreProps = {
-  onPrivyConnect?: () => void;
-  onPrivyDisconnect?: () => Promise<void>;
-  privyReady?: boolean;
-  privyAuthenticated?: boolean;
-  privyAddress?: string;
-  privyGithub?: string | null;
+  // Opens the RainbowKit connect modal for non-MiniPay sign-in. Undefined while
+  // the dynamically-imported RainbowKit module is still loading (and in MiniPay,
+  // where the connect happens via the injected connector instead).
+  onConnect?: () => void;
 };
 
-export function WalletButtonCore({
-  onPrivyConnect,
-  onPrivyDisconnect,
-  privyReady = true,
-  privyAuthenticated = false,
-  privyAddress,
-  privyGithub,
-}: WalletButtonCoreProps) {
+export function WalletButtonCore({ onConnect }: WalletButtonCoreProps) {
   const { address, chain, connector, isConnected } = useAccount();
   const { connectAsync, connectors, isPending } = useConnect();
   const { disconnectAsync } = useDisconnect();
@@ -38,11 +29,11 @@ export function WalletButtonCore({
   }, []);
 
   const chainName = chain?.name ?? chainById(DEFAULT_CHAIN_ID)?.name ?? "Celo";
-  const connectorName = miniPayActive ? "MiniPay" : connector?.name ?? (privyAuthenticated ? "Privy" : "Wallet");
-  const connected = isConnected || privyAuthenticated;
-  const displayAddress = address ?? privyAddress;
+  const connectorName = miniPayActive ? "MiniPay" : connector?.name ?? "Wallet";
+  const connected = isConnected;
+  const displayAddress = address;
   const label = displayAddress ? shortAddress(displayAddress) : connected ? "Connected" : "Connect";
-  const disabled = isPending || !privyReady;
+  const disabled = isPending;
 
   async function connectWallet() {
     if (connected || disabled) return;
@@ -60,13 +51,14 @@ export function WalletButtonCore({
       return;
     }
 
-    if (onPrivyConnect) {
-      onPrivyConnect();
+    // Outside MiniPay, RainbowKit owns wallet selection. Fall back to a direct
+    // injected connect only if the modal has not loaded yet.
+    if (onConnect) {
+      onConnect();
       return;
     }
 
-    const injectedConnector =
-      connectors.find((item) => item.id === "privy") ?? pickInjectedConnector(connectors);
+    const injectedConnector = pickInjectedConnector(connectors);
     if (injectedConnector) {
       await connectAsync({ connector: injectedConnector, chainId: DEFAULT_CHAIN_ID });
     }
@@ -79,9 +71,6 @@ export function WalletButtonCore({
       longPressRef.current = null;
     }
     await disconnectAsync().catch(() => undefined);
-    if (onPrivyDisconnect) {
-      await onPrivyDisconnect().catch(() => undefined);
-    }
   }
 
   function startLongPress(event: React.PointerEvent<HTMLButtonElement>) {
@@ -117,7 +106,7 @@ export function WalletButtonCore({
       onPointerUp={cancelLongPress}
       onPointerLeave={cancelLongPress}
       onPointerCancel={cancelLongPress}
-      title={connected ? "Right-click or long-press to disconnect" : "Connect wallet or sign in with GitHub"}
+      title={connected ? "Right-click or long-press to disconnect" : "Connect a wallet"}
       className={cn("h-9 min-w-0 px-3 sm:min-w-36 sm:px-4", connected && "pr-2")}
     >
       {isPending ? (
@@ -131,16 +120,9 @@ export function WalletButtonCore({
       <span className="sr-only">{connected ? `${label} connected on ${chainName}` : "Connect wallet"}</span>
       {connected ? (
         <>
-          {privyGithub ? (
-            <span className="hidden items-center gap-1 rounded-full border border-border/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground md:inline-flex">
-              <Github aria-hidden="true" className="h-3 w-3" />
-              {privyGithub}
-            </span>
-          ) : (
-            <span className="hidden rounded-full border border-border/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground md:inline">
-              {connectorName}
-            </span>
-          )}
+          <span className="hidden rounded-full border border-border/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground md:inline">
+            {connectorName}
+          </span>
           <span className="hidden rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success sm:inline">
             {chainName}
           </span>

@@ -10,12 +10,12 @@ import {
   wagmiConfig,
 } from "./config";
 
-test("B39 connector resolution keeps MiniPay before Privy fallback", () => {
-  assert.deepEqual(connectorResolutionOrder, ["minipay", "privy"]);
+test("B39 connector resolution keeps MiniPay before WalletConnect fallback", () => {
+  assert.deepEqual(connectorResolutionOrder, ["minipay", "walletconnect"]);
   assert.equal(isMiniPay({ isMiniPay: true }), true);
   assert.equal(isMiniPay({ isMiniPay: false }), false);
   assert.equal(resolveConnector({ isMiniPay: true }), "minipay");
-  assert.equal(resolveConnector({ request: async () => [] }), "privy");
+  assert.equal(resolveConnector({ request: async () => [] }), "walletconnect");
 });
 
 test("wagmi config targets Celo mainnet only", () => {
