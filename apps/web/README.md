@@ -67,7 +67,15 @@ The app reads from `.env` (or `.env.local` for overrides). All vars are optional
 NEXT_PUBLIC_CHAIN=celo            # celo (mainnet); default: celo
 NEXT_PUBLIC_CELO_RPC=             # override mainnet RPC if you have one
 NEXT_PUBLIC_PRIVY_APP_ID=         # Privy app id for the upcoming auth provider wiring
+NEXT_PUBLIC_COWORKING_API_URL=    # Coworking API base; defaults to the live Railway URL
 ```
+
+The Coworking board defaults to the live Railway API
+(`https://coworking-api-production-7f61.up.railway.app`) when
+`NEXT_PUBLIC_COWORKING_API_URL` is unset. Because `NEXT_PUBLIC_*` vars are baked
+in at build time, the **Vercel production project must set this var to the same
+live URL** (set it from the Vercel dashboard or CLI - it cannot be set from this
+repo).
 
 Privy configuration details live in [`docs/PRIVY_SETUP.md`](./docs/PRIVY_SETUP.md).
 
