@@ -1,0 +1,53 @@
+name: Coworking API CI
+
+# Smoke test the Coworking API before deploy. Boots the Hono app against an
+# in-memory pglite Postgres (no external DB) and runs the pglite integration
+# suite in apps/coworking-api/src/api.test.ts - which already exercises the
+# full boot path plus the destructive reset + seed-demo lifecycle (see the
+# "task-model-v2 reset: workspace clear + seed-demo + allowReset gate" test:
+# clears the workspace, seeds the 8-task demo project, and asserts the audited
+# workspace.seeded_demo action). A regression here fails the PR before it can
+# reach Railway.
+#
+# Trigger: push / PR that touches the API or the coworking workspace packages
+# it depends on (coworking-types is a workspace:* dep imported by the API).
+
+on:
+  push:
+    paths:
+      - 'apps/coworking-api/**'
+      - 'packages/coworking-*/**'
+      - '.github/workflows/coworking-api-ci.yml'
+  pull_request:
+    paths:
+      - 'apps/coworking-api/**'
+      - 'packages/coworking-*/**'
+      - '.github/workflows/coworking-api-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        # version comes from "packageManager" in the root package.json
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build coworking workspace packages
+        # The API imports @yeheskieltame/claudelance-coworking-types (workspace:*)
+        # from its built dist, so the dependency packages must be built first.
+        run: pnpm -r --filter "./packages/coworking-*" run build
+
+      - name: Run coworking-api pglite integration tests
+        run: pnpm --filter claudelance-coworking-api run test
