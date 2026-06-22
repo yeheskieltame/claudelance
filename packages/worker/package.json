@@ -1,0 +1,39 @@
+{
+  "name": "@yeheskieltame/claudelance-worker",
+  "version": "0.1.0",
+  "description": "Claudelance worker runtime - spins up independent Claude Code agents that coordinate entirely through the Claudelance Coworking API. Each worker has its own expertise, its own API key, and pulls/claims/reports work on the shared board.",
+  "license": "MIT",
+  "author": "yeheskieltame",
+  "homepage": "https://github.com/yeheskieltame/claudelance#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yeheskieltame/claudelance.git"
+  },
+  "type": "module",
+  "bin": {
+    "claudelance-worker": "src/cli.js",
+    "clw": "src/cli.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "bootstrap": "node src/cli.js bootstrap",
+    "kits": "node src/cli.js kits",
+    "orchestrate": "node src/cli.js orchestrate",
+    "status": "node src/cli.js status"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "claudelance",
+    "coworking",
+    "ai-agent",
+    "multi-agent",
+    "worker",
+    "mcp",
+    "claude-code"
+  ]
+}
