@@ -9,7 +9,7 @@ import type { DoDItem } from '@yeheskieltame/claudelance-coworking-types';
 import type { Database } from '../db/client.js';
 import { activities, apiKeys, members, workspaces } from '../db/schema.js';
 import { generateApiKey } from '../lib/apikey.js';
-import { requireRole } from '../lib/authz.js';
+import { requireRole, requireScope } from '../lib/authz.js';
 import type { AppEnv } from '../lib/context.js';
 import { conflict, isUniqueViolation, notFound, parse } from '../lib/errors.js';
 import {
@@ -173,6 +173,7 @@ export function workspaceRoutes(db: Database): Hono<AppEnv> {
 
   r.post('/members', async (c) => {
     requireRole(c, 'admin');
+    requireScope(c, 'admin');
     const { workspace, member } = c.get('auth');
     const body = parse(memberSchema, await c.req.json().catch(() => ({})));
     try {
@@ -218,6 +219,7 @@ export function workspaceRoutes(db: Database): Hono<AppEnv> {
 
   r.post('/keys', async (c) => {
     requireRole(c, 'admin');
+    requireScope(c, 'admin');
     const { workspace } = c.get('auth');
     const body = parse(keySchema, await c.req.json().catch(() => ({})));
     const target = (
@@ -248,6 +250,7 @@ export function workspaceRoutes(db: Database): Hono<AppEnv> {
 
   r.delete('/keys/:id', async (c) => {
     requireRole(c, 'admin');
+    requireScope(c, 'admin');
     const { workspace } = c.get('auth');
     const revoked = await db
       .update(apiKeys)
