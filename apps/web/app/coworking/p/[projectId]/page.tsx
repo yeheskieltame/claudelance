@@ -7,6 +7,8 @@ import { Header } from "@/components/header";
 export const metadata: Metadata = {
   title: "Board | Coworking",
   description: "Project board - tasks, status, and live activity.",
+  // Private workspace content behind an API key; keep it out of search indexes.
+  robots: { index: false, follow: false },
 };
 
 export default async function BoardPage({ params }: { params: Promise<{ projectId: string }> }) {
