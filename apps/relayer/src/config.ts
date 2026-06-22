@@ -12,6 +12,13 @@ export type RelayerConfig = {
   dryRun: boolean;
   port: number;
   keeperIntervalMs: number;
+  /**
+   * Warn-below threshold for the keeper's native CELO balance, in wei. Gas
+   * spikes have starved the signer before, so each tick logs a warning when the
+   * balance drops under this floor (default 0.6 CELO) before writes start to
+   * revert. Set via KEEPER_MIN_BALANCE_CELO (a decimal CELO amount).
+   */
+  keeperMinBalanceWei: bigint;
   /** How often the event watcher polls for new logs that trigger an instant tick. */
   eventPollMs: number;
   eventsFromBlock: bigint;
@@ -46,6 +53,17 @@ function parseBool(value: string | undefined, fallback: boolean): boolean {
 function parseNetwork(_value: string | undefined): NetworkKey {
   // Celo Mainnet (chain 42220) is the only supported network.
   return 'celo';
+}
+
+/**
+ * Parse a decimal CELO amount (e.g. "0.6") into wei. Falls back to `fallback`
+ * on an empty or non-finite value so a typo never silently disables the alert.
+ */
+function parseCeloToWei(value: string | undefined, fallback: bigint): bigint {
+  if (value === undefined || value.trim() === '') return fallback;
+  const celo = Number(value);
+  if (!Number.isFinite(celo) || celo < 0) return fallback;
+  return BigInt(Math.round(celo * 1e9)) * 1_000_000_000n; // 1e9 * 1e9 = 1e18, no float wei
 }
 
 /**
@@ -107,6 +125,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayerConfig 
     dryRun,
     port: Number(env.PORT ?? 8787),
     keeperIntervalMs: Number(env.KEEPER_INTERVAL_MS ?? 60_000),
+    keeperMinBalanceWei: parseCeloToWei(env.KEEPER_MIN_BALANCE_CELO, 600_000_000_000_000_000n), // 0.6 CELO
     eventPollMs: Number(env.EVENT_POLL_MS ?? 5_000),
     eventsFromBlock:
       env.EVENTS_FROM_BLOCK !== undefined && env.EVENTS_FROM_BLOCK !== ''
