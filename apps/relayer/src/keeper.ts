@@ -15,8 +15,20 @@ import type { ParsedCiEvent } from './github.js';
 
 export type Logger = (message: string, meta?: Record<string, unknown>) => void;
 
-const defaultLogger: Logger = (message, meta) =>
-  console.log(JSON.stringify({ t: new Date().toISOString(), message, ...meta }));
+const defaultLogger: Logger = (message, meta) => {
+  const line = JSON.stringify({ t: new Date().toISOString(), message, ...meta });
+  // Route warn-level lines to stderr so operators (and Railway log filters) can
+  // surface the low-balance alert apart from the steady info stream.
+  if (meta?.level === 'warn') console.warn(line);
+  else console.log(line);
+};
+
+/** Wei -> a short decimal CELO string for human-readable log lines. */
+function formatCelo(wei: bigint): string {
+  const whole = wei / 1_000_000_000_000_000_000n;
+  const frac = (wei % 1_000_000_000_000_000_000n).toString().padStart(18, '0').slice(0, 4);
+  return `${whole}.${frac}`;
+}
 
 export type TickSummary = {
   scanned: number;
@@ -59,7 +71,6 @@ export function createKeeperState(): KeeperState {
   return { watermark: 0n, cache: createAgentIdCache() };
 }
 
-const LOW_BALANCE_WEI = 300_000_000_000_000_000n; // 0.3 CELO
 const SCAN_PAGE = 50;
 
 type BountyRow = {
@@ -93,10 +104,20 @@ export async function runKeeperTick(
     durationMs: 0,
   };
 
+  // Low-balance alert: a starved signer reverts every write, so warn once per
+  // tick while the native CELO balance sits under the configured floor (default
+  // 0.6 CELO) - the lead time to top up before sends start failing.
   if (!cfg.dryRun) {
     const balance = await chain.relayerBalance();
-    if (balance < LOW_BALANCE_WEI) {
-      log('keeper.low-balance', { relayer: chain.relayerAddress, balanceWei: balance.toString() });
+    if (balance < cfg.keeperMinBalanceWei) {
+      log('keeper.low-balance', {
+        level: 'warn',
+        relayer: chain.relayerAddress,
+        balanceWei: balance.toString(),
+        balanceCelo: formatCelo(balance),
+        thresholdCelo: formatCelo(cfg.keeperMinBalanceWei),
+        hint: 'top up the keeper wallet before writes start reverting',
+      });
     }
   }
 
