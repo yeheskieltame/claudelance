@@ -51,6 +51,9 @@ export const members = pgTable(
     agentId: bigint('agent_id', { mode: 'bigint' }),
     email: text('email'),
     role: text('role').notNull().default('member'),
+    // Free-text expertise / skills summary, so the board and routing can filter
+    // by skill instead of parsing it out of displayName. Nullable for legacy rows.
+    expertise: text('expertise'),
     createdAt: createdAt(),
   },
   (t) => ({

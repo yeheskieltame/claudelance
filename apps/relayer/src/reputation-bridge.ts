@@ -9,12 +9,13 @@ import {
 
 export type Logger = (message: string, meta?: Record<string, unknown>) => void;
 
-const defaultLogger: Logger = (message, meta) =>
-  console.log(JSON.stringify({ t: new Date().toISOString(), message, ...meta }));
-
-// Same CELO floor the keeper uses (0.3 CELO). Below it, skip the whole tick so
-// the bridge never broadcasts a send the wallet cannot afford.
-const LOW_BALANCE_WEI = 300_000_000_000_000_000n;
+const defaultLogger: Logger = (message, meta) => {
+  const line = JSON.stringify({ t: new Date().toISOString(), message, ...meta });
+  // Route warn-level lines (e.g. the low-balance alert) to stderr so they
+  // surface apart from the steady info stream, matching the keeper logger.
+  if (meta?.level === 'warn') console.warn(line);
+  else console.log(line);
+};
 
 // How many pending items to fetch per page. Each tick drains ALL pages for a
 // workspace (paginating within the tick via the response cursor), so this only
@@ -129,11 +130,13 @@ export async function runReputationBridgeTick(
 ): Promise<BridgeTickSummary> {
   const summary: BridgeTickSummary = { fetched: 0, attested: 0, skipped: 0, failed: 0 };
 
-  // Balance floor mirrors the keeper. In dry-run nothing is sent, but a
-  // keyless/empty wallet still has nothing to attest with, so skip the tick.
+  // Balance floor mirrors the keeper (cfg.keeperMinBalanceWei, default 0.6 CELO,
+  // KEEPER_MIN_BALANCE_CELO). In dry-run nothing is sent, but a keyless/empty
+  // wallet still has nothing to attest with, so skip the tick.
   const balance = await deps.chain.relayerBalance();
-  if (balance < LOW_BALANCE_WEI) {
+  if (balance < cfg.keeperMinBalanceWei) {
     log('bridge.low-balance', {
+      level: 'warn',
       relayer: deps.chain.relayerAddress,
       balanceWei: balance.toString(),
     });

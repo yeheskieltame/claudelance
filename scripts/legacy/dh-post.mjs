@@ -23,7 +23,15 @@ if (!args.worker || !args.issue || !args.repo) {
   process.exit(1);
 }
 
-const CELO_TOKEN = '0x471EcE3750Da237f93B8E339c536989b8978a438';
+const TOKENS = {
+  celo: '0x471EcE3750Da237f93B8E339c536989b8978a438',
+  cusd: '0x765DE816845861e75A25fCA122bb6898B8B1282a',
+  usdc: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C',
+};
+// --token accepts a symbol (celo|cusd|usdc) or a raw 0x address; default CELO.
+const tokenArg = (args.token ?? 'celo').toLowerCase();
+const REWARD_TOKEN = TOKENS[tokenArg] ?? (tokenArg.startsWith('0x') ? args.token : null);
+if (!REWARD_TOKEN) { console.error(`unknown --token "${args.token}" (use celo|cusd|usdc or a 0x address)`); process.exit(1); }
 const RPC = 'https://forno.celo.org';
 const chain = { id: 42220, name: 'Celo', nativeCurrency: { name: 'CELO', symbol: 'CELO', decimals: 18 }, rpcUrls: { default: { http: [RPC] } } };
 
@@ -50,7 +58,7 @@ if (workerBal < fundFloor) {
 
 const cl = ClaudelanceClient.fromPrivateKey({ privateKey: deployerKey, network: 'celo' });
 const { hash, bountyId } = await cl.postDirectHireAndGetId({
-  token: CELO_TOKEN,
+  token: REWARD_TOKEN,
   targetWorker: workerAddr,
   bountyType: Number(args.type ?? 0),
   targetRepoUrl: args.repo,
@@ -59,4 +67,4 @@ const { hash, bountyId } = await cl.postDirectHireAndGetId({
   stake: parseEther(args.stake ?? '0.05'),
   deadlineSeconds: BigInt(Number(args.days ?? 3) * 86400),
 });
-console.log(`posted bountyId=${bountyId} worker=${workerAddr} tx=${hash}`);
+console.log(`posted bountyId=${bountyId} worker=${workerAddr} token=${tokenArg} tx=${hash}`);

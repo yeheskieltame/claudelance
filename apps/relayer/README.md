@@ -85,7 +85,9 @@ Operational rules:
   rest, masked in build logs). It is never committed, never baked into the
   image, and never printed by the service.
 - The relayer wallet is deliberately low-value. Keep roughly 1-2 CELO on it;
-  the keeper logs `keeper.low-balance` when it drops under 0.3 CELO.
+  every tick logs a `keeper.low-balance` warning when it drops under the
+  `KEEPER_MIN_BALANCE_CELO` floor (default 0.6 CELO), the lead time to top up
+  before gas spikes make writes revert.
 - Rollout order: deploy with `DRY_RUN=true` and no key, watch a few
   `keeper.tick` / `keeper.dry-run` lines, then set the key and flip
   `DRY_RUN=false`.

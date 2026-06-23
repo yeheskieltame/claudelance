@@ -5,6 +5,8 @@ export {
   type CoworkingClientOptions,
   type CreateWorkspaceInput,
   type CreateProjectInput,
+  type CreateMemberInput,
+  type CreateApiKeyInput,
   type CreateTaskInput,
   type UpdateTaskInput,
   type AcceptanceCriterionInput,

@@ -6,7 +6,7 @@ import { TASK_TYPES } from '@yeheskieltame/claudelance-coworking-types';
 
 import type { Database } from '../db/client.js';
 import { automations, projects } from '../db/schema.js';
-import { requireRole } from '../lib/authz.js';
+import { requireRole, requireScope } from '../lib/authz.js';
 import type { AppEnv } from '../lib/context.js';
 import { notFound, parse } from '../lib/errors.js';
 import { loadProjectScoped } from '../lib/loaders.js';
@@ -57,6 +57,7 @@ export function automationRoutes(db: Database): Hono<AppEnv> {
 
   r.post('/projects/:id/automations', async (c) => {
     requireRole(c, 'admin');
+    requireScope(c, 'admin');
     const { workspace } = c.get('auth');
     const project = await loadProjectScoped(db, c.req.param('id'), workspace.id);
     const body = parse(createSchema, await c.req.json().catch(() => ({})));
@@ -91,6 +92,7 @@ export function automationRoutes(db: Database): Hono<AppEnv> {
 
   r.patch('/automations/:id', async (c) => {
     requireRole(c, 'admin');
+    requireScope(c, 'admin');
     const { workspace } = c.get('auth');
     const automation = await loadAutomation(c.req.param('id'), workspace.id);
     const body = parse(patchSchema, await c.req.json().catch(() => ({})));
@@ -112,6 +114,7 @@ export function automationRoutes(db: Database): Hono<AppEnv> {
 
   r.delete('/automations/:id', async (c) => {
     requireRole(c, 'admin');
+    requireScope(c, 'admin');
     const { workspace } = c.get('auth');
     const automation = await loadAutomation(c.req.param('id'), workspace.id);
     await db.delete(automations).where(eq(automations.id, automation.id));

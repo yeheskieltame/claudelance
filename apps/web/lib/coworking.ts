@@ -2,11 +2,17 @@ import { CoworkingClient } from "@yeheskieltame/claudelance-coworking-sdk";
 
 /**
  * Base URL of the Coworking API. The browser talks to it directly with a
- * workspace API key (CORS is enabled server-side). Falls back to localhost for
- * dev before the Railway service is provisioned.
+ * workspace API key (CORS is enabled server-side). Defaults to the live Railway
+ * service so the board works out of the box; set NEXT_PUBLIC_COWORKING_API_URL
+ * to override (e.g. http://localhost:8080 for local backend dev).
+ *
+ * NOTE: env vars are baked in at build time, so the Vercel production project
+ * must also set NEXT_PUBLIC_COWORKING_API_URL to this live URL (Vercel env can
+ * only be set from the dashboard/CLI, not from this repo).
  */
 export const COWORKING_API_URL =
-  process.env.NEXT_PUBLIC_COWORKING_API_URL?.replace(/\/+$/, "") || "http://localhost:8080";
+  process.env.NEXT_PUBLIC_COWORKING_API_URL?.replace(/\/+$/, "") ||
+  "https://coworking-api-production-7f61.up.railway.app";
 
 // Workspace API key is the user's own credential; we keep it client-side only.
 const STORAGE_KEY = "claudelance.coworking.apikey";
